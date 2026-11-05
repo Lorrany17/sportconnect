@@ -23,12 +23,16 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
 import { useTournament } from "@/context/TournamentContext";
 import PixCheckoutForm from "@/components/PixCheckoutForm";
+import { updateRegistration, deleteOrphanTeam } from "@/app/actions/registration";
+import { notifyNewRegistration } from "@/app/actions/notifications";
 
 export interface PublicRegistrationFormProps {
   tournament: Tournament;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  initialData?: any;
+  defaultValues?: any;
 }
 
 export default function PublicRegistrationForm({
@@ -36,12 +40,16 @@ export default function PublicRegistrationForm({
   isOpen,
   onClose,
   onSuccess,
+  initialData,
+  defaultValues,
 }: PublicRegistrationFormProps) {
+  const activeInitialData = initialData || defaultValues || null;
+  const isEditMode = Boolean(activeInitialData?.id);
   const { user } = useAuth();
   const { setTeams } = useTournament();
 
   const sportType: SportType = tournament.sport_type || "DOMINO";
-  const format = (tournament.format || "").toLowerCase();
+  const format = ((tournament.match_rules as any)?.modality_format || tournament.format || "").toLowerCase();
   const entryFee = tournament.entry_fee ? Number(tournament.entry_fee) : 0;
 
   // Lógica de adaptação do esporte
@@ -80,15 +88,15 @@ export default function PublicRegistrationForm({
     const max = tournament.max_players;
     if (min !== null && min !== undefined && max !== null && max !== undefined) {
       if (min === max) {
-        return `Exatamente ${min} atletas por equipa`;
+        return `Exatamente ${min} atletas por equipe`;
       }
-      return `De ${min} a ${max} atletas por equipa`;
+      return `De ${min} a ${max} atletas por equipe`;
     }
     if (min !== null && min !== undefined) {
-      return `Mínimo de ${min} atletas por equipa`;
+      return `Mínimo de ${min} atletas por equipe`;
     }
     if (max !== null && max !== undefined) {
-      return `Até ${max} atletas por equipa`;
+      return `Até ${max} atletas por equipe`;
     }
     return null;
   };
@@ -107,10 +115,239 @@ export default function PublicRegistrationForm({
   const [partnerName, setPartnerName] = useState("");
   const [partnerEmail, setPartnerEmail] = useState("");
   const [contact, setContact] = useState("");
-  const [athletes, setAthletes] = useState<{ name: string; email: string }[]>([]);
+  const requireCpf = Boolean(tournament.require_cpf);
+  const requirePhone = Boolean(tournament.require_phone);
+  const isAllSkillLevels =
+    !tournament.skill_level ||
+    tournament.skill_level.toUpperCase() === "ALL" ||
+    tournament.skill_level.toUpperCase() === "LIVRE";
+  const [declaredSkillLevel, setDeclaredSkillLevel] = useState<string>(
+    activeInitialData?.declared_skill_level || ""
+  );
+  const [captainCpf, setCaptainCpf] = useState("");
+  const [partnerCpf, setPartnerCpf] = useState("");
+  const [partnerPhone, setPartnerPhone] = useState("");
+  const [athletes, setAthletes] = useState<
+    { name: string; email: string; cpf?: string; phone?: string }[]
+  >([]);
+
+  const formatCpfMask = (val: string) => {
+    const digits = val.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+  };
+
+  const formatPhoneMask = (val: string) => {
+    const digits = val.replace(/\D/g, "").slice(0, 11);
+    if (digits.length === 0) return "";
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const customFields = tournament.custom_registration_fields || [];
+
+  // Preenche o formulário quando aberto em modo de edição (initialData / defaultValues)
+  useEffect(() => {
+    if (!isOpen) return;
+    setErrorMessage("");
+    setIsSuccess(false);
+
+    if (activeInitialData) {
+      setTeamName(activeInitialData.name || "");
+      const cap =
+        activeInitialData.player1 ||
+        activeInitialData.manager_name ||
+        (Array.isArray(activeInitialData.players) ? activeInitialData.players[0] : "") ||
+        user?.user_metadata?.full_name ||
+        user?.user_metadata?.name ||
+        "";
+      setCaptainName(cap);
+
+      const p2 =
+        activeInitialData.player2 ||
+        (Array.isArray(activeInitialData.players) ? activeInitialData.players[1] : "") ||
+        "";
+      setPartnerName(p2);
+
+      if (activeInitialData.partnerEmail !== undefined) {
+        setPartnerEmail(activeInitialData.partnerEmail || "");
+      } else if (Array.isArray(activeInitialData.members)) {
+        const nonCaptain = activeInitialData.members.find((m: any) => !m.is_captain);
+        setPartnerEmail(nonCaptain?.email || "");
+      }
+
+      setContact(activeInitialData.contact || activeInitialData.manager_phone || activeInitialData.phone || "");
+      setCustomAnswers(activeInitialData.custom_registration_answers || {});
+      if (activeInitialData.declared_skill_level !== undefined) {
+        setDeclaredSkillLevel(activeInitialData.declared_skill_level || "");
+      }
+
+      if (Array.isArray(activeInitialData.members) && activeInitialData.members.length > 0) {
+        const nonCapMembers = activeInitialData.members
+          .filter((m: any) => !m.is_captain)
+          .map((m: any) => ({
+            name: m.name || "",
+            email: m.email || "",
+            cpf: m.cpf || "",
+            phone: m.phone || "",
+          }));
+        const capMember = activeInitialData.members.find((m: any) => m.is_captain);
+        if (capMember?.cpf) setCaptainCpf(capMember.cpf);
+        if (capMember?.phone && !activeInitialData.contact) setContact(capMember.phone);
+        const firstNonCap = activeInitialData.members.find((m: any) => !m.is_captain);
+        if (firstNonCap?.cpf) setPartnerCpf(firstNonCap.cpf);
+        if (firstNonCap?.phone) setPartnerPhone(firstNonCap.phone);
+        setAthletes(nonCapMembers);
+      } else if (Array.isArray(activeInitialData.roster) && activeInitialData.roster.length > 1) {
+        setAthletes(
+          activeInitialData.roster.slice(1).map((rName: string) => ({
+            name: rName,
+            email: "",
+          }))
+        );
+      } else {
+        setAthletes([]);
+      }
+    }
+  }, [isOpen, activeInitialData, user?.user_metadata?.full_name, user?.user_metadata?.name]);
+
+  // 1. Chave Única de Armazenamento para Auto-Save no LocalStorage
+  const storageKey = `sportconnect_draft_${tournament.id}`;
+  const isHydratedRef = useRef<boolean>(false);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState<boolean>(false);
+
+  // 2. Recuperação de Dados (On Mount / On Open)
+  useEffect(() => {
+    // Não carrega rascunho se estiver em modo de edição de uma inscrição existente
+    if (isEditMode || !isOpen || typeof window === "undefined") {
+      isHydratedRef.current = true;
+      return;
+    }
+
+    try {
+      const savedRaw = localStorage.getItem(storageKey);
+      if (savedRaw) {
+        const draft = JSON.parse(savedRaw);
+        if (draft && typeof draft === "object") {
+          if (draft.teamName !== undefined) setTeamName(draft.teamName);
+          if (draft.captainName !== undefined) setCaptainName(draft.captainName);
+          if (draft.partnerName !== undefined) setPartnerName(draft.partnerName);
+          if (draft.partnerEmail !== undefined) setPartnerEmail(draft.partnerEmail);
+          if (draft.partnerCpf !== undefined) setPartnerCpf(draft.partnerCpf);
+          if (draft.partnerPhone !== undefined) setPartnerPhone(draft.partnerPhone);
+          if (draft.contact !== undefined) setContact(draft.contact);
+          if (draft.captainCpf !== undefined) setCaptainCpf(draft.captainCpf);
+          if (Array.isArray(draft.athletes)) setAthletes(draft.athletes);
+          if (draft.declaredSkillLevel !== undefined) setDeclaredSkillLevel(draft.declaredSkillLevel);
+          if (draft.customAnswers && typeof draft.customAnswers === "object") {
+            setCustomAnswers(draft.customAnswers);
+          }
+          setHasRestoredDraft(true);
+        }
+      }
+    } catch (draftErr) {
+      console.warn("Aviso ao recuperar rascunho do formulário de inscrição:", draftErr);
+    } finally {
+      isHydratedRef.current = true;
+    }
+  }, [isOpen, isEditMode, storageKey]);
+
+  // 3. Salvamento Automático (Auto-Save com Debounce de 500ms)
+  useEffect(() => {
+    // Apenas salva após hidratação e quando não está editando inscrição já existente
+    if (!isHydratedRef.current || isEditMode || !isOpen || typeof window === "undefined") {
+      return;
+    }
+
+    const hasAnyContent =
+      Boolean(teamName.trim()) ||
+      Boolean(partnerName.trim()) ||
+      Boolean(partnerEmail.trim()) ||
+      Boolean(contact.trim()) ||
+      Boolean(captainCpf.trim()) ||
+      Boolean(partnerCpf.trim()) ||
+      athletes.length > 0 ||
+      Object.keys(customAnswers).length > 0;
+
+    const timeoutId = setTimeout(() => {
+      try {
+        if (!hasAnyContent) {
+          localStorage.removeItem(storageKey);
+          return;
+        }
+
+        const draftData = {
+          teamName,
+          captainName,
+          partnerName,
+          partnerEmail,
+          partnerCpf,
+          partnerPhone,
+          contact,
+          captainCpf,
+          athletes,
+          declaredSkillLevel,
+          customAnswers,
+          savedAt: new Date().toISOString(),
+        };
+
+        localStorage.setItem(storageKey, JSON.stringify(draftData));
+      } catch (saveErr) {
+        console.warn("Aviso ao salvar rascunho no localStorage:", saveErr);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    teamName,
+    captainName,
+    partnerName,
+    partnerEmail,
+    partnerCpf,
+    partnerPhone,
+    contact,
+    captainCpf,
+    athletes,
+    declaredSkillLevel,
+    customAnswers,
+    isEditMode,
+    isOpen,
+    storageKey,
+  ]);
+
+  // Função para limpar rascunho manualmente
+  const handleClearDraft = () => {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(storageKey);
+      }
+      setTeamName("");
+      setPartnerName("");
+      setPartnerEmail("");
+      setPartnerCpf("");
+      setPartnerPhone("");
+      setContact("");
+      setCaptainCpf("");
+      setAthletes([]);
+      setCustomAnswers({});
+      setHasRestoredDraft(false);
+    } catch (err) {
+      console.warn("Aviso ao limpar rascunho:", err);
+    }
+  };
 
   const handleCustomAnswerChange = (fieldLabel: string, value: any) => {
     setCustomAnswers((prev) => ({
@@ -172,43 +409,434 @@ export default function PublicRegistrationForm({
   const [errorMessage, setErrorMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // Estado para armazenar os dados validados antes da gravação definitiva no Supabase (Delayed DB Insert)
+  const [pendingRegistrationData, setPendingRegistrationData] = useState<{
+    finalName: string;
+    p1: string;
+    p2: string;
+    compiledRoster: string[];
+    captainCpf: string;
+    contact: string;
+    partnerName: string;
+    partnerEmail: string;
+    partnerCpf: string;
+    partnerPhone: string;
+    athletes: { name: string; email: string; cpf?: string; phone?: string }[];
+    formattedCustomAnswers: Record<string, any>;
+    declaredSkillLevel: string;
+  } | null>(null);
+
+  // Função centralizada para gravação no banco da equipe e dos membros
+  const executeTeamAndMembersInsert = async (params: {
+    finalName: string;
+    p1: string;
+    p2: string;
+    compiledRoster: string[];
+    captainCpf: string;
+    contact: string;
+    partnerName: string;
+    partnerEmail: string;
+    partnerCpf: string;
+    partnerPhone: string;
+    athletes: { name: string; email: string; cpf?: string; phone?: string }[];
+    formattedCustomAnswers: Record<string, any>;
+    declaredSkillLevel: string;
+    uploadedReceiptPath: string | null;
+    isPayLater?: boolean;
+  }): Promise<Team> => {
+    if (!user || !user.id) {
+      throw new Error("Usuário não autenticado. Faça login para continuar.");
+    }
+
+    const {
+      finalName,
+      p1,
+      p2,
+      compiledRoster,
+      captainCpf,
+      contact,
+      partnerName,
+      partnerEmail,
+      partnerCpf,
+      partnerPhone,
+      athletes,
+      formattedCustomAnswers,
+      declaredSkillLevel,
+      uploadedReceiptPath,
+    } = params;
+
+    let newlyCreatedTeamId: string | null = null;
+
+    try {
+      // 1. Prepara dados detalhados dos integrantes para persistência em 'teams'
+      const rosterDetails = [
+        {
+          name: p1,
+          email: user.email || "",
+          is_captain: true,
+          cpf: captainCpf.trim() || null,
+          phone: contact.trim() || null,
+        },
+        ...(isDuplasSport && partnerName.trim()
+          ? [
+              {
+                name: partnerName.trim(),
+                email: partnerEmail.trim().toLowerCase(),
+                is_captain: false,
+                cpf: partnerCpf.trim() || null,
+                phone: partnerPhone.trim() || null,
+              },
+            ]
+          : isTeamSport
+          ? athletes
+              .filter((ath) => ath.name.trim())
+              .map((ath) => ({
+                name: ath.name.trim(),
+                email: ath.email.trim().toLowerCase(),
+                is_captain: false,
+                cpf: ath.cpf?.trim() || null,
+                phone: ath.phone?.trim() || null,
+              }))
+          : []),
+      ];
+
+      const payload: any = {
+        name: finalName,
+        manager_name: p1,
+        player1: p1,
+        player2: p2 || "",
+        roster: compiledRoster,
+        contact: contact.trim(),
+        tournament_id: tournament.id,
+        user_id: user.id,
+        payment_status: uploadedReceiptPath
+          ? "WAITING_APPROVAL"
+          : (entryFee > 0 ? "WAITING_PIX" : "APPROVED"),
+        payment_proof_url: uploadedReceiptPath || null,
+        status: entryFee > 0 ? "PENDING" : "CONFIRMED",
+        amount_paid: entryFee > 0 ? entryFee : 0,
+        category: "Geral",
+        custom_registration_answers: formattedCustomAnswers,
+        declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
+      };
+
+      let { data: insertedTeam, error: insertError } = createdTeam?.id
+        ? await supabase
+            .from("teams")
+            .update(payload)
+            .eq("id", createdTeam.id)
+            .select()
+            .single()
+        : await supabase
+            .from("teams")
+            .insert(payload)
+            .select()
+            .single();
+
+      if (
+        insertError &&
+        (insertError.code === "42703" ||
+          insertError.code === "PGRST204" ||
+          String(insertError.message).toLowerCase().includes("amount_paid")) &&
+        "amount_paid" in payload
+      ) {
+        const safePayload = { ...payload };
+        delete safePayload.amount_paid;
+        const retryRes = createdTeam?.id
+          ? await supabase
+              .from("teams")
+              .update(safePayload)
+              .eq("id", createdTeam.id)
+              .select()
+              .single()
+          : await supabase
+              .from("teams")
+              .insert(safePayload)
+              .select()
+              .single();
+        insertedTeam = retryRes.data;
+        insertError = retryRes.error;
+      }
+
+      if (insertError || !insertedTeam) {
+        console.error("ERRO COMPLETO AO INSERIR EQUIPE:", insertError);
+        throw insertError || new Error("Falha ao registrar equipe.");
+      }
+
+      if (!createdTeam?.id && insertedTeam?.id) {
+        newlyCreatedTeamId = insertedTeam.id;
+      }
+
+      // 2. Inserção estrita de membros na tabela team_members
+      const teamMembersToInsert: {
+        team_id: string;
+        user_id: string | null;
+        name: string;
+        email: string;
+        is_captain: boolean;
+        cpf?: string | null;
+        phone?: string | null;
+      }[] = [];
+
+      // A. Capitão informado no formulário (único com is_captain: true)
+      teamMembersToInsert.push({
+        team_id: insertedTeam.id,
+        user_id: user.id,
+        name: p1,
+        email: user.email || "",
+        is_captain: true,
+        cpf: captainCpf.trim() || null,
+        phone: contact.trim() || null,
+      });
+
+      // B. Parceiro informado no formulário (no caso de duplas, exatamente 1 atleta com is_captain: false)
+      const otherMembers: {
+        name: string;
+        email: string;
+        cpf?: string | null;
+        phone?: string | null;
+      }[] = [];
+
+      if (isDuplasSport && partnerName.trim()) {
+        otherMembers.push({
+          name: partnerName.trim(),
+          email: partnerEmail.trim().toLowerCase(),
+          cpf: partnerCpf.trim() || null,
+          phone: partnerPhone.trim() || null,
+        });
+      } else if (isTeamSport) {
+        athletes.forEach((ath) => {
+          if (ath.name.trim()) {
+            otherMembers.push({
+              name: ath.name.trim(),
+              email: ath.email.trim().toLowerCase(),
+              cpf: ath.cpf?.trim() || null,
+              phone: ath.phone?.trim() || null,
+            });
+          }
+        });
+      }
+
+      for (const member of otherMembers) {
+        let matchedUserId: string | null = null;
+        if (member.email) {
+          try {
+            const { data: profileFound } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("email", member.email)
+              .maybeSingle();
+
+            if (profileFound?.id) {
+              matchedUserId = profileFound.id;
+            }
+          } catch (pErr) {
+            console.warn("Aviso ao buscar perfil por email:", pErr);
+          }
+        }
+
+        teamMembersToInsert.push({
+          team_id: insertedTeam.id,
+          user_id: matchedUserId,
+          name: member.name,
+          email: member.email,
+          is_captain: false,
+          cpf: member.cpf || null,
+          phone: member.phone || null,
+        });
+      }
+
+      const sanitizedMembers = teamMembersToInsert.map((m) => ({
+        team_id: m.team_id,
+        user_id: m.user_id,
+        email: m.email,
+        is_captain: m.is_captain,
+        ...(m.cpf ? { cpf: m.cpf } : {}),
+        ...(m.phone ? { phone: m.phone } : {}),
+      }));
+
+      if (sanitizedMembers.length > 0) {
+        if (createdTeam?.id) {
+          await supabase.from("team_members").delete().eq("team_id", createdTeam.id);
+        }
+
+        const { error: tmError } = await supabase
+          .from("team_members")
+          .insert(sanitizedMembers);
+
+        if (tmError) {
+          console.error("ERRO CRÍTICO AO INSERIR MEMBROS DA EQUIPE (ROLLBACK OBRIGATÓRIO):", tmError);
+          if (newlyCreatedTeamId) {
+            try {
+              await supabase.from("teams").delete().eq("id", newlyCreatedTeamId);
+            } catch {}
+            try {
+              await deleteOrphanTeam(newlyCreatedTeamId);
+            } catch {}
+            newlyCreatedTeamId = null;
+          }
+          throw tmError;
+        }
+      }
+
+      const mappedTeam: Team = {
+        id: insertedTeam.id,
+        name: insertedTeam.name,
+        user_id: insertedTeam.user_id,
+        players: [insertedTeam.player1, insertedTeam.player2],
+        roster: insertedTeam.roster,
+        createdAt: insertedTeam.created_at || new Date().toISOString(),
+        status: insertedTeam.status,
+        tournamentId: insertedTeam.tournament_id,
+        payment_status: insertedTeam.payment_status,
+        payment_proof_url: insertedTeam.payment_proof_url,
+        manager_name: insertedTeam.manager_name,
+        category: insertedTeam.category,
+        contact: insertedTeam.contact,
+        custom_registration_answers: insertedTeam.custom_registration_answers || formattedCustomAnswers,
+      };
+
+      setTeams((prev: Team[]) =>
+        createdTeam?.id
+          ? prev.map((t) => (t.id === mappedTeam.id ? mappedTeam : t))
+          : [...prev, mappedTeam]
+      );
+      setCreatedTeam(mappedTeam);
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(storageKey);
+        } catch {}
+      }
+
+      try {
+        await notifyNewRegistration({
+          tournamentId: tournament.id,
+          tournamentName: tournament.name,
+          teamName: finalName,
+        });
+      } catch {}
+
+      return mappedTeam;
+    } catch (err) {
+      if (newlyCreatedTeamId) {
+        try {
+          await supabase.from("teams").delete().eq("id", newlyCreatedTeamId);
+        } catch {}
+        try {
+          await deleteOrphanTeam(newlyCreatedTeamId);
+        } catch {}
+      }
+      throw err;
+    }
+  };
+
+  // Callback de persistência atrasada acionada a partir do checkout (Anexar Comprovante ou Pagar Mais Tarde)
+  const commitDelayedRegistration = async (options: {
+    receiptFile?: File | null;
+    isPayLater?: boolean;
+  }): Promise<{ success: boolean; teamId?: string; error?: string }> => {
+    if (!pendingRegistrationData && !createdTeam?.id) {
+      return { success: false, error: "Dados da inscrição pendente não encontrados." };
+    }
+
+    if (createdTeam?.id) {
+      return { success: true, teamId: createdTeam.id };
+    }
+
+    try {
+      let uploadedReceiptPath: string | null = null;
+
+      if (options.receiptFile) {
+        const file = options.receiptFile;
+        const fileExt = file.name.split(".").pop() || "png";
+        const filePath = `${user!.id}-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("receipts")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error("Erro no upload do comprovante no checkout:", uploadError);
+          return { success: false, error: "Erro ao fazer upload do comprovante." };
+        }
+        uploadedReceiptPath = filePath;
+      }
+
+      const team = await executeTeamAndMembersInsert({
+        ...pendingRegistrationData!,
+        uploadedReceiptPath,
+        isPayLater: options.isPayLater,
+      });
+
+      return { success: true, teamId: team.id };
+    } catch (err: unknown) {
+      console.error("Erro em commitDelayedRegistration:", err);
+      const msg = err instanceof Error ? err.message : "Erro ao salvar inscrição.";
+      return { success: false, error: msg };
+    }
+  };
+
   if (!isOpen) return null;
 
   // Se já preencheu e houver taxa, renderiza a tela de checkout Pix dinâmico
-  if (step === "checkout" && createdTeam) {
+  if (step === "checkout") {
+    const activeTeam = createdTeam || activeInitialData;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
         <PixCheckoutForm
           tournamentId={tournament.id}
           tournamentName={tournament.name}
-          teamId={createdTeam.id}
-          teamName={createdTeam.name}
+          teamId={activeTeam?.id || ""}
+          teamName={
+            pendingRegistrationData?.finalName ||
+            activeTeam?.name ||
+            teamName
+          }
           captainName={
-            createdTeam.manager_name ||
-            (Array.isArray(createdTeam.players) ? createdTeam.players[0] : "") ||
+            pendingRegistrationData?.p1 ||
+            activeTeam?.manager_name ||
+            (Array.isArray(activeTeam?.players) ? activeTeam?.players[0] : "") ||
             captainName ||
             "Capitão"
           }
           totalAmount={entryFee}
           sportType={sportType}
           email={user?.email || undefined}
-          initialReceiptUrl={createdTeam.payment_proof_url || undefined}
+          initialReceiptUrl={activeTeam?.payment_proof_url || undefined}
+          onBack={() => setStep("form")}
           onClose={onClose}
           onSuccess={() => {
             onSuccess?.();
             onClose();
           }}
+          onCommitRegistration={commitDelayedRegistration}
         />
       </div>
     );
   }
 
   // Manipuladores de atletas adicionais (Futsal / Vôlei)
+  const maxPlayersLimit =
+    tournament.max_players !== null && tournament.max_players !== undefined && Number(tournament.max_players) > 0
+      ? Number(tournament.max_players)
+      : null;
+  const isMaxPlayersReached = Boolean(maxPlayersLimit !== null && athletes.length + 1 >= maxPlayersLimit);
+
+  // Manipuladores de atletas adicionais (Futsal / Vôlei)
   const handleAddAthlete = () => {
-    setAthletes((prev) => [...prev, { name: "", email: "" }]);
+    if (isMaxPlayersReached) return;
+    setAthletes((prev) => [...prev, { name: "", email: "", cpf: "", phone: "" }]);
   };
 
-  const handleUpdateAthlete = (index: number, field: "name" | "email", val: string) => {
+  const handleUpdateAthlete = (
+    index: number,
+    field: "name" | "email" | "cpf" | "phone",
+    val: string
+  ) => {
     setAthletes((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: val };
@@ -256,6 +884,55 @@ export default function PublicRegistrationForm({
       }
     }
 
+    // 1.05 Validação de Dados Exigidos dos Atletas (CPF e Telefone/WhatsApp) e Nível Técnico Autodeclarado
+    if (isAllSkillLevels && !declaredSkillLevel) {
+      setErrorMessage(
+        isPingPongSolo
+          ? "Por favor, selecione o seu nível de jogo."
+          : "Por favor, selecione o nível técnico da equipe."
+      );
+      return;
+    }
+    if (requireCpf) {
+      if (!captainCpf.trim() || captainCpf.replace(/\D/g, "").length < 11) {
+        setErrorMessage("Por favor, informe um CPF válido (11 dígitos) para o Capitão / Responsável.");
+        return;
+      }
+      if (isDuplasSport && (!partnerCpf.trim() || partnerCpf.replace(/\D/g, "").length < 11)) {
+        setErrorMessage("Por favor, informe um CPF válido (11 dígitos) para o Parceiro.");
+        return;
+      }
+      if (isTeamSport) {
+        for (let i = 0; i < athletes.length; i++) {
+          const ath = athletes[i];
+          if (ath.name.trim() && (!ath.cpf?.trim() || ath.cpf.replace(/\D/g, "").length < 11)) {
+            setErrorMessage(`Por favor, informe um CPF válido para o atleta "${ath.name.trim()}".`);
+            return;
+          }
+        }
+      }
+    }
+
+    if (requirePhone) {
+      if (!contact.trim()) {
+        setErrorMessage("Por favor, informe o Telefone/WhatsApp do Capitão / Responsável.");
+        return;
+      }
+      if (isDuplasSport && !partnerPhone.trim()) {
+        setErrorMessage("Por favor, informe o Telefone/WhatsApp do Parceiro.");
+        return;
+      }
+      if (isTeamSport) {
+        for (let i = 0; i < athletes.length; i++) {
+          const ath = athletes[i];
+          if (ath.name.trim() && !ath.phone?.trim()) {
+            setErrorMessage(`Por favor, informe o Telefone/WhatsApp do atleta "${ath.name.trim()}".`);
+            return;
+          }
+        }
+      }
+    }
+
     // 1.1 Validação de Campos Personalizados Obrigatórios
     for (const field of customFields) {
       if (field.required) {
@@ -276,7 +953,11 @@ export default function PublicRegistrationForm({
 
     // 1.2 Validação de Status do Torneio
     if (tournament.status && tournament.status !== "OPEN") {
-      setErrorMessage("As inscrições para este torneio estão encerradas.");
+      setErrorMessage(
+        isEditMode
+          ? "Não é possível editar a inscrição: o chaveamento do torneio já foi gerado."
+          : "As inscrições para este torneio estão encerradas."
+      );
       setIsSubmitting(false);
       return;
     }
@@ -290,6 +971,7 @@ export default function PublicRegistrationForm({
     }
 
     setIsSubmitting(true);
+    let newlyCreatedTeamId: string | null = null;
 
     try {
       // 2. Compilação do Elenco (Roster)
@@ -319,14 +1001,18 @@ export default function PublicRegistrationForm({
       // Validação de Tamanho do Elenco (se configurado pelo organizador)
       if (tournament.min_players && compiledRoster.length < tournament.min_players) {
         setErrorMessage(
-          `O elenco deve ter no mínimo ${tournament.min_players} atletas (atualmente possui ${compiledRoster.length}). Adicione mais membros à equipe.`
+          `A sua equipa precisa ter no mínimo ${tournament.min_players} atletas.`
         );
         setIsSubmitting(false);
         return;
       }
-      if (tournament.max_players && compiledRoster.length > tournament.max_players) {
+      if (
+        tournament.max_players &&
+        (compiledRoster.length > Number(tournament.max_players) ||
+          (isTeamSport && athletes.length + 1 > Number(tournament.max_players)))
+      ) {
         setErrorMessage(
-          `O elenco não pode exceder ${tournament.max_players} atletas (atualmente possui ${compiledRoster.length}). Remova membros excedentes.`
+          `A sua equipa ultrapassou o limite de ${tournament.max_players} atletas.`
         );
         setIsSubmitting(false);
         return;
@@ -381,132 +1067,173 @@ export default function PublicRegistrationForm({
         }
       }
 
-      const payload: any = {
-        name: finalName,
-        manager_name: p1,
-        player1: p1,
-        player2: p2 || "",
-        roster: compiledRoster,
-        contact: contact.trim(),
-        tournament_id: tournament.id,
-        user_id: user.id,
-        payment_status: uploadedReceiptPath ? "WAITING_APPROVAL" : (entryFee > 0 ? "WAITING_PIX" : "APPROVED"),
-        payment_proof_url: uploadedReceiptPath || null,
-        status: entryFee > 0 ? "PENDING" : "CONFIRMED",
-        category: "Geral",
-        custom_registration_answers: formattedCustomAnswers,
-      };
+      // Se estiver em modo de edição de inscrição existente, chama a Server Action com trava de chaveamento
+      if (isEditMode && activeInitialData?.id) {
+        const otherEditMembers: {
+          name: string;
+          email: string;
+          cpf?: string | null;
+          phone?: string | null;
+        }[] = [];
+        if (isDuplasSport && partnerName.trim()) {
+          otherEditMembers.push({
+            name: partnerName.trim(),
+            email: partnerEmail.trim().toLowerCase(),
+            cpf: partnerCpf.trim() || null,
+            phone: partnerPhone.trim() || null,
+          });
+        } else if (isTeamSport) {
+          athletes.forEach((ath) => {
+            if (ath.name.trim()) {
+              otherEditMembers.push({
+                name: ath.name.trim(),
+                email: ath.email.trim().toLowerCase(),
+                cpf: ath.cpf?.trim() || null,
+                phone: ath.phone?.trim() || null,
+              });
+            }
+          });
+        }
 
-      const { data: insertedTeam, error: insertError } = await supabase
-        .from("teams")
-        .insert(payload)
-        .select()
-        .single();
+        const editMembersPayload: {
+          user_id?: string | null;
+          name: string;
+          email: string;
+          is_captain: boolean;
+          cpf?: string | null;
+          phone?: string | null;
+        }[] = [
+          {
+            user_id: user.id,
+            name: p1,
+            email: user.email || "",
+            is_captain: true,
+            cpf: captainCpf.trim() || null,
+            phone: contact.trim() || null,
+          },
+        ];
 
-      if (insertError) {
-        console.error("Erro ao cadastrar equipe:", JSON.stringify(insertError, null, 2));
-        throw insertError;
+        for (const member of otherEditMembers) {
+          let matchedUserId: string | null = null;
+          if (member.email) {
+            try {
+              const { data: profileFound } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("email", member.email)
+                .maybeSingle();
+              if (profileFound?.id) matchedUserId = profileFound.id;
+            } catch {
+              // ignore
+            }
+          }
+          editMembersPayload.push({
+            user_id: matchedUserId,
+            name: member.name,
+            email: member.email,
+            is_captain: false,
+            cpf: member.cpf || null,
+            phone: member.phone || null,
+          });
+        }
+
+        const res = await updateRegistration(activeInitialData.id, {
+          name: finalName,
+          manager_name: p1,
+          player1: p1,
+          player2: p2 || "",
+          roster: compiledRoster,
+          contact: contact.trim(),
+          custom_registration_answers: formattedCustomAnswers,
+          declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
+          members: editMembersPayload,
+        });
+
+        if (!res.success) {
+          setErrorMessage(
+            res.error || "Não é possível editar a inscrição: o chaveamento do torneio já foi gerado."
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        const updatedTeamData = res.data || activeInitialData;
+        const updatedMappedTeam: Team = {
+          id: activeInitialData.id,
+          name: finalName,
+          user_id: user.id,
+          players: [p1, p2 || ""],
+          roster: compiledRoster,
+          createdAt: updatedTeamData.created_at || activeInitialData.createdAt || new Date().toISOString(),
+          status: updatedTeamData.status || activeInitialData.status,
+          tournamentId: tournament.id,
+          payment_status: updatedTeamData.payment_status || activeInitialData.payment_status,
+          payment_proof_url: updatedTeamData.payment_proof_url || activeInitialData.payment_proof_url,
+          manager_name: p1,
+          category: updatedTeamData.category || "Geral",
+          contact: contact.trim(),
+          custom_registration_answers: formattedCustomAnswers,
+        declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
+        };
+
+        setTeams((prev: Team[]) =>
+          prev.map((t) => (t.id === updatedMappedTeam.id ? updatedMappedTeam : t))
+        );
+
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem(storageKey);
+          } catch {}
+        }
+
+        onSuccess?.();
+        onClose();
+        return;
       }
 
-      // 4. Inserção de membros vinculados na tabela team_members
-      const teamMembersToInsert: {
-        team_id: string;
-        user_id: string | null;
-        name: string;
-        email: string;
-        is_captain: boolean;
-      }[] = [];
+      // Se houver taxa de inscrição e o atleta NÃO anexou comprovante prévio nesta etapa inicial:
+      // Aplica o atraso na inserção (Delayed DB Insert). Os dados validados são mantidos no estado local
+      // e nenhuma gravação ocorre no Supabase até que o comprovante seja anexado ou o pagamento postergado no checkout.
+      if (entryFee > 0 && !uploadedReceiptPath && !isEditMode) {
+        setPendingRegistrationData({
+          finalName,
+          p1,
+          p2,
+          compiledRoster,
+          captainCpf,
+          contact,
+          partnerName,
+          partnerEmail,
+          partnerCpf,
+          partnerPhone,
+          athletes,
+          formattedCustomAnswers,
+          declaredSkillLevel,
+        });
+        setIsSubmitting(false);
+        setStep("checkout");
+        return;
+      }
 
-      // A. Adiciona o usuário logado (capitão) com is_captain: true
-      teamMembersToInsert.push({
-        team_id: insertedTeam.id,
-        user_id: user.id,
-        name: p1,
-        email: user.email || "",
-        is_captain: true,
+      // Torneio gratuito ou inscrição com comprovante já anexado na tela inicial
+      const mappedTeam = await executeTeamAndMembersInsert({
+        finalName,
+        p1,
+        p2,
+        compiledRoster,
+        captainCpf,
+        contact,
+        partnerName,
+        partnerEmail,
+        partnerCpf,
+        partnerPhone,
+        athletes,
+        formattedCustomAnswers,
+        declaredSkillLevel,
+        uploadedReceiptPath,
       });
 
-      // B. Coleta e processa os outros membros informados
-      const otherMembers: { name: string; email: string }[] = [];
-
-      if (isDuplasSport && partnerName.trim()) {
-        otherMembers.push({
-          name: partnerName.trim(),
-          email: partnerEmail.trim().toLowerCase(),
-        });
-      } else if (isTeamSport) {
-        athletes.forEach((ath) => {
-          if (ath.name.trim()) {
-            otherMembers.push({
-              name: ath.name.trim(),
-              email: ath.email.trim().toLowerCase(),
-            });
-          }
-        });
-      }
-
-      // C. Loop nos e-mails dos membros para verificar na tabela profiles
-      for (const member of otherMembers) {
-        let matchedUserId: string | null = null;
-        if (member.email) {
-          try {
-            const { data: profileFound } = await supabase
-              .from("profiles")
-              .select("id")
-              .eq("email", member.email)
-              .maybeSingle();
-
-            if (profileFound?.id) {
-              matchedUserId = profileFound.id;
-            }
-          } catch (pErr) {
-            console.warn("Aviso ao buscar perfil por email:", pErr);
-          }
-        }
-
-        teamMembersToInsert.push({
-          team_id: insertedTeam.id,
-          user_id: matchedUserId,
-          name: member.name,
-          email: member.email,
-          is_captain: false,
-        });
-      }
-
-      // D. Executa o INSERT em lote na tabela team_members
-      try {
-        const { error: tmError } = await supabase
-          .from("team_members")
-          .insert(teamMembersToInsert);
-
-        if (tmError) {
-          console.warn("Aviso ao vincular membros em team_members:", tmError);
-        }
-      } catch (tmErr) {
-        console.warn("Exceção ao inserir em team_members:", tmErr);
-      }
-
-      // 4. Mapear equipe inserida
-      const mappedTeam: Team = {
-        id: insertedTeam.id,
-        name: insertedTeam.name,
-        user_id: insertedTeam.user_id,
-        players: [insertedTeam.player1, insertedTeam.player2],
-        roster: insertedTeam.roster,
-        createdAt: insertedTeam.created_at || new Date().toISOString(),
-        status: insertedTeam.status,
-        tournamentId: insertedTeam.tournament_id,
-        payment_status: insertedTeam.payment_status,
-        payment_proof_url: insertedTeam.payment_proof_url,
-        manager_name: insertedTeam.manager_name,
-        category: insertedTeam.category,
-        contact: insertedTeam.contact,
-        custom_registration_answers: insertedTeam.custom_registration_answers || formattedCustomAnswers,
-      };
-
-      setTeams((prev: Team[]) => [...prev, mappedTeam]);
-
-      // 5. Se houver taxa de inscrição, transiciona imediatamente para o Checkout Pix Dinâmico
+      // Se houver taxa de inscrição, transiciona para o Checkout Pix Dinâmico
       if (entryFee > 0) {
         setCreatedTeam(mappedTeam);
         setStep("checkout");
@@ -519,12 +1246,10 @@ export default function PublicRegistrationForm({
         }, 2500);
       }
     } catch (err: unknown) {
-      console.error("Erro na inscrição:", err);
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Ocorreu um erro ao processar sua inscrição. Tente novamente.";
-      setErrorMessage(msg);
+      console.error("ERRO COMPLETO NA INSCRIÇÃO:", err);
+      const userMessage = "Erro ao registar equipa. Por favor, tente novamente.";
+      setErrorMessage(userMessage);
+      setToast({ message: userMessage, type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -532,6 +1257,31 @@ export default function PublicRegistrationForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
+      {/* Toast Notificação de Erro / Sucesso */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] animate-fadeIn max-w-sm w-full px-4 pointer-events-none">
+          <div
+            className={`flex items-center justify-between gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md pointer-events-auto ${
+              toast.type === "error"
+                ? "bg-red-950/95 border-red-500/40 text-red-100 shadow-red-500/10"
+                : "bg-emerald-950/95 border-emerald-500/40 text-emerald-100 shadow-emerald-500/10"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+              <span className="text-xs font-bold leading-relaxed">{toast.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="text-zinc-400 hover:text-white transition-colors cursor-pointer p-0.5"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-[#121214] border border-[#27272a] rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl relative max-h-[92vh] overflow-y-auto selection:bg-orange-500/30 selection:text-white">
         {/* Linha superior decorativa */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500" />
@@ -578,7 +1328,7 @@ export default function PublicRegistrationForm({
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[11px] font-black uppercase tracking-wider mb-2">
                 <Sparkles className="h-3 w-3" />
-                <span>Inscrição Oficial</span>
+                <span>{isEditMode ? "Editar Inscrição" : "Inscrição Oficial"}</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-white">
                 {tournament.name}
@@ -619,6 +1369,23 @@ export default function PublicRegistrationForm({
               </div>
             )}
 
+            {/* Aviso de Rascunho Recuperado do LocalStorage */}
+            {hasRestoredDraft && !isEditMode && (
+              <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs flex items-center justify-between gap-2 animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 shrink-0 text-orange-400" />
+                  <span>Rascunho recuperado automaticamente.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearDraft}
+                  className="text-[11px] font-bold underline hover:text-white transition-colors cursor-pointer"
+                >
+                  Limpar
+                </button>
+              </div>
+            )}
+
             {/* Mensagem de Erro Visual */}
             {errorMessage && (
               <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
@@ -648,6 +1415,21 @@ export default function PublicRegistrationForm({
                         value={captainName}
                         onChange={(e) => setCaptainName(e.target.value)}
                         placeholder="Ex: Carlos Augusto"
+                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                      />
+                    </div>
+
+                    <div className={requireCpf ? "space-y-1.5" : "hidden"}>
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        CPF do Atleta <span className="text-orange-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required={requireCpf}
+                        maxLength={14}
+                        value={captainCpf}
+                        onChange={(e) => setCaptainCpf(formatCpfMask(e.target.value))}
+                        placeholder="000.000.000-00"
                         className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                       />
                     </div>
@@ -740,6 +1522,57 @@ export default function PublicRegistrationForm({
                       </div>
                     </div>
 
+                    {requireCpf && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                            CPF do Capitão <span className="text-orange-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            maxLength={14}
+                            value={captainCpf}
+                            onChange={(e) => setCaptainCpf(formatCpfMask(e.target.value))}
+                            placeholder="000.000.000-00"
+                            className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                            CPF do Parceiro <span className="text-orange-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            maxLength={14}
+                            value={partnerCpf}
+                            onChange={(e) => setPartnerCpf(formatCpfMask(e.target.value))}
+                            placeholder="000.000.000-00"
+                            className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={requirePhone ? "space-y-1.5" : "hidden"}>
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        Telefone / WhatsApp do Parceiro <span className="text-orange-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                        <input
+                          type="text"
+                          required={requirePhone}
+                          maxLength={15}
+                          value={partnerPhone}
+                          onChange={(e) => setPartnerPhone(formatPhoneMask(e.target.value))}
+                          placeholder="(89) 99999-9999"
+                          className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
                       <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
                         Contato do Capitão (WhatsApp) <span className="text-orange-500">*</span>
@@ -823,7 +1656,13 @@ export default function PublicRegistrationForm({
                         <button
                           type="button"
                           onClick={handleAddAthlete}
-                          className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 cursor-pointer"
+                          disabled={isMaxPlayersReached}
+                          title={
+                            isMaxPlayersReached
+                              ? `Limite máximo de ${tournament.max_players} atletas atingido`
+                              : "Adicionar membro ao elenco"
+                          }
+                          className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:text-zinc-500 disabled:hover:text-zinc-500 disabled:cursor-not-allowed transition-opacity"
                         >
                           <Plus className="h-3.5 w-3.5" />
                           <span>Adicionar Membro</span>
@@ -842,6 +1681,32 @@ export default function PublicRegistrationForm({
                             type="text"
                             disabled
                             value={user?.email || "Email autenticado"}
+                            className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 rounded-lg cursor-not-allowed"
+                          />
+                          {requireCpf && (
+                            <input
+                              type="text"
+                              required
+                              maxLength={14}
+                              value={captainCpf}
+                              onChange={(e) => setCaptainCpf(formatCpfMask(e.target.value))}
+                              placeholder="CPF do Capitão (000.000.000-00) *"
+                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-500 rounded-lg outline-none"
+                            />
+                          )}
+                          {requirePhone && (
+                            <input
+                              type="text"
+                              required
+                              maxLength={15}
+                              value={contact}
+                              onChange={(e) => setContact(formatPhoneMask(e.target.value))}
+                              placeholder="WhatsApp (00) 00000-0000 *"
+                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-500 rounded-lg outline-none"
+                            />
+                          )}
+                          <input
+                            type="hidden"
                             className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 rounded-lg cursor-not-allowed"
                           />
                           <span className="text-[10px] text-orange-400 font-bold px-2 py-1 bg-orange-500/10 border border-orange-500/20 rounded-lg self-start sm:self-center">
@@ -865,6 +1730,30 @@ export default function PublicRegistrationForm({
                               placeholder="E-mail (para vincular perfil)"
                               className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-600 rounded-lg outline-none"
                             />
+                            {requireCpf && (
+                              <input
+                                type="text"
+                                required
+                                maxLength={14}
+                                value={ath.cpf || ""}
+                                onChange={(e) =>
+                                  handleUpdateAthlete(idx, "cpf", formatCpfMask(e.target.value))
+                                }
+                                placeholder="CPF (000.000.000-00) *"
+                                className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-600 rounded-lg outline-none"
+                              />
+                            )}
+                            <input
+                              type={requirePhone ? "text" : "hidden"}
+                              required={requirePhone}
+                              maxLength={15}
+                              value={ath.phone || ""}
+                              onChange={(e) =>
+                                handleUpdateAthlete(idx, "phone", formatPhoneMask(e.target.value))
+                              }
+                              placeholder="WhatsApp (00) 00000-0000 *"
+                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-600 rounded-lg outline-none"
+                            />
                             <button
                               type="button"
                               onClick={() => handleRemoveAthlete(idx)}
@@ -880,6 +1769,40 @@ export default function PublicRegistrationForm({
                   </div>
                 )}
               </div>
+
+              {/* Renderização Dinâmica dos Campos Personalizados (Configurados pelo Organizador) */}
+              {isAllSkillLevels && (
+                <div className="pt-1 space-y-1.5">
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                    {isPingPongSolo
+                      ? "Qual o seu nível de jogo?"
+                      : "Qual o nível técnico da equipe?"}{" "}
+                    <span className="text-orange-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      required
+                      value={declaredSkillLevel}
+                      onChange={(e) => setDeclaredSkillLevel(e.target.value)}
+                      className="w-full pl-4 pr-10 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer shadow-inner"
+                    >
+                      <option value="" className="bg-[#121214] text-zinc-500">
+                        Selecione o nível técnico...
+                      </option>
+                      <option value="BEGINNER" className="bg-[#121214] text-zinc-100">
+                        Iniciante
+                      </option>
+                      <option value="INTERMEDIATE" className="bg-[#121214] text-zinc-100">
+                        Intermediário
+                      </option>
+                      <option value="ADVANCED" className="bg-[#121214] text-zinc-100">
+                        Avançado
+                      </option>
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
+                  </div>
+                </div>
+              )}
 
               {/* Renderização Dinâmica dos Campos Personalizados (Configurados pelo Organizador) */}
               {customFields.length > 0 && (
@@ -1107,6 +2030,13 @@ export default function PublicRegistrationForm({
 
               {/* Botão de Envio / Prosseguir para Checkout Pix */}
               <div className="pt-3">
+                {errorMessage && (
+                  <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn mb-3">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -1115,8 +2045,16 @@ export default function PublicRegistrationForm({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>{receiptFile ? "Enviando Comprovante e Registrando..." : "Registrando Equipe..."}</span>
+                      <span>
+                        {isEditMode
+                          ? "Salvando Alterações..."
+                          : receiptFile
+                          ? "Enviando Comprovante e Registrando..."
+                          : "Registrando Equipe..."}
+                      </span>
                     </>
+                  ) : isEditMode ? (
+                    <span>Salvar Alterações</span>
                   ) : receiptFile ? (
                     <span>Confirmar Inscrição com Comprovante 🚀</span>
                   ) : entryFee > 0 ? (

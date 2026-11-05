@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/context/AuthProvider";
 import { useTournament } from "@/context/TournamentContext";
 import { supabase } from "@/lib/supabase";
+import NotificationBell from "@/components/NotificationBell";
 
 interface PublicHeaderProps {
   activePage?: "explorar" | "torneio" | "chaveamento";
@@ -138,6 +139,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
 
         {/* Lado Direito: Ações de Usuário / Menu Drop-down */}
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          {user && <NotificationBell />}
           {!user ? (
             <Link
               href="/login"

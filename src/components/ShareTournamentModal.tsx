@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Users,
   UserPlus,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TournamentStaffMember, TournamentRole } from "@/types";
+import { inviteTournamentStaff } from "@/app/actions/tournament";
 import { useAuth } from "@/context/AuthProvider";
 
 interface ShareTournamentModalProps {
@@ -68,13 +70,38 @@ export default function ShareTournamentModal({
   const [selectedRole, setSelectedRole] = useState<"ADMIN" | "REFEREE" | "SCOREKEEPER">("REFEREE");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [staffList, setStaffList] = useState<TournamentStaffMember[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Carregar lista de membros com acesso ao torneio
+  // Helper de notificação toast
+  const toast = {
+    success: (msg: string) => {
+      setToastMessage({ message: msg, type: "success" });
+      setFeedbackMessage({ type: "success", text: msg });
+    },
+    error: (msg: string) => {
+      setToastMessage({ message: msg, type: "error" });
+      setFeedbackMessage({ type: "error", text: msg });
+    },
+  };
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  // Carregar lista de membros com acesso ao torneio (Graceful Fallback)
   const fetchStaff = useCallback(async () => {
     if (!tournamentId) return;
     try {
@@ -86,13 +113,15 @@ export default function ShareTournamentModal({
         .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Erro ao buscar equipe do torneio:", error);
+        console.error("Erro ao buscar equipe do torneio:", error.message || error);
+        setStaffList([]);
         return;
       }
 
       setStaffList((data as TournamentStaffMember[]) || []);
     } catch (err) {
       console.error("Exceção ao listar membros da equipe:", err);
+      setStaffList([]);
     } finally {
       setLoadingStaff(false);
     }
@@ -102,6 +131,7 @@ export default function ShareTournamentModal({
     if (isOpen) {
       fetchStaff();
       setFeedbackMessage(null);
+      setToastMessage(null);
       setEmailInput("");
     }
   }, [isOpen, fetchStaff]);
@@ -112,59 +142,38 @@ export default function ShareTournamentModal({
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedbackMessage(null);
+    setToastMessage(null);
 
     const cleanEmail = emailInput.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes("@")) {
-      setFeedbackMessage({
-        type: "error",
-        text: "Por favor, informe um endereço de e-mail válido.",
-      });
+      toast.error("Por favor, informe um endereço de e-mail válido.");
       return;
     }
 
     if (ownerEmail && cleanEmail === ownerEmail.toLowerCase()) {
-      setFeedbackMessage({
-        type: "error",
-        text: "Este e-mail pertence ao proprietário do torneio.",
-      });
+      toast.error("Este e-mail pertence ao proprietário do torneio.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from("tournament_staff").insert({
-        tournament_id: tournamentId,
+      const res = await inviteTournamentStaff({
+        tournamentId,
         email: cleanEmail,
         role: selectedRole,
       });
 
-      if (error) {
-        if (error.code === "23505" || error.message.includes("unique")) {
-          setFeedbackMessage({
-            type: "error",
-            text: "Este e-mail já possui convite ou permissão ativa neste torneio.",
-          });
-        } else {
-          setFeedbackMessage({
-            type: "error",
-            text: `Erro ao enviar convite: ${error.message}`,
-          });
-        }
+      if (!res.success) {
+        toast.error(res.error || "Não foi possível enviar o convite.");
         return;
       }
 
-      setFeedbackMessage({
-        type: "success",
-        text: `Convite enviado com sucesso para ${cleanEmail}!`,
-      });
+      toast.success("Convite enviado com sucesso!");
       setEmailInput("");
       fetchStaff();
     } catch (err: any) {
       console.error("Exceção ao convidar membro:", err);
-      setFeedbackMessage({
-        type: "error",
-        text: "Ocorreu um erro ao registrar o acesso.",
-      });
+      toast.error("Não foi possível enviar o convite.");
     } finally {
       setIsSubmitting(false);
     }
@@ -181,15 +190,18 @@ export default function ShareTournamentModal({
         .eq("id", memberId);
 
       if (error) {
-        alert(`Erro ao alterar função: ${error.message}`);
+        console.error("Erro ao alterar função:", error);
+        toast.error("Não foi possível alterar a função.");
         return;
       }
 
       setStaffList((prev) =>
         prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
       );
+      toast.success("Função de acesso atualizada!");
     } catch (err) {
       console.error("Erro ao alterar função:", err);
+      toast.error("Não foi possível alterar a função.");
     } finally {
       setUpdatingId(null);
     }
@@ -210,13 +222,16 @@ export default function ShareTournamentModal({
         .eq("id", memberId);
 
       if (error) {
-        alert(`Erro ao remover acesso: ${error.message}`);
+        console.error("Erro ao remover acesso:", error);
+        toast.error("Não foi possível remover o acesso.");
         return;
       }
 
       setStaffList((prev) => prev.filter((m) => m.id !== memberId));
+      toast.success("Acesso removido com sucesso!");
     } catch (err) {
       console.error("Erro ao excluir membro:", err);
+      toast.error("Não foi possível remover o acesso.");
     } finally {
       setUpdatingId(null);
     }
@@ -228,11 +243,14 @@ export default function ShareTournamentModal({
     const url = `${origin}/torneio/${tournamentId}`;
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
+    toast.success("Link copiado para a área de transferência!");
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-[#18181b] border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {/* Linha decorativa superior estilo Google Docs Workspace */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-indigo-500 to-purple-500" />
@@ -487,7 +505,33 @@ export default function ShareTournamentModal({
             Concluído
           </button>
         </div>
-      </div>
+
+        {/* Notificação Toast Flutuante */}
+        {toastMessage && (
+          <div
+            className={`fixed bottom-6 right-6 z-[10000] p-4 rounded-xl border text-white text-xs font-bold shadow-2xl flex items-center gap-3 animate-fadeIn ${
+              toastMessage.type === "success"
+                ? "bg-zinc-900 border-emerald-500/50 text-emerald-300"
+                : "bg-zinc-900 border-red-500/50 text-red-300"
+            }`}
+          >
+            {toastMessage.type === "success" ? (
+              <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+            )}
+            <span>{toastMessage.message}</span>
+            <button
+              type="button"
+              onClick={() => setToastMessage(null)}
+              className="p-1 text-zinc-400 hover:text-white cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
     </div>
-  );
+  </div>,
+  document.body
+);
 }

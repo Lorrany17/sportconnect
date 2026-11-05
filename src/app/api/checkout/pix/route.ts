@@ -82,10 +82,25 @@ export async function POST(request: Request) {
             payment_status: "WAITING_PIX",
             status: "PENDING",
             mp_payment_id: mpPaymentId,
+            amount_paid: amount,
           })
           .eq("id", teamId);
 
-        if (updateError) {
+        if (
+          updateError &&
+          (updateError.code === "PGRST204" ||
+            updateError.code === "42703" ||
+            String(updateError.message).includes("amount_paid"))
+        ) {
+          await supabase
+            .from("teams")
+            .update({
+              payment_status: "WAITING_PIX",
+              status: "PENDING",
+              mp_payment_id: mpPaymentId,
+            })
+            .eq("id", teamId);
+        } else if (updateError) {
           console.warn(
             "Aviso ao atualizar mp_payment_id e payment_status no Supabase:",
             updateError.message

@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { Team, Match, Round, TournamentEvent, Tournament, SportType } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { completeMatchAction } from "@/app/actions/bracket";
+import { deleteTournament } from "@/app/actions/tournament";
 
 const MATCH_ID_MAP: Record<string, string> = {
   "qf-1": "00000000-0000-0000-0000-000000000001",
@@ -422,6 +423,7 @@ interface TournamentContextType {
   setTournaments: React.Dispatch<React.SetStateAction<Tournament[]>>;
   currentTournamentId: string | null;
   setCurrentTournamentId: (id: string | null) => void;
+  currentTournament?: Tournament;
   currentSportType: SportType;
   setCurrentSportType: (sport: SportType) => void;
   isReadOnly: boolean;
@@ -1172,13 +1174,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         const sourceMatchA = matchesMap.get(sourceMatchAId)!;
         const sourceMatchB = matchesMap.get(sourceMatchBId)!;
 
-        const teamA = sourceMatchA.status === "COMPLETED" && sourceMatchA.winnerId
-          ? (sourceMatchA.winnerId === sourceMatchA.teamA.id ? sourceMatchA.teamA : sourceMatchA.teamB)
-          : getPlaceholderTeam(friendlyId, "A");
-
-        const teamB = sourceMatchB.status === "COMPLETED" && sourceMatchB.winnerId
-          ? (sourceMatchB.winnerId === sourceMatchB.teamA.id ? sourceMatchB.teamA : sourceMatchB.teamB)
-          : getPlaceholderTeam(friendlyId, "B");
+        const teamA = getPlaceholderTeam(friendlyId, "A");
+        const teamB = getPlaceholderTeam(friendlyId, "B");
 
         const match: Match = {
           id: friendlyId,
@@ -1887,8 +1884,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     });
 
     saveMatches(updatedMatches);
+    const srcName = srcTeam?.name || "Vaga de Bye";
+    const destName = destTeam?.name || "Vaga de Bye";
     addEvent(
-      `Chaveamento: Troca rápida de times efetuada entre "${srcTeam.name}" (Mesa ${srcMatch.tableNumber}) e "${destTeam.name}" (Mesa ${destMatch.tableNumber}).`,
+      `Chaveamento: Troca rápida de times efetuada entre "${srcName}" (Mesa ${srcMatch.tableNumber}) e "${destName}" (Mesa ${destMatch.tableNumber}).`,
       "INFO"
     );
   };
@@ -2111,13 +2110,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   };
 
   const handleDeleteTournament = async (id: string) => {
-    const { error } = await supabase
-      .from("tournaments")
-      .delete()
-      .eq("id", id);
-    if (error) {
-      console.error("Erro ao deletar torneio:", error);
-      throw error;
+    const res = await deleteTournament(id);
+    if (!res.success) {
+      console.error("Erro ao deletar torneio:", res.error);
+      throw new Error(res.error || "Erro ao deletar torneio.");
     }
     
     const remaining = tournaments.filter((t) => t.id !== id);
@@ -2143,6 +2139,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         setTournaments,
         currentTournamentId,
         setCurrentTournamentId,
+        currentTournament,
         currentSportType,
         setCurrentSportType,
         isReadOnly,

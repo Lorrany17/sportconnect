@@ -44,6 +44,9 @@ export interface Tournament {
   max_players?: number | null;
   min_age?: number | null;
   max_age?: number | null;
+  skill_level?: "ALL" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string | null;
+  require_cpf?: boolean;
+  require_phone?: boolean;
 }
 
 // Tipos para Regras Dinâmicas de Partida por Modalidade (JSONB)
@@ -98,6 +101,9 @@ export interface TournamentFormData {
   max_players?: number | null;
   min_age?: number | null;
   max_age?: number | null;
+  skill_level?: "ALL" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string | null;
+  require_cpf?: boolean;
+  require_phone?: boolean;
 }
 
 export interface Sponsor {
@@ -114,6 +120,8 @@ export interface TeamMember {
   name?: string;
   email?: string;
   is_captain?: boolean;
+  cpf?: string;
+  phone?: string;
   created_at?: string;
 }
 
@@ -146,6 +154,7 @@ export interface Team {
   payment_status?: 'APPROVED' | 'PAID' | 'WAITING_PIX' | 'WAITING_APPROVAL' | 'PENDING' | string;
   payout_status?: 'COMPLETED' | 'FAILED_TRANSFER' | 'MANUAL_PENDING' | 'PENDING' | string;
   payout_amount?: number;
+  amount_paid?: number;
   payment_proof_url?: string;
   manager_name?: string;
   manager_phone?: string;
@@ -156,6 +165,9 @@ export interface Team {
   mp_payment_id?: string;
   cancellation_status?: 'REQUESTED_BY_ATHLETE' | 'REFUND_REQUESTED' | 'REFUNDED' | string;
   custom_registration_answers?: Record<string, any>;
+  declared_skill_level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string | null;
+  group_name?: string | null;
+  members?: TeamMember[];
 }
 
 export interface Round {
@@ -173,7 +185,7 @@ export interface SetScore {
 
 export interface Match {
   id: string;
-  phase: string; // "Quartas de Final" | "Semifinal" | "Final"
+  phase: "GROUP_STAGE" | "KNOCKOUT" | string; // "GROUP_STAGE" | "KNOCKOUT" | "Quartas de Final" | "Semifinal" | "Final"
   status: "SCHEDULED" | "LIVE" | "COMPLETED" | "IN_PROGRESS" | string;
   teamA: Team;
   teamB: Team;
@@ -208,7 +220,8 @@ export interface Match {
   detailed_score?: any;
   setsVencidosTimeA?: number;
   setsVencidosTimeB?: number;
-  round?: number;
+  round?: number | string;
+  group_name?: string | null;
   match_order?: number;
   next_match_id?: string | null;
   team1_id?: string | null;
@@ -265,4 +278,6 @@ export interface TournamentPermissions {
   isScorekeeper: boolean;
   isLoading: boolean;
 }
-
+
+
+export type { Database, Json } from "./database.types";

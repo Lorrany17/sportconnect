@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { supabase } from "@/lib/supabase";
+import { notifyRegistrationApproved } from "@/app/actions/notifications";
 
 // Inicializa o cliente do Mercado Pago para consultas de leitura (se necessário)
 const client = new MercadoPagoConfig({
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     // 1. Buscar dados da equipe
     const { data: team, error: teamError } = await supabase
       .from("teams")
-      .select("id, name, tournament_id, status, payment_status, mp_payment_id, player1, manager_name")
+      .select("id, name, tournament_id, status, payment_status, mp_payment_id, player1, manager_name, user_id")
       .eq("id", teamId)
       .maybeSingle();
 
@@ -79,14 +80,33 @@ export async function POST(request: Request) {
       payment_status: "PAID",
       payout_status: "MANUAL_PENDING",
       payout_amount: amountToTransfer,
+      amount_paid: entryFee,
     };
 
-    const { data: updatedTeam, error: updateError } = await supabase
+    let { data: updatedTeam, error: updateError } = await supabase
       .from("teams")
       .update(updatePayload)
       .eq("id", team.id)
       .select()
       .maybeSingle();
+
+    if (
+      updateError &&
+      (updateError.code === "PGRST204" ||
+        updateError.code === "42703" ||
+        String(updateError.message).includes("amount_paid"))
+    ) {
+      const safePayload = { ...updatePayload };
+      delete safePayload.amount_paid;
+      const retryRes = await supabase
+        .from("teams")
+        .update(safePayload)
+        .eq("id", team.id)
+        .select()
+        .maybeSingle();
+      updatedTeam = retryRes.data;
+      updateError = retryRes.error;
+    }
 
     if (updateError) {
       console.error("[Manual Split MVP] Erro ao atualizar status da equipe no banco:", updateError);
@@ -94,6 +114,19 @@ export async function POST(request: Request) {
         { error: "Erro ao atualizar status da equipe no Supabase.", details: updateError.message },
         { status: 500 }
       );
+    }
+
+    // Notificar atleta sobre a confirmação da inscrição (Gatilho 3: Aprovação)
+    try {
+      await notifyRegistrationApproved({
+        teamId: team.id,
+        userId: (team as any).user_id || updatedTeam?.user_id,
+        tournamentId: tournament.id,
+        tournamentName: tournament.name,
+        newStatus: "PAID",
+      });
+    } catch (notifErr) {
+      console.warn("[Manual Split MVP] Erro ao notificar atleta sobre aprovação:", notifErr);
     }
 
     const message =
@@ -113,6 +146,7 @@ export async function POST(request: Request) {
         amountTransferred: amountToTransfer,
         payoutAmount: amountToTransfer,
         payout_amount: amountToTransfer,
+      amount_paid: entryFee,
         platformFee,
         organizerPixKey: organizerPixKey ? `${organizerPixKey.slice(0, 4)}***` : null,
         message,

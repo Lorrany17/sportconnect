@@ -382,4 +382,76 @@ ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS max_players INTEGER;
 ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS min_age INTEGER;
 ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS max_age INTEGER;
 
+-- 26. Suporte a Histórico Financeiro Fiel (amount_paid)
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS amount_paid NUMERIC DEFAULT 0;
 
+
+-- 27. Políticas de Segurança (RLS) para Notificações
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Atletas podem ver suas notificações" ON public.notifications;
+CREATE POLICY "Users can view own notifications" 
+ON public.notifications 
+FOR SELECT 
+TO authenticated 
+USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Atletas podem atualizar suas notificações" ON public.notifications;
+CREATE POLICY "Atletas podem atualizar suas notificações" 
+ON public.notifications 
+FOR UPDATE 
+TO authenticated 
+USING (auth.uid() = user_id) 
+WITH CHECK (auth.uid() = user_id);
+
+-- 28. Garantir restrições ON DELETE CASCADE para exclusão limpa de torneios
+DO $$
+BEGIN
+    -- teams -> tournaments
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'teams_tournament_id_fkey' AND table_name = 'teams'
+    ) THEN
+        ALTER TABLE public.teams DROP CONSTRAINT teams_tournament_id_fkey;
+        ALTER TABLE public.teams ADD CONSTRAINT teams_tournament_id_fkey 
+            FOREIGN KEY (tournament_id) REFERENCES public.tournaments(id) ON DELETE CASCADE;
+    END IF;
+
+    -- matches -> tournaments
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'matches_tournament_id_fkey' AND table_name = 'matches'
+    ) THEN
+        ALTER TABLE public.matches DROP CONSTRAINT matches_tournament_id_fkey;
+        ALTER TABLE public.matches ADD CONSTRAINT matches_tournament_id_fkey 
+            FOREIGN KEY (tournament_id) REFERENCES public.tournaments(id) ON DELETE CASCADE;
+    END IF;
+
+    -- notifications -> tournaments
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'notifications_tournament_id_fkey' AND table_name = 'notifications'
+    ) THEN
+        ALTER TABLE public.notifications DROP CONSTRAINT notifications_tournament_id_fkey;
+        ALTER TABLE public.notifications ADD CONSTRAINT notifications_tournament_id_fkey 
+            FOREIGN KEY (tournament_id) REFERENCES public.tournaments(id) ON DELETE CASCADE;
+    END IF;
+
+    -- team_members -> teams
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'team_members_team_id_fkey' AND table_name = 'team_members'
+    ) THEN
+        ALTER TABLE public.team_members DROP CONSTRAINT team_members_team_id_fkey;
+        ALTER TABLE public.team_members ADD CONSTRAINT team_members_team_id_fkey 
+            FOREIGN KEY (team_id) REFERENCES public.teams(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+
+-- 16. Garantir colunas em team_members e reload do cache PostgREST
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS cpf TEXT;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS phone TEXT;
+NOTIFY pgrst, 'reload schema';

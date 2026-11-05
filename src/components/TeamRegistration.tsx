@@ -54,7 +54,7 @@ export default function TeamRegistration({
   onDeleteTournament,
 }: TeamRegistrationProps) {
   // Modalidade e Autenticação
-  const { currentSportType } = useTournament();
+  const { currentSportType, currentTournament } = useTournament();
   const { user } = useAuth();
   const isAuthenticated = !!user;
 
@@ -115,7 +115,17 @@ export default function TeamRegistration({
   const submitButtonText = `Adicionar ${entitySingular} Manualmente`;
 
   // Manipuladores de atletas extras (Futsal / Vôlei)
+  const maxPlayersLimit =
+    currentTournament?.max_players !== null &&
+    currentTournament?.max_players !== undefined &&
+    Number(currentTournament.max_players) > 0
+      ? Number(currentTournament.max_players)
+      : null;
+  const isMaxPlayersReached = Boolean(maxPlayersLimit !== null && athletes.length + 1 >= maxPlayersLimit);
+
+  // Manipuladores de atletas extras (Futsal / Vôlei)
   const handleAddAthleteField = () => {
+    if (isMaxPlayersReached) return;
     setAthletes((prev) => [...prev, ""]);
   };
 
@@ -156,6 +166,27 @@ export default function TeamRegistration({
         return;
       }
       const validRoster = athletes.map((a) => a.trim()).filter(Boolean);
+      const totalFilled = validRoster.length + 1;
+      if (currentTournament?.min_players && totalFilled < Number(currentTournament.min_players)) {
+        setError(`A sua equipa precisa ter no mínimo ${currentTournament.min_players} atletas.`);
+        setToast({
+          message: `A sua equipa precisa ter no mínimo ${currentTournament.min_players} atletas.`,
+          type: "error",
+        });
+        return;
+      }
+      if (
+        currentTournament?.max_players &&
+        (totalFilled > Number(currentTournament.max_players) ||
+          athletes.length + 1 > Number(currentTournament.max_players))
+      ) {
+        setError(`A sua equipa ultrapassou o limite de ${currentTournament.max_players} atletas.`);
+        setToast({
+          message: `A sua equipa ultrapassou o limite de ${currentTournament.max_players} atletas.`,
+          type: "error",
+        });
+        return;
+      }
       onAddTeam(teamName.trim(), player1.trim(), "", validRoster, undefined);
     } else {
       // Domino ou Ping Pong Duplas

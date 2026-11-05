@@ -11,7 +11,7 @@ import {
   ChevronDown,
   Loader2,
   X,
-  AlertCircle,
+  AlertCircle, AlertTriangle,
   Plus,
   Minus,
   Sparkles,
@@ -37,6 +37,8 @@ import { SportType, Tournament, CustomFieldType, CustomRegistrationField, Sponso
 import { useAuth } from "@/context/AuthProvider";
 import { useTournament } from "@/context/TournamentContext";
 import { supabase } from "@/lib/supabase";
+import { notifyNewTournamentRequirements } from "@/app/actions/registration";
+import { notifyTournamentRulesChanged } from "@/app/actions/notifications";
 
 export interface CreateTournamentFormProps {
   onClose?: () => void;
@@ -79,14 +81,14 @@ export const TOURNAMENT_FORMAT_OPTIONS = [
     badge: "Mais Popular",
   },
   {
-    id: "GROUPS_KNOCKOUT",
+    id: "GROUPS",
     label: "Grupos + Eliminatórias",
     desc: "Fase de grupos classificatória com pontos, seguida por chaveamento mata-mata.",
     icon: Layers,
     badge: "Campeonato Longo",
   },
   {
-    id: "ROUND_ROBIN",
+    id: "LEAGUE",
     label: "Pontos Corridos",
     desc: "Todos jogam contra todos em rodadas. O líder com mais pontos no final é o campeão.",
     icon: Sparkles,
@@ -103,11 +105,41 @@ export const PIX_KEY_TYPES = [
 ];
 
 /**
+ * Detecta o tipo da chave Pix a partir do próprio valor caso type não esteja definido ou esteja inconsistente
+ */
+export function detectPixKeyType(key: string): string {
+  if (!key) return "CPF";
+  const trimmed = key.trim();
+  if (trimmed.includes("@")) return "EMAIL";
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(trimmed)) return "ALEATORIA";
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 14) return "CNPJ";
+  if (trimmed.startsWith("(") || trimmed.includes(")") || (digits.length === 11 && !trimmed.includes("."))) {
+    if (trimmed.includes("(") || trimmed.includes(")")) return "CELULAR";
+  }
+  return "CPF";
+}
+
+/**
  * Máscara dinâmica para formatação da chave Pix
+ * - EMAIL / ALEATORIA: Não aplica qualquer formatação ou remoção de letras/caracteres.
+ * - CPF / CNPJ / CELULAR: Aplica formatação específica e remoção de não-dígitos (\D).
  */
 export function formatPixKey(value: string, type: string): string {
   if (!value) return "";
 
+  // 1. E-mail e Chave Aleatória: NÃO aplicar nenhuma formatação, remoção de caracteres ou bloqueio de letras
+  if (type === "EMAIL" || type === "ALEATORIA") {
+    return value;
+  }
+
+  // 2. Proteção preventiva: se o valor contiver '@', trata-se de um e-mail; nunca aplicar máscara numérica
+  if (value.includes("@")) {
+    return value;
+  }
+
+  // 3. CPF: apenas dígitos formatados 000.000.000-00
   if (type === "CPF") {
     const raw = value.replace(/\D/g, "").slice(0, 11);
     if (raw.length <= 3) return raw;
@@ -116,6 +148,7 @@ export function formatPixKey(value: string, type: string): string {
     return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9, 11)}`;
   }
 
+  // 4. CNPJ: apenas dígitos formatados 00.000.000/0000-00
   if (type === "CNPJ") {
     const raw = value.replace(/\D/g, "").slice(0, 14);
     if (raw.length <= 2) return raw;
@@ -125,6 +158,7 @@ export function formatPixKey(value: string, type: string): string {
     return `${raw.slice(0, 2)}.${raw.slice(2, 5)}.${raw.slice(5, 8)}/${raw.slice(8, 12)}-${raw.slice(12, 14)}`;
   }
 
+  // 5. Celular: apenas dígitos formatados (00) 00000-0000
   if (type === "CELULAR") {
     const raw = value.replace(/\D/g, "").slice(0, 11);
     if (raw.length <= 2) return raw ? `(${raw}` : "";
@@ -170,14 +204,21 @@ export default function CreateTournamentForm({
     initialData?.tournament_format || "KNOCKOUT"
   );
   const [maxTeams, setMaxTeams] = useState<number>(initialData?.max_teams ? Number(initialData.max_teams) : 16);
-  const [entryFee, setEntryFee] = useState<string>(
-    initialData?.entry_fee !== undefined && initialData?.entry_fee !== null ? Number(initialData.entry_fee).toFixed(2) : "100.00"
-  );
-  const [pixKeyType, setPixKeyType] = useState<string>(initialData?.pix_key_type || "CPF");
+  const [entryFee, setEntryFee] = useState<string>(() => {
+    if (initialData?.entry_fee !== undefined && initialData?.entry_fee !== null) {
+      const num = Number(initialData.entry_fee);
+      return !isNaN(num) ? num.toFixed(2) : "0.00";
+    }
+    return "100.00";
+  });
+  const [registeredTeamsCount, setRegisteredTeamsCount] = useState<number>(0);
+  const [hasPaidRegistrations, setHasPaidRegistrations] = useState<boolean>(false);
+  const initialPixKeyType =
+    initialData?.pix_key_type ||
+    (initialData?.organizer_pix_key ? detectPixKeyType(initialData.organizer_pix_key) : "CPF");
+  const [pixKeyType, setPixKeyType] = useState<string>(initialPixKeyType);
   const [organizerPixKey, setOrganizerPixKey] = useState<string>(
-    initialData?.organizer_pix_key
-      ? formatPixKey(initialData.organizer_pix_key, initialData?.pix_key_type || "CPF")
-      : ""
+    initialData?.organizer_pix_key || ""
   );
 
   // Estados locais da Vitrine de Premiação (1º, 2º e 3º Lugar)
@@ -185,7 +226,10 @@ export default function CreateTournamentForm({
   const [prizeSecond, setPrizeSecond] = useState(initialData?.prize_second || "");
   const [prizeThird, setPrizeThird] = useState(initialData?.prize_third || "");
 
-  // Estados locais de Restrições de Inscrição (Idade e Elenco)
+  // Estados locais de Restrições de Inscrição (Idade, Elenco e Nível Técnico)
+  const [skillLevel, setSkillLevel] = useState<string>(initialData?.skill_level || "ALL");
+  const [requireCpf, setRequireCpf] = useState<boolean>(Boolean(initialData?.require_cpf));
+  const [requirePhone, setRequirePhone] = useState<boolean>(Boolean(initialData?.require_phone));
   const [minAge, setMinAge] = useState<string>(
     initialData?.min_age !== undefined && initialData?.min_age !== null ? String(initialData.min_age) : ""
   );
@@ -288,8 +332,8 @@ export default function CreateTournamentForm({
         optionsString: Array.isArray(f.options)
           ? f.options.join(", ")
           : typeof f.options === "string"
-          ? f.options
-          : "",
+            ? f.options
+            : "",
       }));
     }
     return [];
@@ -329,6 +373,207 @@ export default function CreateTournamentForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showDraftToast, setShowDraftToast] = useState(false);
+  const isDraftHydratedRef = useRef(false);
+  const skipInitialSaveRef = useRef(true);
+  const isDraftClearedRef = useRef(false);
+
+  // Recuperar o Rascunho na Inicialização (apenas no mount do lado do cliente e em modo de criação)
+  useEffect(() => {
+    if (isEditing || typeof window === "undefined") {
+      isDraftHydratedRef.current = true;
+      return;
+    }
+
+    try {
+      const savedDraft = localStorage.getItem("sportconnect_tournament_draft");
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        const fd = parsed?.formData || parsed;
+
+        if (fd && typeof fd === "object") {
+          if (typeof parsed.currentStep === "number" && parsed.currentStep >= 1 && parsed.currentStep <= 4) {
+            setCurrentStep(parsed.currentStep);
+          }
+          if (fd.name !== undefined) setName(fd.name);
+          if (fd.sportType !== undefined) setSportType(fd.sportType as SportType);
+          if (fd.format !== undefined) setFormat(fd.format);
+          if (fd.genderCategory !== undefined) setGenderCategory(fd.genderCategory);
+          if (fd.startDate !== undefined) setStartDate(fd.startDate);
+          if (fd.startTime !== undefined) setStartTime(fd.startTime);
+          if (fd.noTimeSet !== undefined) setNoTimeSet(Boolean(fd.noTimeSet));
+          if (fd.address !== undefined) {
+            setAddress(fd.address);
+            setDebouncedAddress(fd.address);
+          }
+          if (fd.tournamentFormat !== undefined) setTournamentFormat(fd.tournamentFormat);
+          if (fd.maxTeams !== undefined) setMaxTeams(Number(fd.maxTeams));
+          if (fd.entryFee !== undefined) setEntryFee(String(fd.entryFee));
+          if (fd.pixKeyType !== undefined) setPixKeyType(fd.pixKeyType);
+          if (fd.organizerPixKey !== undefined) setOrganizerPixKey(fd.organizerPixKey);
+          if (fd.prizeFirst !== undefined) setPrizeFirst(fd.prizeFirst);
+          if (fd.prizeSecond !== undefined) setPrizeSecond(fd.prizeSecond);
+          if (fd.prizeThird !== undefined) setPrizeThird(fd.prizeThird);
+          if (fd.minAge !== undefined) setMinAge(String(fd.minAge));
+          if (fd.maxAge !== undefined) setMaxAge(String(fd.maxAge));
+          if (fd.minPlayers !== undefined) setMinPlayers(String(fd.minPlayers));
+          if (fd.maxPlayers !== undefined) setMaxPlayers(String(fd.maxPlayers));
+          if (fd.skillLevel !== undefined) setSkillLevel(String(fd.skillLevel));
+          if (fd.requireCpf !== undefined) setRequireCpf(Boolean(fd.requireCpf));
+          if (fd.requirePhone !== undefined) setRequirePhone(Boolean(fd.requirePhone));
+          if (fd.halvesCount !== undefined) setHalvesCount(Number(fd.halvesCount));
+          if (fd.halfDurationMinutes !== undefined) setHalfDurationMinutes(Number(fd.halfDurationMinutes));
+          if (fd.hasExtraTime !== undefined) setHasExtraTime(Boolean(fd.hasExtraTime));
+          if (fd.extraTimeDuration !== undefined) setExtraTimeDuration(Number(fd.extraTimeDuration));
+          if (fd.hasPenalties !== undefined) setHasPenalties(Boolean(fd.hasPenalties));
+          if (fd.bestOfSets !== undefined) setBestOfSets(Number(fd.bestOfSets));
+          if (fd.pointsPerSet !== undefined) setPointsPerSet(Number(fd.pointsPerSet));
+          if (fd.requiresTwoPointAdvantage !== undefined) setRequiresTwoPointAdvantage(Boolean(fd.requiresTwoPointAdvantage));
+          if (fd.tieBreakPoints !== undefined) setTieBreakPoints(Number(fd.tieBreakPoints));
+          if (fd.targetScore !== undefined) setTargetScore(Number(fd.targetScore));
+          if (fd.maxRounds !== undefined) setMaxRounds(Number(fd.maxRounds));
+          if (fd.rules !== undefined) setRules(fd.rules);
+          if (fd.customFields !== undefined) setCustomFields(parseCustomFields(fd.customFields));
+          if (fd.sponsors !== undefined) setSponsors(parseSponsors(fd.sponsors));
+
+          setShowDraftToast(true);
+        }
+      }
+    } catch (err) {
+      console.warn("Erro ao recuperar rascunho do torneio:", err);
+    } finally {
+      isDraftHydratedRef.current = true;
+    }
+  }, []);
+
+  // Auto-ocultar toast de rascunho recuperado após 5 segundos
+  useEffect(() => {
+    if (!showDraftToast) return;
+    const timer = setTimeout(() => {
+      setShowDraftToast(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [showDraftToast]);
+
+  // Salvar o Progresso em Tempo Real no localStorage com debounce de 500ms
+  useEffect(() => {
+    if (
+      isEditing ||
+      typeof window === "undefined" ||
+      !isDraftHydratedRef.current ||
+      isDraftClearedRef.current
+    ) {
+      return;
+    }
+
+    if (skipInitialSaveRef.current) {
+      skipInitialSaveRef.current = false;
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      if (isDraftClearedRef.current) return;
+      try {
+        const formData = {
+          name,
+          sportType,
+          format,
+          genderCategory,
+          startDate,
+          startTime,
+          noTimeSet,
+          address,
+          tournamentFormat,
+          maxTeams,
+          entryFee,
+          pixKeyType,
+          organizerPixKey,
+          prizeFirst,
+          prizeSecond,
+          prizeThird,
+          minAge,
+          maxAge,
+          minPlayers,
+          maxPlayers,
+          skillLevel,
+          requireCpf,
+          requirePhone,
+          halvesCount,
+          halfDurationMinutes,
+          hasExtraTime,
+          extraTimeDuration,
+          hasPenalties,
+          bestOfSets,
+          pointsPerSet,
+          requiresTwoPointAdvantage,
+          tieBreakPoints,
+          targetScore,
+          maxRounds,
+          rules,
+          customFields,
+          sponsors: sponsors.map((s) => ({
+            id: s.id,
+            name: s.name,
+            logo_url: s.logo_url,
+            link: s.link,
+          })),
+        };
+
+        localStorage.setItem(
+          "sportconnect_tournament_draft",
+          JSON.stringify({
+            currentStep,
+            formData,
+            updatedAt: new Date().toISOString(),
+          })
+        );
+      } catch (err) {
+        console.warn("Erro ao salvar rascunho do torneio:", err);
+      }
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [
+    isEditing,
+    currentStep,
+    name,
+    sportType,
+    format,
+    genderCategory,
+    startDate,
+    startTime,
+    noTimeSet,
+    address,
+    tournamentFormat,
+    maxTeams,
+    entryFee,
+    pixKeyType,
+    organizerPixKey,
+    prizeFirst,
+    prizeSecond,
+    prizeThird,
+    minAge,
+    maxAge,
+    minPlayers,
+    maxPlayers,
+    skillLevel,
+    requireCpf,
+    requirePhone,
+    halvesCount,
+    halfDurationMinutes,
+    hasExtraTime,
+    extraTimeDuration,
+    hasPenalties,
+    bestOfSets,
+    pointsPerSet,
+    requiresTwoPointAdvantage,
+    tieBreakPoints,
+    targetScore,
+    maxRounds,
+    rules,
+    customFields,
+    sponsors,
+  ]);
 
   // Estados para foto de capa (Upload / Padrão / Existente)
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -471,15 +716,18 @@ export default function CreateTournamentForm({
         setMaxTeams(Number(initialData.max_teams));
       }
       if (initialData.entry_fee !== undefined && initialData.entry_fee !== null) {
-        setEntryFee(Number(initialData.entry_fee).toFixed(2));
+        const num = Number(initialData.entry_fee);
+        setEntryFee(!isNaN(num) ? num.toFixed(2) : "0.00");
       }
-      if (initialData.pix_key_type) {
-        setPixKeyType(initialData.pix_key_type);
+      // Sincronização atômica e simultânea de Chave Pix (sem aplicação de máscaras destrutivas durante a hidratação)
+      const effectivePixType =
+        initialData.pix_key_type ||
+        (initialData.organizer_pix_key ? detectPixKeyType(initialData.organizer_pix_key) : undefined);
+      if (effectivePixType) {
+        setPixKeyType(effectivePixType);
       }
-      if (initialData.organizer_pix_key) {
-        setOrganizerPixKey(
-          formatPixKey(initialData.organizer_pix_key, initialData.pix_key_type || "CPF")
-        );
+      if (initialData.organizer_pix_key !== undefined && initialData.organizer_pix_key !== null) {
+        setOrganizerPixKey(initialData.organizer_pix_key);
       }
       if (initialData.rules) {
         setRules(initialData.rules);
@@ -539,6 +787,9 @@ export default function CreateTournamentForm({
       if (initialData.min_players !== undefined) {
         setMinPlayers(initialData.min_players !== null ? String(initialData.min_players) : "");
       }
+      if (initialData.skill_level !== undefined) {
+        setSkillLevel(initialData.skill_level || "ALL");
+      }
       if (initialData.max_players !== undefined) {
         setMaxPlayers(initialData.max_players !== null ? String(initialData.max_players) : "");
       }
@@ -552,11 +803,12 @@ export default function CreateTournamentForm({
           initialData.start_time === undefined ||
           initialData.match_rules === undefined ||
           initialData.prize_first === undefined ||
-          initialData.min_age === undefined)
+          initialData.min_age === undefined ||
+          initialData.pix_key_type === undefined)
       ) {
         supabase
           .from("tournaments")
-          .select("custom_registration_fields, sponsors, start_time, gender_category, tournament_format, pix_key_type, rulebook_url, match_rules, prize_first, prize_second, prize_third, min_age, max_age, min_players, max_players")
+          .select("custom_registration_fields, sponsors, start_time, gender_category, tournament_format, pix_key_type, organizer_pix_key, rulebook_url, match_rules, prize_first, prize_second, prize_third, min_age, max_age, min_players, max_players")
           .eq("id", initialData.id)
           .maybeSingle()
           .then(({ data, error }) => {
@@ -589,6 +841,9 @@ export default function CreateTournamentForm({
               }
               if (data.pix_key_type && !initialData.pix_key_type) {
                 setPixKeyType(data.pix_key_type);
+              }
+              if (data.organizer_pix_key && !initialData.organizer_pix_key) {
+                setOrganizerPixKey(data.organizer_pix_key);
               }
               if (data.rulebook_url && !initialData.rulebook_url) {
                 setRulebookUrl(data.rulebook_url);
@@ -639,6 +894,39 @@ export default function CreateTournamentForm({
       }
     }
   }, [initialData]);
+
+  // Verificação dinâmica de inscritos para bloqueio do valor de inscrição baseado em pagamento
+  useEffect(() => {
+    if (!initialData?.id) {
+      setRegisteredTeamsCount(0);
+      setHasPaidRegistrations(false);
+      return;
+    }
+
+    const tournamentId = initialData.id;
+
+    async function checkRegistrations() {
+      try {
+        const { data: teams, error } = await supabase
+          .from("teams")
+          .select("status, payment_status")
+          .eq("tournament_id", tournamentId);
+
+        if (!error && teams) {
+          setRegisteredTeamsCount(teams.length);
+          const hasPaid = teams.some((team) =>
+            ["PAID", "APPROVED"].includes(team.status) ||
+            ["PAID", "APPROVED"].includes(team.payment_status)
+          );
+          setHasPaidRegistrations(hasPaid);
+        }
+      } catch (err) {
+        console.warn("Aviso ao checar inscritos do torneio:", err);
+      }
+    }
+
+    checkRegistrations();
+  }, [initialData?.id]);
 
   // Limpa o ObjectURL de preview para evitar vazamento de memória
   useEffect(() => {
@@ -717,6 +1005,11 @@ export default function CreateTournamentForm({
 
   const isFormatVisible = sportType === "VOLEI" || sportType === "PING_PONG";
 
+  const category = format || "";
+  const isSolo =
+    ["solo", "1v1"].includes(category.toLowerCase()) ||
+    ["solo", "1v1"].some((keyword) => category.toLowerCase().includes(keyword));
+
   // Identificação de modalidade estritamente coletiva (equipes com mais de 2 jogadores).
   // Esconde o bloco de elenco se for Solo (1v1) ou Duplas (2v2).
   const isTeamFormat = (() => {
@@ -744,11 +1037,15 @@ export default function CreateTournamentForm({
     }
   };
 
-  // Manipulador de tipo de chave Pix com re-máscara
+  // Manipulador de tipo de chave Pix com re-máscara condicional segura
   const handlePixKeyTypeChange = (newType: string) => {
     setPixKeyType(newType);
     if (organizerPixKey) {
-      setOrganizerPixKey(formatPixKey(organizerPixKey, newType));
+      if (newType === "EMAIL" || newType === "ALEATORIA") {
+        setOrganizerPixKey(organizerPixKey);
+      } else if (!organizerPixKey.includes("@")) {
+        setOrganizerPixKey(formatPixKey(organizerPixKey, newType));
+      }
     }
   };
 
@@ -917,8 +1214,8 @@ export default function CreateTournamentForm({
           const opts = f.optionsString
             ? f.optionsString.split(",").map((s) => s.trim()).filter(Boolean)
             : Array.isArray(f.options)
-            ? f.options
-            : [];
+              ? f.options
+              : [];
           return {
             id: f.id,
             label: f.label.trim(),
@@ -1057,9 +1354,30 @@ export default function CreateTournamentForm({
         name: name.trim(),
         sport_type: sportType,
         gender_category: (genderCategory || "MISTO").toUpperCase(),
-        format: format || (sportType === "DOMINO" ? "Duplas" : sportType === "FUTSAL" ? "5x5" : null),
-        tournament_format: tournamentFormat,
-        match_rules: compiledMatchRules,
+        format:
+          tournamentFormat === "ROUND_ROBIN" || tournamentFormat === "LEAGUE"
+            ? "LEAGUE"
+            : tournamentFormat === "GROUPS_KNOCKOUT" || tournamentFormat === "GROUPS"
+            ? "GROUPS"
+            : "KNOCKOUT",
+        tournament_format:
+          tournamentFormat === "ROUND_ROBIN" || tournamentFormat === "LEAGUE"
+            ? "LEAGUE"
+            : tournamentFormat === "GROUPS_KNOCKOUT" || tournamentFormat === "GROUPS"
+            ? "GROUPS"
+            : "KNOCKOUT",
+        match_rules: {
+          ...compiledMatchRules,
+          modality_format: format || (sportType === "DOMINO" ? "Duplas" : sportType === "FUTSAL" ? "5x5" : null),
+          tournament_format:
+            tournamentFormat === "ROUND_ROBIN" || tournamentFormat === "LEAGUE"
+              ? "LEAGUE"
+              : tournamentFormat === "GROUPS_KNOCKOUT" || tournamentFormat === "GROUPS"
+              ? "GROUPS"
+              : "KNOCKOUT",
+        },
+        // tournament_format normalized above
+        // match_rules enriched above
         start_date: formattedStartDate,
         start_time: finalStartTime,
         location: address.trim() || null,
@@ -1078,11 +1396,19 @@ export default function CreateTournamentForm({
         max_age: parsedMaxAge,
         min_players: parsedMinPlayers,
         max_players: parsedMaxPlayers,
+        skill_level: skillLevel || "ALL",
+        require_cpf: Boolean(requireCpf),
+        require_phone: Boolean(requirePhone),
       };
 
       if (isEditing) {
         // MODO DE EDIÇÃO: UPDATE na tabela tournaments
         const tournamentIdToUpdate = initialData!.id;
+
+        // Se já existem inscrições registradas, impede qualquer alteração no valor da taxa
+        if (hasPaidRegistrations && initialData?.entry_fee !== undefined) {
+          payload.entry_fee = Number(initialData.entry_fee);
+        }
 
         // 1. Verificar se o utilizador anexou um NOVO ficheiro de imagem no campo de capa
         if (coverFile) {
@@ -1143,15 +1469,45 @@ export default function CreateTournamentForm({
 
           setCurrentSportType(sportType);
 
+          // 3. Notificação de Nova Exigência para atletas inscritos
+          try {
+            const hadCpf = Boolean(initialData?.require_cpf);
+            const nowCpf = Boolean(payload.require_cpf);
+            const hadPhone = Boolean(initialData?.require_phone);
+            const nowPhone = Boolean(payload.require_phone);
+            const hadSkill =
+              Boolean((initialData as any)?.require_skill_level) ||
+              (Boolean(initialData?.skill_level) && initialData?.skill_level !== "ALL");
+            const nowSkill =
+              Boolean((payload as any)?.require_skill_level) ||
+              (Boolean(skillLevel) && skillLevel !== "ALL");
+
+            const isNewRequirement =
+              (!hadCpf && nowCpf) || (!hadPhone && nowPhone) || (!hadSkill && nowSkill);
+
+            const hadRules = (initialData?.rules || '').trim();
+            const nowRules = (payload.rules || '').trim();
+            const rulesChanged = Boolean(nowRules) && hadRules !== nowRules;
+
+            if (isNewRequirement || rulesChanged) {
+              await notifyTournamentRulesChanged({
+                tournamentId: tournamentIdToUpdate,
+                tournamentName: payload.name || initialData?.name,
+              });
+            }
+          } catch (notifErr: any) {
+            console.warn("Aviso ao enviar notificações de novas exigências:", notifErr);
+          }
+
           setTournaments((prev: Tournament[]) =>
             prev.map((t) =>
               t.id === tournamentIdToUpdate
                 ? {
-                    ...t,
-                    ...payload,
-                    id: tournamentIdToUpdate,
-                    cover_url: data?.cover_url || payload.cover_url || t.cover_url,
-                  }
+                  ...t,
+                  ...payload,
+                  id: tournamentIdToUpdate,
+                  cover_url: data?.cover_url || payload.cover_url || t.cover_url,
+                }
                 : t
             )
           );
@@ -1217,9 +1573,15 @@ export default function CreateTournamentForm({
 
         const createdTournamentId = data?.id;
 
+        isDraftClearedRef.current = true;
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("sportconnect_tournament_draft");
+        }
+
         if (createdTournamentId) {
           setCurrentTournamentId(createdTournamentId);
           setCurrentSportType(sportType);
+
           if (typeof window !== "undefined") {
             localStorage.setItem("sc_current_tournament_id", createdTournamentId);
           }
@@ -1254,6 +1616,7 @@ export default function CreateTournamentForm({
             max_age: data.max_age !== undefined ? data.max_age : payload.max_age,
             min_players: data.min_players !== undefined ? data.min_players : payload.min_players,
             max_players: data.max_players !== undefined ? data.max_players : payload.max_players,
+            skill_level: data.skill_level || payload.skill_level,
           };
 
           setTournaments((prev: Tournament[]) => [mappedNewTour, ...prev]);
@@ -1291,9 +1654,8 @@ export default function CreateTournamentForm({
 
   return (
     <div
-      className={`bg-[#1a1a1a] border border-[#333] rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl relative text-white w-full max-h-[90vh] overflow-y-auto selection:bg-blue-600/30 selection:text-white ${
-        isModal ? "max-w-2xl mx-auto" : "max-w-3xl mx-auto"
-      }`}
+      className={`bg-[#1a1a1a] border border-[#333] rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl relative text-white w-full max-h-[90vh] overflow-y-auto selection:bg-blue-600/30 selection:text-white ${isModal ? "max-w-2xl mx-auto" : "max-w-3xl mx-auto"
+        }`}
     >
       {/* Faixa decorativa superior em gradiente azul SportConnect */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-[#00a2ff] to-cyan-500" />
@@ -1350,22 +1712,20 @@ export default function CreateTournamentForm({
                 key={step.number}
                 type="button"
                 onClick={() => handleStepClick(step.number)}
-                className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 p-2 sm:px-3 sm:py-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  isCurrent
+                className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 p-2 sm:px-3 sm:py-2.5 rounded-xl border text-left transition-all cursor-pointer ${isCurrent
                     ? "bg-blue-600/20 border-blue-500/60 text-white shadow-lg shadow-blue-600/10 ring-1 ring-blue-500/30"
                     : isPast
-                    ? "bg-[#18181b] border-zinc-800 text-blue-400 hover:border-zinc-700"
-                    : "bg-[#121214] border-zinc-900 text-zinc-500 hover:border-zinc-800"
-                }`}
+                      ? "bg-[#18181b] border-zinc-800 text-blue-400 hover:border-zinc-700"
+                      : "bg-[#121214] border-zinc-900 text-zinc-500 hover:border-zinc-800"
+                  }`}
               >
                 <div
-                  className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-black transition-colors ${
-                    isCurrent
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-black transition-colors ${isCurrent
                       ? "bg-blue-600 text-white"
                       : isPast
-                      ? "bg-blue-500/20 text-blue-400"
-                      : "bg-zinc-800 text-zinc-500"
-                  }`}
+                        ? "bg-blue-500/20 text-blue-400"
+                        : "bg-zinc-800 text-zinc-500"
+                    }`}
                 >
                   {isPast ? <Check className="h-3.5 w-3.5" /> : step.number}
                 </div>
@@ -1382,6 +1742,24 @@ export default function CreateTournamentForm({
           })}
         </div>
       </div>
+
+      {/* Toast de Rascunho Recuperado */}
+      {showDraftToast && (
+        <div className="mb-5 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold flex items-center justify-between gap-2 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-400 shrink-0" />
+            <span>Rascunho recuperado. Você continuou de onde parou.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDraftToast(false)}
+            className="p-1 rounded-lg text-blue-400/70 hover:text-blue-200 hover:bg-blue-500/20 transition-colors cursor-pointer"
+            title="Fechar aviso"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Alerta de Erro Visual */}
       {errorMessage && (
@@ -1439,13 +1817,12 @@ export default function CreateTournamentForm({
                   if (file) handleFileSelect(file);
                 }}
                 onClick={() => fileInputRef.current?.click()}
-                className={`relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group flex flex-col justify-between p-4 ${
-                  isDragging
+                className={`relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group flex flex-col justify-between p-4 ${isDragging
                     ? "border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30"
                     : coverFile
-                    ? "border-blue-500/60 bg-[#18181b]"
-                    : "border-[#3f3f46] hover:border-zinc-500 bg-[#18181b]"
-                }`}
+                      ? "border-blue-500/60 bg-[#18181b]"
+                      : "border-[#3f3f46] hover:border-zinc-500 bg-[#18181b]"
+                  }`}
               >
                 {/* Imagem de Fundo (Preview Ao Vivo: Usuário ou Padrão) */}
                 <img
@@ -1680,11 +2057,10 @@ export default function CreateTournamentForm({
                     disabled={noTimeSet}
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border rounded-xl text-sm outline-none transition-all [color-scheme:dark] ${
-                      noTimeSet
+                    className={`w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border rounded-xl text-sm outline-none transition-all [color-scheme:dark] ${noTimeSet
                         ? "border-zinc-800 text-zinc-600 cursor-not-allowed opacity-50 bg-[#121214]"
                         : "border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-zinc-100"
-                    }`}
+                      }`}
                   />
                 </div>
 
@@ -1771,29 +2147,26 @@ export default function CreateTournamentForm({
                         setTournamentFormat(opt.id);
                         if (errorMessage) setErrorMessage("");
                       }}
-                      className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer group ${
-                        isSelected
+                      className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer group ${isSelected
                           ? "bg-blue-600/15 border-blue-500 text-white shadow-lg shadow-blue-600/15 ring-1 ring-blue-500/40"
                           : "bg-[#0f0f0f] border-[#27272a] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200"
-                      }`}
+                        }`}
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div
-                            className={`p-2 rounded-xl transition-colors ${
-                              isSelected
+                            className={`p-2 rounded-xl transition-colors ${isSelected
                                 ? "bg-blue-600 text-white"
                                 : "bg-zinc-800/80 text-zinc-400 group-hover:text-white"
-                            }`}
+                              }`}
                           >
                             <Icon className="h-4 w-4" />
                           </div>
                           <span
-                            className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                              isSelected
+                            className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${isSelected
                                 ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
                                 : "bg-zinc-800/60 border-zinc-700/60 text-zinc-400"
-                            }`}
+                              }`}
                           >
                             {opt.badge}
                           </span>
@@ -1814,11 +2187,10 @@ export default function CreateTournamentForm({
                           {isSelected ? "Selecionado" : "Clique para selecionar"}
                         </span>
                         <div
-                          className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                            isSelected
+                          className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isSelected
                               ? "border-blue-500 bg-blue-600 text-white"
                               : "border-zinc-700 bg-zinc-900"
-                          }`}
+                            }`}
                         >
                           {isSelected && <Check className="h-2.5 w-2.5" />}
                         </div>
@@ -2188,13 +2560,26 @@ export default function CreateTournamentForm({
                     step="0.01"
                     min="0"
                     value={entryFee}
+                    disabled={hasPaidRegistrations}
+                    readOnly={hasPaidRegistrations}
                     onChange={(e) => handleEntryFeeChange(e.target.value)}
                     placeholder="100.00"
-                    className="w-full pl-11 pr-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                    className={`w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all shadow-inner ${
+                      hasPaidRegistrations
+                        ? "opacity-60 cursor-not-allowed border-zinc-800 bg-zinc-950 text-zinc-400"
+                        : "bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-zinc-100 placeholder:text-zinc-600"
+                    }`}
                   />
                 </div>
                 <span className="text-[10px] text-zinc-500 block">
-                  Defina 0.00 para criar um torneio gratuito (sem cobrança de inscrição).
+                  {hasPaidRegistrations ? (
+                    <span className="text-red-500 text-sm flex items-center gap-1.5 font-medium mt-1">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
+                      <span>O valor não pode ser alterado após a confirmação do primeiro pagamento.</span>
+                    </span>
+                  ) : (
+                    "Defina 0.00 para criar um torneio gratuito (sem cobrança de inscrição)."
+                  )}
                 </span>
               </div>
             </div>
@@ -2343,7 +2728,40 @@ export default function CreateTournamentForm({
                 Configure restrições de faixa etária e limites de atletas no elenco. Se deixados em branco, o torneio aceitará qualquer idade e elenco padrão.
               </p>
 
-              <div className={`grid ${isTeamFormat ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-3.5`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* 1. Nível Técnico / Rank */}
+                <div className={`p-3.5 rounded-xl bg-[#0a0a0a] border border-blue-500/20 space-y-2 flex flex-col justify-between ${isTeamFormat ? "sm:col-span-2" : ""}`}>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-blue-300 flex items-center gap-1.5">
+                      <span role="img" aria-label="Nível Técnico">🎯</span>
+                      <span>Nível Técnico / Rank</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={skillLevel}
+                        onChange={(e) => setSkillLevel(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#121214] border border-[#27272a] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 rounded-lg text-xs text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-9 shadow-inner"
+                      >
+                        <option value="ALL" className="bg-[#1a1a1a] text-white">
+                          Livre (Todos os Níveis)
+                        </option>
+                        <option value="BEGINNER" className="bg-[#1a1a1a] text-white">
+                          Iniciante / Amador
+                        </option>
+                        <option value="INTERMEDIATE" className="bg-[#1a1a1a] text-white">
+                          Intermediário
+                        </option>
+                        <option value="ADVANCED" className="bg-[#1a1a1a] text-white">
+                          Avançado / Pro
+                        </option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 block leading-tight">
+                    Define o nível de experiência recomendado ou exigido para os atletas participantes.
+                  </span>
+                </div>
                 {/* 1. Restrição de Idade */}
                 <div className="p-3.5 rounded-xl bg-[#0a0a0a] border border-purple-500/20 space-y-2">
                   <label className="text-[11px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
@@ -2540,6 +2958,77 @@ export default function CreateTournamentForm({
               )}
             </div>
 
+            {/* BLOCO: Dados Exigidos dos Atletas (CPF e Telefone/WhatsApp por membro) */}
+            <div className="space-y-3 pt-2 border-t border-[#27272a]/60">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-emerald-400" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                    Dados Exigidos dos Atletas
+                  </h3>
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-0.5">
+                  {`Defina quais documentos ou contatos obrigatórios devem ser informados ${isSolo ? "pelo atleta" : "para cada integrante do elenco"} (o e-mail já é padrão para vinculação de contas).`}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Toggle 1: Exigir CPF de cada atleta */}
+                <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 transition-all cursor-pointer select-none">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-zinc-200 block">
+                      Exigir CPF de cada atleta
+                    </span>
+                    <span className="text-[10px] text-zinc-500 block">
+                      {`Torna o CPF obrigatório ${isSolo ? "para o atleta" : "em cada linha de membro e capitão"}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={requireCpf}
+                    onClick={() => setRequireCpf((prev) => !prev)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      requireCpf ? "bg-emerald-500" : "bg-zinc-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        requireCpf ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </label>
+
+                {/* Toggle 2: Exigir Telefone/WhatsApp de cada atleta */}
+                <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 transition-all cursor-pointer select-none">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-zinc-200 block">
+                      Exigir Telefone/WhatsApp de cada atleta
+                    </span>
+                    <span className="text-[10px] text-zinc-500 block">
+                      {`Torna o WhatsApp obrigatório ${isSolo ? "para o atleta" : "para todos os membros da equipe"}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={requirePhone}
+                    onClick={() => setRequirePhone((prev) => !prev)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                      requirePhone ? "bg-emerald-500" : "bg-zinc-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        requirePhone ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </label>
+              </div>
+            </div>
+
             {/* SEÇÃO INTACTA: Campos Personalizados de Inscrição (Estilo Google Forms) */}
             <div className="space-y-3 pt-2 border-t border-[#27272a]/60">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -2580,8 +3069,8 @@ export default function CreateTournamentForm({
                     const parsedOptions = field.optionsString
                       ? field.optionsString.split(",").map((s) => s.trim()).filter(Boolean)
                       : Array.isArray(field.options)
-                      ? field.options
-                      : [];
+                        ? field.options
+                        : [];
 
                     return (
                       <div

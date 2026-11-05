@@ -41,9 +41,13 @@ import RegistrationManagement from "@/components/RegistrationManagement";
 import TournamentBracket from "@/components/TournamentBracket";
 import RefereePanel from "@/components/RefereePanel";
 import ShareTournamentModal from "@/components/ShareTournamentModal";
+import CloseRegistrationsModal from "@/components/CloseRegistrationsModal";
 import BracketViewer from "@/components/BracketViewer";
-import { generateBracket } from "@/app/actions/bracket";
+import { generateBracket, generateKnockoutFromGroups } from "@/app/actions/bracket";
+import { deleteTournament } from "@/app/actions/tournament";
 import { useTournamentPermissions } from "@/hooks/useTournamentPermissions";
+import NotificationBell from "@/components/NotificationBell";
+import { translateTournamentFormat } from "@/utils/formatMap";
 
 export type DashboardView = "overview" | "teams" | "bracket" | "referee";
 
@@ -79,6 +83,8 @@ export default function OrganizerDashboard({
   // Estados de dados reais vindos do Supabase
   const [dbTournament, setDbTournament] = useState<Tournament | null>(null);
   const [dbTeams, setDbTeams] = useState<Team[]>([]);
+  const [dbMatches, setDbMatches] = useState<any[]>([]);
+  const [isAdvancingToKnockout, setIsAdvancingToKnockout] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [canManage, setCanManage] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,7 +169,7 @@ export default function OrganizerDashboard({
           mappedTour = {
             id: tourData.id,
             name: tourData.name,
-            status: tourData.status as "ATIVO" | "FINALIZADO",
+            status: tourData.status,
             createdAt: tourData.created_at,
             sport_type: (tourData.sport_type as SportType) || "DOMINO",
             owner_id: tourData.owner_id,
@@ -174,10 +180,14 @@ export default function OrganizerDashboard({
             start_time: tourData.start_time,
             end_date: tourData.end_date,
             format: tourData.format,
+            tournament_format: tourData.tournament_format,
+            match_rules: tourData.match_rules,
             rules: tourData.rules,
             cover_url: tourData.cover_url,
             gender_category: tourData.gender_category,
             organizer_pix_key: tourData.organizer_pix_key,
+            pix_key_type: tourData.pix_key_type,
+            rulebook_url: tourData.rulebook_url,
             sponsors: tourData.sponsors || [],
             custom_registration_fields: tourData.custom_registration_fields,
             prize_first: tourData.prize_first,
@@ -187,6 +197,9 @@ export default function OrganizerDashboard({
             max_players: tourData.max_players,
             min_age: tourData.min_age,
             max_age: tourData.max_age,
+            skill_level: tourData.skill_level || "ALL",
+            require_cpf: Boolean(tourData.require_cpf),
+            require_phone: Boolean(tourData.require_phone),
           };
           setDbTournament(mappedTour);
         } else {
@@ -228,12 +241,46 @@ export default function OrganizerDashboard({
           .eq("tournament_id", targetTourId);
 
         if (!teamsErr && teamsData) {
+          const teamIds = teamsData.map((t: any) => t.id).filter(Boolean);
+          const membersByTeamId: Record<string, any[]> = {};
+          if (teamIds.length > 0) {
+            const { data: membersRows } = await supabase
+              .from("team_members")
+              .select("*")
+              .in("team_id", teamIds);
+            if (membersRows) {
+              membersRows.forEach((m: any) => {
+                if (!membersByTeamId[m.team_id]) membersByTeamId[m.team_id] = [];
+                membersByTeamId[m.team_id].push(m);
+              });
+            }
+          }
           const mappedTeams: Team[] = teamsData.map((dbT: any) => ({
             id: dbT.id,
             name: dbT.name,
-            players: [dbT.player1 || "Jogador 1", dbT.player2 || "Jogador 2"],
+            players: [dbT.player1 || "Jogador 1", dbT.player2 || ""].filter(Boolean),
+            roster: dbT.roster,
+            members:
+              Array.isArray(dbT.team_members) && dbT.team_members.length > 0
+                ? dbT.team_members
+                : membersByTeamId[dbT.id]?.length
+                ? membersByTeamId[dbT.id]
+                : (dbT.custom_registration_answers?.__athlete_members || []),
+            manager_name: dbT.manager_name || dbT.player1,
+            category: dbT.category || "Amador A",
+            cancellation_status: dbT.cancellation_status,
+            group_name: dbT.group_name,
+            declared_skill_level: dbT.declared_skill_level,
+            payment_proof_url: dbT.payment_proof_url,
+            contact: dbT.contact,
+            user_id: dbT.user_id,
+            custom_registration_answers: dbT.custom_registration_answers,
             createdAt: dbT.created_at || new Date().toISOString(),
             status: dbT.status,
+            amount_paid:
+              dbT.amount_paid !== undefined && dbT.amount_paid !== null
+                ? Number(dbT.amount_paid)
+                : undefined,
             payment_status:
               dbT.payment_status ||
               (dbT.status === "CONFIRMED" || dbT.status === "PAID"
@@ -262,6 +309,11 @@ export default function OrganizerDashboard({
           .eq("tournament_id", targetTourId);
 
         setHasDbMatches(matchesCount !== null && matchesCount > 0);
+        const { data: matchesRows } = await supabase
+          .from("matches")
+          .select("*")
+          .eq("tournament_id", targetTourId);
+        setDbMatches(matchesRows || []);
       }
     } catch (err) {
       console.error("Erro ao carregar dados do torneio no OrganizerDashboard:", err);
@@ -335,20 +387,31 @@ export default function OrganizerDashboard({
     try {
       setIsDeleting(true);
 
-      // 1. Valida se existem equipes inscritas no campeonato
-      const { data: teamsData, error: teamsError, count } = await supabase
+      // 1. Valida se existem equipes inscritas no campeonato (ignora inscrições CANCELLED e REJECTED)
+      const { data: teamsData, error: teamsError } = await supabase
         .from("teams")
-        .select("id, payment_status, status", { count: "exact" })
-        .eq("tournament_id", currentTour.id);
+        .select("id, payment_status, status, cancellation_status")
+        .eq("tournament_id", currentTour.id)
+        .neq("status", "CANCELLED")
+        .neq("status", "REJECTED");
 
       if (teamsError) {
         console.error("Erro ao verificar equipes do torneio:", teamsError);
       }
 
-      const totalTeams = count ?? teamsData?.length ?? 0;
+      // Filtro estrito: ignora canceladas, estornadas ou rejeitadas
+      const activeTeams = (teamsData || []).filter(
+        (t) =>
+          t.status !== "CANCELLED" &&
+          t.status !== "REJECTED" &&
+          t.payment_status !== "CANCELED" &&
+          t.payment_status !== "CANCELLED" &&
+          t.payment_status !== "REJECTED" &&
+          t.cancellation_status !== "REFUNDED"
+      );
 
-      // Se houver equipes inscritas com pagamentos confirmados ou pendentes
-      if (totalTeams > 0) {
+      // Se houver equipes com inscrições ativas
+      if (activeTeams.length > 0) {
         alert(
           "Não é possível excluir um torneio com inscrições ativas. Cancele o torneio ou remova as inscrições primeiro."
         );
@@ -364,17 +427,8 @@ export default function OrganizerDashboard({
         return;
       }
 
-      // 3. Exclusão no Supabase
-      const { error: delError } = await supabase
-        .from("tournaments")
-        .delete()
-        .eq("id", currentTour.id);
-
-      if (delError) {
-        console.error("Erro fatal ao excluir torneio:", delError);
-        alert(`Erro ao excluir o torneio: ${delError.message}`);
-        return;
-      }
+      // 3. Exclusão no Supabase via Server Action (com cascading delete completo de registros dependentes)
+      await context.handleDeleteTournament(currentTour.id);
 
       alert("Torneio excluído com sucesso.");
       router.push("/hub");
@@ -472,6 +526,30 @@ export default function OrganizerDashboard({
   const maxSpots = currentTour?.max_teams || 16;
   const confirmedTeams = currentTeams.filter(
     (t) =>
+      t.cancellation_status !== "REFUNDED" &&
+      t.payment_status !== "CANCELED" &&
+      t.payment_status !== "REJECTED" &&
+      t.payment_status !== "PENDING" &&
+      t.payment_status !== "WAITING_PIX" &&
+      t.payment_status !== "WAITING_APPROVAL" &&
+      t.status !== "CANCELED" &&
+      t.status !== "CANCELLED" &&
+      t.payment_status !== "CANCELLED" &&
+      t.status !== "REJECTED" &&
+      t.status !== "PENDING" &&
+      (t.payment_status === "PAID" ||
+        t.payment_status === "APPROVED" ||
+        t.status === "APPROVED" ||
+        t.status === "CONFIRMED" ||
+        t.status === "PAID" ||
+        t.status?.toLowerCase() === "aprovado" ||
+        t.status?.toLowerCase() === "confirmado" ||
+        t.status?.toLowerCase() === "ativo" ||
+        t.status?.toLowerCase() === "confirmed" ||
+        t.status?.toLowerCase() === "paid")
+  );
+  const _legacyConfirmedTeams = currentTeams.filter(
+    (t) =>
       t.payment_status === "PAID" ||
       t.payment_status === "APPROVED" ||
       t.status === "CONFIRMED" ||
@@ -484,12 +562,30 @@ export default function OrganizerDashboard({
   const confirmedTeamsCount =
     dbConfirmedCount !== null && dbConfirmedCount > confirmedTeams.length
       ? dbConfirmedCount
-      : (confirmedTeams.length > 0 ? confirmedTeams.length : currentTeams.length);
+      : confirmedTeams.length;
   const spotsPercent = Math.min(Math.round((confirmedTeamsCount / maxSpots) * 100), 100);
   const remainingSpots = Math.max(maxSpots - confirmedTeamsCount, 0);
 
   // Inscrições Pendentes
-  const pendingCount = currentTeams.filter(
+  const pendingTeams = currentTeams.filter(
+    (t) =>
+      t.cancellation_status !== "REFUNDED" &&
+      t.payment_status !== "CANCELED" &&
+      t.payment_status !== "REJECTED" &&
+      t.status !== "CANCELED" &&
+      t.status !== "CANCELLED" &&
+      t.payment_status !== "CANCELLED" &&
+      t.status !== "REJECTED" &&
+      (t.payment_status === "WAITING_PIX" ||
+        t.payment_status === "WAITING_APPROVAL" ||
+        t.payment_status === "PENDING" ||
+        t.status === "PENDING" ||
+        t.status?.toLowerCase() === "pendente" ||
+        t.status?.toLowerCase() === "pending" ||
+        !confirmedTeams.some((c) => c.id === t.id))
+  );
+  const pendingCount = pendingTeams.length;
+  const _legacyPendingCount = currentTeams.filter(
     (t) => t.status?.toLowerCase() === "pendente" || t.status?.toLowerCase() === "pending"
   ).length;
 
@@ -504,23 +600,41 @@ export default function OrganizerDashboard({
     );
   }, [currentTeams]);
 
-  // Condição para exibir o botão de destaque:
-  // Só deve aparecer se o torneio tiver equipas aprovadas e se ainda não existir nenhum registo na tabela matches para este tournament_id
-  const canGenerateBracket = useMemo(() => {
-    const matchesExist =
-      hasDbMatches === true || (currentMatches && currentMatches.length > 0);
-    return !matchesExist && approvedPaidTeams.length >= 2;
-  }, [hasDbMatches, currentMatches, approvedPaidTeams.length]);
+  const matchesExist = useMemo(() => {
+    return hasDbMatches === true || (currentMatches && currentMatches.length > 0);
+  }, [hasDbMatches, currentMatches]);
 
-  // Handler de Geração do Chaveamento Oficial
+  const hasStartedMatches = useMemo(() => {
+    const allM = dbMatches.length > 0 ? dbMatches : (currentMatches || []);
+    if (!allM || allM.length === 0) return false;
+    return allM.some((m: any) => {
+      const status = String(m.status || "").toUpperCase();
+      const isLive = status === "LIVE" || status === "IN_PROGRESS" || status === "PLAYING";
+      const hasBothTeams =
+        Boolean(m.team1_id || m.team_a_id || m.teamA?.id) &&
+        Boolean(m.team2_id || m.team_b_id || m.teamB?.id);
+      const isCompleted = (status === "COMPLETED" || status === "FINISHED" || status === "ENCERRADA" || status === "FINALIZADO") && hasBothTeams;
+      return isLive || isCompleted;
+    });
+  }, [dbMatches, currentMatches]);
+
+  // Permitido se:
+  // 1) Ainda não existem partidas e temos >= 2 equipes confirmadas (Primeira geração)
+  // 2) Existem partidas MAS nenhuma iniciou e temos >= 2 equipes confirmadas (Regeneração)
+  const canGenerateBracket = useMemo(() => {
+    return (!matchesExist || !hasStartedMatches) && approvedPaidTeams.length >= 2;
+  }, [matchesExist, hasStartedMatches, approvedPaidTeams.length]);
+
+  // Handler de Geração / Regeneração do Chaveamento Oficial
   const handleGenerateBracket = async () => {
     if (!currentTour?.id || isGeneratingBracket) return;
 
-    if (
-      !window.confirm(
-        `Deseja gerar o chaveamento oficial da competição agora? As ${approvedPaidTeams.length} equipes confirmadas serão sorteadas aleatoriamente na árvore eliminatória mata-mata.`
-      )
-    ) {
+    const isRegen = matchesExist;
+    const confirmMsg = isRegen
+      ? `Atenção: Já existem partidas geradas, mas nenhuma foi iniciada. Deseja REGENERAR o chaveamento oficial com as ${approvedPaidTeams.length} equipes confirmadas? As partidas atuais serão substituídas.`
+      : `Deseja gerar as partidas e o chaveamento oficial da competição agora com as ${approvedPaidTeams.length} equipes confirmadas?`;
+
+    if (!window.confirm(confirmMsg)) {
       return;
     }
 
@@ -536,8 +650,15 @@ export default function OrganizerDashboard({
         return;
       }
 
+      // Instrução explícita atualizando o banco de dados para IN_PROGRESS
+      await supabase.from("tournaments").update({ status: "IN_PROGRESS" }).eq("id", currentTour.id);
+
       alert(res.message || "Chaveamento oficial gerado com sucesso!");
       setHasDbMatches(true);
+      setDbTournament((prev) => (prev ? { ...prev, status: "IN_PROGRESS" } : null));
+      context.setTournaments((prev) =>
+        prev.map((t) => (t.id === currentTour.id ? { ...t, status: "IN_PROGRESS" } : t))
+      );
       await fetchTournamentData();
       handleShortcutClick("bracket");
     } catch (err: any) {
@@ -548,10 +669,100 @@ export default function OrganizerDashboard({
     }
   };
 
-  // Cálculos Financeiros Reais
+  // Condição e Handler para Transição da Fase de Grupos para o Mata-Mata (Fase 2)
+  const canAdvanceToKnockout = useMemo(() => {
+    const rawFmt = String(
+      currentTour?.tournament_format ||
+        currentTour?.format ||
+        (currentTour?.match_rules as any)?.tournament_format ||
+        ""
+    ).toUpperCase();
+    const isGroupsFormat =
+      rawFmt === "GROUPS" || rawFmt === "GROUPS_KNOCKOUT" || rawFmt.includes("GRUPO");
+    if (!isGroupsFormat) return false;
+
+    const allM = dbMatches.length > 0 ? dbMatches : currentMatches;
+    if (!allM || allM.length === 0) return false;
+
+    const hasKnockout = allM.some(
+      (m: any) =>
+        String(m.phase || "").toUpperCase() === "KNOCKOUT" || Boolean(m.next_match_id)
+    );
+    if (hasKnockout) return false;
+
+    const groupMatches = allM.filter(
+      (m: any) =>
+        String(m.phase || "").toUpperCase() === "GROUP_STAGE" ||
+        String(m.phase || "").toLowerCase().includes("grupo") ||
+        (!m.next_match_id && String(m.phase || "").toUpperCase() !== "KNOCKOUT")
+    );
+    if (groupMatches.length === 0) return false;
+
+    return groupMatches.every(
+      (m: any) => m.status === "COMPLETED" || m.status === "FINISHED"
+    );
+  }, [currentTour, dbMatches, currentMatches]);
+
+  const handleAdvanceToKnockout = async () => {
+    if (!currentTour?.id || isAdvancingToKnockout) return;
+
+    if (
+      !window.confirm(
+        "Todas as partidas da Fase de Grupos foram concluídas! Deseja encerrar a Fase de Grupos e gerar a árvore de Mata-Mata com os classificados (1º e 2º de cada grupo)?"
+      )
+    ) {
+      return;
+    }
+
+    setIsAdvancingToKnockout(true);
+    try {
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+
+      const res = await generateKnockoutFromGroups(currentTour.id, 2, token);
+      if (!res.success) {
+        alert(`Erro ao gerar chaveamento eliminatório: ${res.error}`);
+        return;
+      }
+
+      await supabase.from("tournaments").update({ status: "IN_PROGRESS" }).eq("id", currentTour.id);
+
+      alert(res.message || "Fase de Grupos encerrada e Mata-Mata gerado com sucesso!");
+      await fetchTournamentData();
+      handleShortcutClick("bracket");
+    } catch (err: any) {
+      console.error("Exceção ao avançar para Mata-Mata:", err);
+      alert("Ocorreu um erro ao gerar o Mata-Mata.");
+    } finally {
+      setIsAdvancingToKnockout(false);
+    }
+  };
+
+  // Cálculos Financeiros Reais baseados no valor realmente pago por cada equipe
   const feePerTeam = currentTour?.entry_fee ?? 100.0;
-  const grossRevenue = confirmedTeamsCount * feePerTeam;
-  const platformFee = grossRevenue * 0.05; // Taxa de 5% da SportConnect
+
+  // Soma fiel do valor realmente pago por cada equipe confirmada no momento da inscrição
+  const grossRevenue = useMemo(() => {
+    return confirmedTeams.reduce((sum, t) => {
+      const paid =
+        t.amount_paid !== undefined && t.amount_paid !== null
+          ? Number(t.amount_paid)
+          : Number(feePerTeam);
+      return sum + paid;
+    }, 0);
+  }, [confirmedTeams, feePerTeam]);
+
+  const pendingRevenue = useMemo(() => {
+    return pendingTeams.reduce((sum, t) => {
+      const expected =
+        t.amount_paid !== undefined && t.amount_paid !== null
+          ? Number(t.amount_paid)
+          : Number(feePerTeam);
+      return sum + expected;
+    }, 0);
+  }, [pendingTeams, feePerTeam]);
+
+  const platformFee = grossRevenue * 0.10; // Taxa de 10% da SportConnect
   const netRevenue = grossRevenue - platformFee;
 
   const formatCurrency = (val: number) =>
@@ -597,41 +808,68 @@ export default function OrganizerDashboard({
     }
   }, [currentTour?.start_date, currentTour?.start_time]);
 
-  // Formato da Competição (dinâmico da base de dados)
+  // Formato da Competição (dinâmico da base de dados com tradução amigável)
   const competitionFormat = useMemo(() => {
-    const baseFormat = currentTour?.format || "Mata-mata";
+    const rawFmt = currentTour?.tournament_format || currentTour?.format;
+    const baseFormat = translateTournamentFormat(rawFmt);
     if (currentMatches.length > 0) {
       return `${baseFormat} • ${currentMatches.length} jogos`;
     }
     return baseFormat;
-  }, [currentTour?.format, currentMatches.length]);
+  }, [currentTour?.tournament_format, currentTour?.format, currentMatches.length]);
 
   // Pill de Status do Torneio
   const statusPill = useMemo(() => {
-    const rawStatus = (currentTour?.status || "ATIVO").toUpperCase();
+    const rawStatus = String(currentTour?.status || "OPEN").toUpperCase();
     const hasActiveMatches =
       currentMatches.length > 0 &&
       currentMatches.some((m) => m.status === "LIVE" || m.status === "COMPLETED");
 
-    if (rawStatus === "FINALIZADO" || rawStatus === "CONCLUIDO") {
+    if (rawStatus === "CANCELLED" || rawStatus === "CANCELADO") {
       return {
-        label: "Finalizado",
+        label: "TORNEIO CANCELADO",
+        pillClass: "bg-red-500/15 border-red-500/30 text-red-400",
+        dotClass: "bg-red-400",
+      };
+    }
+
+    if (rawStatus === "FINALIZADO" || rawStatus === "COMPLETED" || rawStatus === "CONCLUIDO") {
+      return {
+        label: "FINALIZADO",
         pillClass: "bg-zinc-800/80 border-zinc-700 text-zinc-400",
         dotClass: "bg-zinc-500",
       };
     }
 
-    if (rawStatus === "EM_ANDAMENTO" || hasActiveMatches) {
+    if (
+      rawStatus === "FINISHED" ||
+      rawStatus === "FINALIZADO" ||
+      rawStatus === "COMPLETED"
+    ) {
       return {
-        label: "Em Andamento",
-        pillClass: "bg-blue-500/10 border-blue-500/25 text-[#00a2ff]",
-        dotClass: "bg-[#00a2ff] animate-pulse",
+        label: "TORNEIO FINALIZADO",
+        pillClass: "bg-gray-600/90 border-zinc-700 text-zinc-200",
+        dotClass: "bg-zinc-400",
+      };
+    }
+
+    if (
+      rawStatus === "IN_PROGRESS" ||
+      rawStatus === "CLOSED" ||
+      rawStatus === "EM_ANDAMENTO" ||
+      rawStatus === "LIVE" ||
+      hasActiveMatches
+    ) {
+      return {
+        label: "CAMPEONATO EM ANDAMENTO",
+        pillClass: "bg-blue-600 border-blue-400/50 text-white shadow-lg shadow-blue-600/30 animate-pulse",
+        dotClass: "bg-white",
       };
     }
 
     return {
-      label: "Inscrições Abertas",
-      pillClass: "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
+      label: "INSCRIÇÕES ABERTAS",
+      pillClass: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400",
       dotClass: "bg-emerald-400 animate-pulse",
     };
   }, [currentTour?.status, currentMatches]);
@@ -648,6 +886,7 @@ export default function OrganizerDashboard({
   // Navegação interna dos Atalhos de Gestão
   const handleShortcutClick = (tab: "teams" | "bracket" | "referee") => {
     setCurrentView(tab);
+    fetchTournamentData();
     if (onNavigateTab) {
       onNavigateTab(tab);
     }
@@ -660,6 +899,7 @@ export default function OrganizerDashboard({
 
   const handleReturnToOverview = () => {
     setCurrentView("overview");
+    fetchTournamentData();
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("tab");
@@ -698,12 +938,39 @@ export default function OrganizerDashboard({
           </div>
 
           <div className="flex items-center gap-2.5">
+            <NotificationBell />
+
+            {/* Pill Reativa de Status do Torneio */}
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-black uppercase tracking-wider shadow-sm ${statusPill.pillClass}`}
+            >
+              <span className={`w-2 h-2 rounded-full ${statusPill.dotClass}`} />
+              <span>{statusPill.label}</span>
+            </div>
+
             {/* Badge Super Admin nos submódulos */}
             {isSuperAdmin && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 to-indigo-600/25 border border-purple-500/40 text-purple-300 text-xs font-black uppercase tracking-wider shadow-sm">
                 <ShieldCheck className="h-3.5 w-3.5 text-purple-400 shrink-0" />
                 <span>SUPER ADMIN</span>
               </div>
+            )}
+
+            {canAdvanceToKnockout && canEditSettings && (
+              <button
+                type="button"
+                onClick={handleAdvanceToKnockout}
+                disabled={isAdvancingToKnockout}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                title="Encerrar Fase de Grupos e Gerar Chaveamento"
+              >
+                {isAdvancingToKnockout ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trophy className="h-3.5 w-3.5" />
+                )}
+                <span>Encerrar Fase de Grupos e Gerar Chaveamento</span>
+              </button>
             )}
 
             {/* Botão Compartilhar Acesso rápido nos submódulos */}
@@ -724,8 +991,8 @@ export default function OrganizerDashboard({
               <button
                 onClick={() => handleShortcutClick("teams")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${currentView === "teams"
-                    ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
-                    : "text-zinc-400 hover:text-white"
+                  ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
+                  : "text-zinc-400 hover:text-white"
                   }`}
               >
                 <Users className="h-3.5 w-3.5" />
@@ -735,8 +1002,8 @@ export default function OrganizerDashboard({
               <button
                 onClick={() => handleShortcutClick("bracket")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${currentView === "bracket"
-                    ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
-                    : "text-zinc-400 hover:text-white"
+                  ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
+                  : "text-zinc-400 hover:text-white"
                   }`}
               >
                 <Network className="h-3.5 w-3.5" />
@@ -746,8 +1013,8 @@ export default function OrganizerDashboard({
               <button
                 onClick={() => handleShortcutClick("referee")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${currentView === "referee"
-                    ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
-                    : "text-zinc-400 hover:text-white"
+                  ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
+                  : "text-zinc-400 hover:text-white"
                   }`}
               >
                 <ClipboardList className="h-3.5 w-3.5" />
@@ -785,13 +1052,14 @@ export default function OrganizerDashboard({
         {/* Renderização condicional do Módulo Selecionado */}
         {currentView === "teams" && (
           <RegistrationManagement
-            teams={context.teams}
+            teams={currentTeams}
+            tournamentId={currentTour?.id}
             matches={context.matches}
             onAddTeam={context.handleAddTeam}
             onImportTeams={context.handleImportTeams}
             onDeleteTeam={canManageFinances ? context.handleDeleteTeam : undefined}
             onGenerateBracket={() =>
-              context.handleGenerateBracket(() => handleShortcutClick("bracket"))
+              handleGenerateBracket()
             }
             canManageFinances={canManageFinances}
             isReadOnly={!canManageFinances || context.isReadOnly}
@@ -812,11 +1080,51 @@ export default function OrganizerDashboard({
           />
         )}
 
+        {currentView === "bracket" && canAdvanceToKnockout && canEditSettings && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            <div className="bg-gradient-to-r from-emerald-950/60 via-teal-950/40 to-blue-950/50 border border-emerald-500/40 rounded-2xl p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Trophy className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white font-display">
+                    Fase de Grupos Concluída!
+                  </h3>
+                  <p className="text-xs text-zinc-300 mt-0.5">
+                    Todos os confrontos dos grupos foram finalizados. Clique ao lado para classificar o 1º e 2º de cada grupo e gerar a árvore do Mata-Mata.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleAdvanceToKnockout}
+                disabled={isAdvancingToKnockout}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+              >
+                {isAdvancingToKnockout ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Network className="h-4 w-4" />
+                )}
+                <span>
+                  {isAdvancingToKnockout
+                    ? "Gerando Mata-Mata..."
+                    : "Encerrar Fase de Grupos e Gerar Chaveamento"}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {currentView === "bracket" && (
           <BracketViewer
             tournamentId={currentTour?.id}
             showPublicHeader={false}
             onBack={handleReturnToOverview}
+            canManage={canEditSettings}
+            onRegenerateBracket={handleGenerateBracket}
+            isRegenerating={isGeneratingBracket}
           />
         )}
 
@@ -832,6 +1140,34 @@ export default function OrganizerDashboard({
             sportType={sportType}
           />
         )}
+
+        {/* Modais Globais Compartilhados (Acessíveis a partir dos submódulos como Gestão de Inscrições) */}
+        <CreateTournamentModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          tournamentToEdit={currentTour}
+          onTournamentUpdated={() => {
+            fetchTournamentData();
+          }}
+        />
+
+        <ShareTournamentModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          tournamentId={currentTour?.id || targetTournamentId || ""}
+          tournamentName={currentTour?.name}
+          ownerEmail={user?.email || ""}
+          isOwnerOrAdmin={canShare}
+        />
+
+        <CloseRegistrationsModal
+          isOpen={showCloseRegistrationsModal}
+          onClose={() => setShowCloseRegistrationsModal(false)}
+          onConfirm={handleCloseRegistrations}
+          isLoading={isClosingRegistrations}
+          confirmedTeamsCount={confirmedTeamsCount}
+          maxSpots={maxSpots}
+        />
       </div>
     );
   }
@@ -855,6 +1191,8 @@ export default function OrganizerDashboard({
 
         {/* Lado direito: Badges de status e botão de opções (Compartilhar/Editar/Excluir/Cancelar) */}
         <div className="flex items-center gap-2.5">
+          <NotificationBell />
+
           {/* Badge Super Admin em destaque */}
           {isSuperAdmin && (
             <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 via-indigo-600/20 to-purple-600/25 border border-purple-500/50 text-purple-300 text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-500/20 animate-pulse">
@@ -871,8 +1209,8 @@ export default function OrganizerDashboard({
                 {permissions.role === "ADMIN"
                   ? "Administrador"
                   : permissions.role === "REFEREE"
-                  ? "Árbitro"
-                  : "Mesário"}
+                    ? "Árbitro"
+                    : "Mesário"}
               </span>
             </div>
           )}
@@ -885,21 +1223,52 @@ export default function OrganizerDashboard({
             <span>{statusPill.label}</span>
           </div>
 
-          {/* Botão de Destaque no Topo: Gerar Chaveamento Oficial */}
+          {/* Botão de Destaque no Topo: Gerar / Regenerar Chaveamento Oficial */}
           {canGenerateBracket && canEditSettings && (
             <button
               type="button"
               onClick={handleGenerateBracket}
               disabled={isGeneratingBracket}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-[#00a2ff] to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-blue-500/25 active:scale-95 cursor-pointer disabled:opacity-50"
-              title="Gerar Chaveamento Oficial com as equipes confirmadas"
+              title={
+                matchesExist
+                  ? "Regenerar Chaveamento Oficial (nenhuma partida iniciada)"
+                  : "Gerar Chaveamento Oficial com as equipes confirmadas"
+              }
             >
               {isGeneratingBracket ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Network className="h-4 w-4" />
               )}
-              <span>{isGeneratingBracket ? "Gerando..." : "Gerar Chaveamento Oficial"}</span>
+              <span>
+                {isGeneratingBracket
+                  ? "Processando..."
+                  : matchesExist
+                  ? "Regenerar Chaveamento"
+                  : "Gerar Chaveamento Oficial"}
+              </span>
+            </button>
+          )}
+
+          {canAdvanceToKnockout && canEditSettings && (
+            <button
+              type="button"
+              onClick={handleAdvanceToKnockout}
+              disabled={isAdvancingToKnockout}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/25 active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Encerrar Fase de Grupos e gerar chaveamento Mata-Mata com os classificados"
+            >
+              {isAdvancingToKnockout ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trophy className="h-4 w-4" />
+              )}
+              <span>
+                {isAdvancingToKnockout
+                  ? "Gerando Mata-Mata..."
+                  : "Encerrar Fase de Grupos e Gerar Chaveamento"}
+              </span>
             </button>
           )}
 
@@ -1060,7 +1429,7 @@ export default function OrganizerDashboard({
         </div>
       </div>
 
-      {/* Banner de Destaque: Chaveamento Oficial Pendente */}
+      {/* Banner de Destaque: Chaveamento Oficial Pronto ou Regenerável */}
       {canGenerateBracket && canEditSettings && (
         <div className="bg-gradient-to-r from-blue-950/50 via-indigo-950/30 to-blue-900/40 border border-[#00a2ff]/40 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
           <div className="flex items-center gap-3.5">
@@ -1069,10 +1438,20 @@ export default function OrganizerDashboard({
             </div>
             <div>
               <h3 className="text-base font-black text-white font-display">
-                Chaveamento Oficial Pronto para Geração
+                {matchesExist
+                  ? "Regeneração de Chaveamento Disponível"
+                  : "Chaveamento Oficial Pronto para Geração"}
               </h3>
               <p className="text-xs text-zinc-300 mt-0.5">
-                Você possui <strong className="text-emerald-400 font-bold">{approvedPaidTeams.length} equipes confirmadas</strong> e nenhuma partida gerada. Clique ao lado para sortear a árvore mata-mata.
+                {matchesExist ? (
+                  <>
+                    Você possui <strong className="text-emerald-400 font-bold">{approvedPaidTeams.length} equipes confirmadas</strong> e nenhuma partida foi iniciada. Caso queira recalcular as chaves ou atualizar os confrontos, você pode regenerar agora.
+                  </>
+                ) : (
+                  <>
+                    Você possui <strong className="text-emerald-400 font-bold">{approvedPaidTeams.length} equipes confirmadas</strong> e nenhuma partida gerada. Clique ao lado para sortear a árvore de confrontos.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -1088,7 +1467,50 @@ export default function OrganizerDashboard({
             ) : (
               <Network className="h-4 w-4" />
             )}
-            <span>{isGeneratingBracket ? "Gerando Chaveamento..." : "Gerar Chaveamento Oficial"}</span>
+            <span>
+              {isGeneratingBracket
+                ? "Processando..."
+                : matchesExist
+                ? "Regenerar Chaveamento"
+                : "Gerar Chaveamento Oficial"}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Banner de Destaque: Transição da Fase de Grupos para o Mata-Mata */}
+      {canAdvanceToKnockout && canEditSettings && (
+        <div className="bg-gradient-to-r from-emerald-950/60 via-teal-950/40 to-blue-950/40 border border-emerald-500/40 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+              <Trophy className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white font-display">
+                Fase de Grupos Finalizada • Pronto para o Mata-Mata
+              </h3>
+              <p className="text-xs text-zinc-300 mt-0.5">
+                Todas as partidas da Fase de Grupos foram concluídas! Clique ao lado para cruzar matematicamente os classificados (1º do A vs 2º do B, etc.) e gerar a árvore eliminatória.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAdvanceToKnockout}
+            disabled={isAdvancingToKnockout}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/30 active:scale-95 cursor-pointer flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+          >
+            {isAdvancingToKnockout ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Network className="h-4 w-4" />
+            )}
+            <span>
+              {isAdvancingToKnockout
+                ? "Gerando Mata-Mata..."
+                : "Encerrar Fase de Grupos e Gerar Chaveamento"}
+            </span>
           </button>
         </div>
       )}
@@ -1125,9 +1547,9 @@ export default function OrganizerDashboard({
               <div className="pt-3 mt-3 border-t border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 {currentTour?.status === "CLOSED" ? (
                   <>
-                    <div className="flex items-center gap-1.5 text-xs text-red-400 font-bold">
+                    <div className="flex items-center gap-1.5 text-xs text-red-400 font-bold uppercase tracking-wider">
                       <Lock className="h-3.5 w-3.5" />
-                      <span>Inscrições Encerradas</span>
+                      <span>INSCRIÇÕES ENCERRADAS</span>
                     </div>
                     <button
                       type="button"
@@ -1142,15 +1564,15 @@ export default function OrganizerDashboard({
                 ) : currentTour?.status === "IN_PROGRESS" ||
                   currentTour?.status === "EM_ANDAMENTO" ||
                   currentTour?.status === "LIVE" ? (
-                  <div className="flex items-center gap-1.5 text-xs text-amber-400 font-bold">
-                    <Swords className="h-3.5 w-3.5" />
-                    <span>Torneio em Andamento (Inscrições Travadas)</span>
+                  <div className="flex items-center gap-1.5 text-xs text-blue-400 font-bold uppercase tracking-wider">
+                    <Swords className="h-3.5 w-3.5 text-blue-400" />
+                    <span>CAMPEONATO EM ANDAMENTO</span>
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold uppercase tracking-wider">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Inscrições Abertas</span>
+                      <span>INSCRIÇÕES ABERTAS</span>
                     </div>
                     <button
                       type="button"
@@ -1213,7 +1635,7 @@ export default function OrganizerDashboard({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-5 border-t border-[#27272a]/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-5 border-t border-[#27272a]/80">
           <div className="space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#9ca3af]">
               Arrecadação Bruta
@@ -1228,7 +1650,7 @@ export default function OrganizerDashboard({
 
           <div className="space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#9ca3af]">
-              Taxa SportConnect (5%)
+              Taxa SportConnect (10%)
             </span>
             <div className="text-2xl sm:text-3xl font-black text-red-400 font-display">
               - {formatCurrency(platformFee)}
@@ -1247,6 +1669,18 @@ export default function OrganizerDashboard({
             </div>
             <span className="text-[10px] text-emerald-400/70 block font-semibold">
               Disponível para repasse ao organizador
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+              Receita Pendente (Aguardando Pagamento)
+            </span>
+            <div className="text-2xl sm:text-3xl font-black text-amber-400 font-display">
+              {formatCurrency(pendingRevenue)}
+            </div>
+            <span className="text-[10px] text-amber-400/70 block font-semibold">
+              {pendingCount} {pendingCount === 1 ? "inscrição aguardando Pix / aprovação" : "inscrições aguardando Pix / aprovação"}
             </span>
           </div>
         </div>
@@ -1452,62 +1886,14 @@ export default function OrganizerDashboard({
       />
 
       {/* Modal de Confirmação de Encerramento Manual de Inscrições */}
-      {showCloseRegistrationsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="bg-[#1a1a1a] border border-zinc-800 rounded-3xl p-6 sm:p-7 max-w-md w-full text-white shadow-2xl relative space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0">
-                <Lock className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black font-display uppercase tracking-tight text-white">
-                  Encerrar Inscrições
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  Bloqueio manual de novas participações
-                </p>
-              </div>
-            </div>
-
-            <p className="text-sm text-zinc-300 leading-relaxed">
-              Tem certeza que deseja encerrar as inscrições? Nenhuma nova equipa poderá registar-se ou pagar.
-            </p>
-
-            <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 flex items-center justify-between">
-              <span>Equipes confirmadas:</span>
-              <strong className="text-emerald-400 font-bold">{confirmedTeamsCount} de {maxSpots} vagas</strong>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowCloseRegistrationsModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-300 transition-all cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleCloseRegistrations}
-                disabled={isClosingRegistrations}
-                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-red-600/30 active:scale-95 cursor-pointer flex items-center gap-2 disabled:opacity-50"
-              >
-                {isClosingRegistrations ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Encerrando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-3.5 w-3.5" />
-                    <span>Sim, Encerrar Inscrições</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CloseRegistrationsModal
+        isOpen={showCloseRegistrationsModal}
+        onClose={() => setShowCloseRegistrationsModal(false)}
+        onConfirm={handleCloseRegistrations}
+        isLoading={isClosingRegistrations}
+        confirmedTeamsCount={confirmedTeamsCount}
+        maxSpots={maxSpots}
+      />
     </div>
   );
 }

@@ -24,18 +24,26 @@ import {
   ExternalLink,
   Ban,
   ShieldCheck,
+  ShieldAlert,
   CreditCard,
   AlertTriangle,
   X,
   Lock,
+  MessageCircle,
+  PlayCircle,
 } from "lucide-react";
+// end lucide-react
+// end lucide-react
 import { useAuth } from "@/context/AuthProvider";
 import { useTournament } from "@/context/TournamentContext";
 import { supabase } from "@/lib/supabase";
 import { Tournament, SportType } from "@/types";
+import { translateTournamentFormat } from "@/utils/formatMap";
 import CreateTournamentModal from "@/components/CreateTournamentModal";
 import PixCheckoutForm from "@/components/PixCheckoutForm";
 import { cancelRegistration } from "@/app/actions/registration";
+import { syncUserStaffAndNotifications } from "@/app/actions/tournament";
+import NotificationBell from "@/components/NotificationBell";
 
 export interface MyRegistration {
   id: string; // Team ID
@@ -47,9 +55,11 @@ export interface MyRegistration {
   payout_status?: "COMPLETED" | "FAILED_TRANSFER" | "PENDING" | string;
   payment_proof_url?: string | null;
   status?: string;
+  isApproved?: boolean;
   cancellation_status?: string;
   created_at?: string;
   tournament_id?: string;
+  organizer_phone?: string | null;
   tournament?: Tournament | null;
 }
 
@@ -77,6 +87,7 @@ export default function HubCentral() {
 
   // Estados com os dados reais do usuário
   const [myTournaments, setMyTournaments] = useState<MyOrganizedTournament[]>([]);
+  const [sharedTournaments, setSharedTournaments] = useState<MyOrganizedTournament[]>([]);
   const [myRegistrations, setMyRegistrations] = useState<MyRegistration[]>([]);
 
   // Estados para retomada de pagamento e cancelamento pós-pagamento
@@ -97,7 +108,7 @@ export default function HubCentral() {
     if (!user?.id) return;
 
     try {
-      // 1. Torneios Organizados: SELECT * FROM tournaments WHERE owner_id = [user.id]
+      // 1. Torneios Organizados: Criados e gerenciados pelo próprio usuário (owner_id)
       const { data: tournamentsData, error: tournError } = await supabase
         .from("tournaments")
         .select("*")
@@ -108,129 +119,231 @@ export default function HubCentral() {
         console.warn("Aviso ao carregar torneios organizados:", tournError);
       }
 
-      // 1.1 Torneios Compartilhados (Equipe via RBAC)
-      const userEmail = user.email?.toLowerCase().trim();
-      let sharedTournIds: { id: string; role: string }[] = [];
-      if (userEmail) {
-        try {
-          const { data: staffData } = await supabase
-            .from("tournament_staff")
-            .select("tournament_id, role")
-            .or(`user_id.eq.${user.id},email.eq.${userEmail}`);
+      const ownedTournaments = tournamentsData || [];
+      const ownedIds = new Set(ownedTournaments.map((t) => t.id));
 
-          if (staffData && staffData.length > 0) {
-            sharedTournIds = staffData
-              .filter((s: any) => s.tournament_id)
-              .map((s: any) => ({ id: s.tournament_id, role: s.role }));
+      // 1.1 Torneios Compartilhados (Equipe via RBAC / tournament_staff)
+      const currentUserEmail = user.email || "";
+      const userEmail = currentUserEmail.toLowerCase().trim();
+      let staffList: any[] = [];
+
+      if (currentUserEmail || user.id) {
+        try {
+          // Query ajustada conforme especificação: user_id.eq.${currentUser.id},email.eq.${currentUser.email}
+          const orFilter = currentUserEmail
+            ? `user_id.eq.${user.id},email.eq.${currentUserEmail},email.eq.${userEmail}`
+            : `user_id.eq.${user.id}`;
+
+          const { data: staffData, error: staffErr } = await supabase
+            .from("tournament_staff")
+            .select("id, tournament_id, role, user_id, email, tournaments(*)")
+            .or(orFilter);
+
+          if (staffErr) {
+            console.warn("Aviso ao consultar tournament_staff no cliente:", staffErr);
+          } else if (staffData) {
+            staffList = staffData;
           }
         } catch (staffErr) {
           console.warn("Aviso ao consultar tournament_staff:", staffErr);
         }
-      }
 
-      // Torneios compartilhados que não são de propriedade do próprio usuário
-      const ownedIds = new Set((tournamentsData || []).map((t) => t.id));
-      const missingSharedIds = sharedTournIds.filter((s) => !ownedIds.has(s.id));
-
-      let allTournaments = [...(tournamentsData || [])];
-      if (missingSharedIds.length > 0) {
+        // Auto-vínculo de convites pendentes e disparo de notificações retroativas (Admin Bypass)
         try {
-          const { data: sharedTourns } = await supabase
-            .from("tournaments")
-            .select("*")
-            .in("id", missingSharedIds.map((s) => s.id));
-
-          if (sharedTourns && sharedTourns.length > 0) {
-            allTournaments = [...allTournaments, ...sharedTourns];
+          const syncResult = await syncUserStaffAndNotifications(user.id, currentUserEmail);
+          // Se a query cliente não encontrou registros devido a políticas de RLS, usa o resultado do sync admin
+          if (staffList.length === 0 && syncResult.sharedTournaments.length > 0) {
+            staffList = syncResult.sharedTournaments;
           }
-        } catch (stErr) {
-          console.warn("Aviso ao carregar torneios compartilhados:", stErr);
+        } catch (syncErr) {
+          console.warn("[HubCentral] Aviso ao sincronizar staff/notificações:", syncErr);
         }
       }
 
-      // 2. Minhas Inscrições (Atleta): SELECT *, tournaments(*) FROM teams WHERE user_id = [user.id]
-      const { data: teamsData, error: teamsError } = await supabase
+      // Auto-vínculo no cliente: se encontrar registro com email correspondente e user_id nulo, atualiza silenciosamente
+      const unlinkedStaff = staffList.filter(
+        (s) => (!s.user_id || s.user_id !== user.id) && user.id && s.email && s.email.toLowerCase().trim() === userEmail
+      );
+      if (unlinkedStaff.length > 0) {
+        const unlinkedIds = unlinkedStaff.map((s) => s.id).filter(Boolean);
+        if (unlinkedIds.length > 0) {
+          supabase
+            .from("tournament_staff")
+            .update({ user_id: user.id })
+            .in("id", unlinkedIds)
+            .then();
+        }
+      }
+
+      // Separar torneios compartilhados onde o usuário atua como staff (exclui os criados por ele mesmo)
+      const staffRoleMap: Record<string, string> = {};
+      const sharedTournamentsRaw: any[] = [];
+      const missingSharedTournIds: string[] = [];
+
+      staffList.forEach((s) => {
+        if (!s.tournament_id) return;
+        if (ownedIds.has(s.tournament_id)) return; // Já está na lista de próprios
+
+        staffRoleMap[s.tournament_id] = s.role;
+
+        const joinedTourn = Array.isArray(s.tournaments) ? s.tournaments[0] : s.tournaments;
+        if (joinedTourn && joinedTourn.id) {
+          sharedTournamentsRaw.push(joinedTourn);
+        } else {
+          missingSharedTournIds.push(s.tournament_id);
+        }
+      });
+
+      // Fallback para buscar torneios compartilhados caso o join aninhado não tenha vindo
+      if (missingSharedTournIds.length > 0) {
+        try {
+          const { data: extraShared } = await supabase
+            .from("tournaments")
+            .select("*")
+            .in("id", missingSharedTournIds);
+
+          if (extraShared) {
+            sharedTournamentsRaw.push(...extraShared);
+          }
+        } catch (extErr) {
+          console.warn("Aviso ao carregar torneios compartilhados via fallback:", extErr);
+        }
+      }
+
+      // Desduplicar torneios compartilhados por ID
+      const uniqueSharedMap = new Map<string, any>();
+      sharedTournamentsRaw.forEach((t) => {
+        if (t && t.id && !ownedIds.has(t.id)) {
+          uniqueSharedMap.set(t.id, t);
+        }
+      });
+      const uniqueSharedTournaments = Array.from(uniqueSharedMap.values());
+
+      // 2. Minhas Inscrições (Atleta): Busca inscrições com dados do torneio (incluindo status) e telefone do organizador
+      let { data: teamsData, error: teamsError } = await supabase
         .from("teams")
-        .select("*, tournaments(*)")
-        .eq("user_id", user.id)
+        .select("*, tournaments(id, name, status, start_date, start_time, end_date, location, format, sport_type, cover_url, entry_fee, max_teams, owner_id)")
+        .eq("user_id", user?.id || "")
+        .neq("status", "CANCELLED")
         .order("created_at", { ascending: false });
+
+      if (teamsError) {
+        const fallbackTeams = await supabase
+          .from("teams")
+          .select("*, tournaments(*)")
+          .eq("user_id", user?.id || "")
+          .neq("status", "CANCELLED")
+          .order("created_at", { ascending: false });
+        teamsData = fallbackTeams.data;
+        teamsError = fallbackTeams.error;
+      }
 
       if (teamsError) {
         console.warn("Aviso ao carregar inscrições do atleta:", teamsError);
       }
 
-      // Processar Torneios e contagem de vagas preenchidas
-      if (allTournaments.length > 0) {
-        const tournIds = allTournaments.map((t) => t.id);
-        const teamCounts: Record<string, { total: number; approved: number }> = {};
+      // Processar Torneios (Próprios e Compartilhados) e contagem de vagas preenchidas
+      const allTournIds = [
+        ...ownedTournaments.map((t) => t.id),
+        ...uniqueSharedTournaments.map((t) => t.id),
+      ];
 
-        if (tournIds.length > 0) {
-          const { data: teamRows } = await supabase
-            .from("teams")
-            .select("id, tournament_id, payment_status, status")
-            .in("tournament_id", tournIds);
+      const teamCounts: Record<string, { total: number; approved: number }> = {};
+      if (allTournIds.length > 0) {
+        const { data: teamRows } = await supabase
+          .from("teams")
+          .select("id, tournament_id, payment_status, status")
+          .in("tournament_id", allTournIds)
+          .neq("status", "CANCELLED")
+          .neq("status", "REJECTED");
 
-          if (teamRows) {
-            teamRows.forEach((r) => {
-              if (!teamCounts[r.tournament_id]) {
-                teamCounts[r.tournament_id] = { total: 0, approved: 0 };
-              }
-              teamCounts[r.tournament_id].total++;
-              if (
-                r.payment_status === "PAID" ||
-                r.payment_status === "APPROVED" ||
-                r.status === "CONFIRMED" ||
-                r.status === "PAID"
-              ) {
-                teamCounts[r.tournament_id].approved++;
-              }
-            });
-          }
+        if (teamRows) {
+          // Ignora explicitamente equipes canceladas ou rejeitadas
+          const activeTeamRows = teamRows.filter(
+            (team) => team.status !== "CANCELLED" && team.status !== "REJECTED"
+          );
+
+          activeTeamRows.forEach((r) => {
+            if (!teamCounts[r.tournament_id]) {
+              teamCounts[r.tournament_id] = { total: 0, approved: 0 };
+            }
+            teamCounts[r.tournament_id].total++;
+            if (
+              r.payment_status === "PAID" ||
+              r.payment_status === "APPROVED" ||
+              r.status === "CONFIRMED" ||
+              r.status === "PAID"
+            ) {
+              teamCounts[r.tournament_id].approved++;
+            }
+          });
         }
-
-        const staffRoleMap: Record<string, string> = {};
-        sharedTournIds.forEach((s) => {
-          staffRoleMap[s.id] = s.role;
-        });
-
-        const mappedTournaments: MyOrganizedTournament[] = allTournaments.map((t) => ({
-          id: t.id,
-          name: t.name,
-          status: t.status,
-          createdAt: t.created_at,
-          sport_type: (t.sport_type as SportType) || "DOMINO",
-          format: t.format,
-          owner_id: t.owner_id,
-          max_teams: t.max_teams ? Number(t.max_teams) : 16,
-          entry_fee: t.entry_fee ? Number(t.entry_fee) : 0,
-          location: t.location,
-          start_date: t.start_date,
-          end_date: t.end_date,
-          rules: t.rules,
-          cover_url: t.cover_url,
-          organizer_pix_key: t.organizer_pix_key,
-          teamsCount: teamCounts[t.id]?.total || 0,
-          approvedTeamsCount: teamCounts[t.id]?.approved || 0,
-          staffRole: t.owner_id === user.id ? undefined : staffRoleMap[t.id],
-        }));
-
-        setMyTournaments(mappedTournaments);
-      } else {
-        setMyTournaments([]);
       }
+
+      // Mapear Meus Torneios (Criados pelo usuário)
+      const mappedMyTournaments: MyOrganizedTournament[] = ownedTournaments.map((t) => ({
+        id: t.id,
+        name: t.name,
+        status: t.status,
+        createdAt: t.created_at,
+        sport_type: (t.sport_type as SportType) || "DOMINO",
+        format: t.format,
+        owner_id: t.owner_id,
+        max_teams: t.max_teams ? Number(t.max_teams) : 16,
+        entry_fee: t.entry_fee ? Number(t.entry_fee) : 0,
+        location: t.location,
+        start_date: t.start_date,
+        end_date: t.end_date,
+        rules: t.rules,
+        cover_url: t.cover_url,
+        organizer_pix_key: t.organizer_pix_key,
+        pix_key_type: t.pix_key_type,
+        rulebook_url: t.rulebook_url,
+        teamsCount: teamCounts[t.id]?.total || 0,
+        approvedTeamsCount: teamCounts[t.id]?.approved || 0,
+      }));
+      setMyTournaments(mappedMyTournaments);
+
+      // Mapear Torneios Compartilhados Comigo (Equipe / Arbitragem)
+      const mappedSharedTournaments: MyOrganizedTournament[] = uniqueSharedTournaments.map((t) => ({
+        id: t.id,
+        name: t.name,
+        status: t.status,
+        createdAt: t.created_at,
+        sport_type: (t.sport_type as SportType) || "DOMINO",
+        format: t.format,
+        owner_id: t.owner_id,
+        max_teams: t.max_teams ? Number(t.max_teams) : 16,
+        entry_fee: t.entry_fee ? Number(t.entry_fee) : 0,
+        location: t.location,
+        start_date: t.start_date,
+        end_date: t.end_date,
+        rules: t.rules,
+        cover_url: t.cover_url,
+        organizer_pix_key: t.organizer_pix_key,
+        pix_key_type: t.pix_key_type,
+        rulebook_url: t.rulebook_url,
+        teamsCount: teamCounts[t.id]?.total || 0,
+        approvedTeamsCount: teamCounts[t.id]?.approved || 0,
+        staffRole: staffRoleMap[t.id] || "REFEREE",
+      }));
+      setSharedTournaments(mappedSharedTournaments);
 
       // Processar Minhas Inscrições
       if (teamsData) {
         // Fallback para buscar torneios caso a junção direta não tenha preenchido
         const missingTournIds = teamsData
-          .filter((t) => !t.tournaments && t.tournament_id)
+          .filter((t) => {
+            const rawTourn = Array.isArray(t.tournaments) ? t.tournaments[0] : t.tournaments;
+            return !rawTourn && t.tournament_id;
+          })
           .map((t) => t.tournament_id);
 
         const fallbackMap: Record<string, any> = {};
         if (missingTournIds.length > 0) {
           const { data: fbData } = await supabase
             .from("tournaments")
-            .select("*")
+            .select("id, name, status, start_date, start_time, end_date, location, format, sport_type, cover_url, entry_fee, max_teams, owner_id")
             .in("id", missingTournIds);
 
           if (fbData) {
@@ -240,9 +353,59 @@ export default function HubCentral() {
           }
         }
 
-        const mappedRegistrations: MyRegistration[] = teamsData.map((t) => {
+        const ownerIds = Array.from(
+          new Set(
+            teamsData
+              .map((t) => {
+                const rawTourn = Array.isArray(t.tournaments) ? t.tournaments[0] : t.tournaments;
+                const finalTourn = rawTourn || fallbackMap[t.tournament_id] || null;
+                return finalTourn?.owner_id;
+              })
+              .filter(Boolean)
+          )
+        );
+
+        const organizerPhonesByOwnerId: Record<string, string> = {};
+        if (ownerIds.length > 0) {
+          try {
+            const { data: orgProfiles } = await supabase
+              .from("profiles")
+              .select("id, phone")
+              .in("id", ownerIds);
+            if (orgProfiles) {
+              orgProfiles.forEach((p: any) => {
+                if (p.id && p.phone) {
+                  organizerPhonesByOwnerId[p.id] = p.phone;
+                }
+              });
+            }
+          } catch (orgErr) {
+            console.warn("Aviso ao carregar telefone dos organizadores:", orgErr);
+          }
+        }
+
+        const mappedRegistrations: MyRegistration[] = teamsData
+          .filter(
+            (t) =>
+              t.status !== "CANCELLED" &&
+              t.status !== "CANCELED" &&
+              t.payment_status !== "CANCELED" &&
+              t.payment_status !== "CANCELLED" &&
+              t.cancellation_status !== "REFUNDED"
+          )
+          .map((t) => {
           const rawTourn = Array.isArray(t.tournaments) ? t.tournaments[0] : t.tournaments;
           const finalTourn = rawTourn || fallbackMap[t.tournament_id] || null;
+          const joinedProfile = Array.isArray(finalTourn?.profiles)
+            ? finalTourn?.profiles[0]
+            : finalTourn?.profiles;
+          const rawOrganizerPhone =
+            joinedProfile?.phone ||
+            (finalTourn?.owner_id ? organizerPhonesByOwnerId[finalTourn.owner_id] : undefined) ||
+            finalTourn?.organizer_phone ||
+            finalTourn?.contact ||
+            (finalTourn?.pix_key_type === "CELULAR" ? finalTourn?.organizer_pix_key : undefined) ||
+            null;
 
           return {
             id: t.id,
@@ -254,9 +417,13 @@ export default function HubCentral() {
             payout_status: t.payout_status,
             payment_proof_url: t.payment_proof_url || null,
             status: t.status,
+            isApproved:
+              ["APPROVED", "PAID", "CONFIRMED"].includes(String(t.status || "").toUpperCase()) ||
+              ["APPROVED", "PAID", "CONFIRMED"].includes(String(t.payment_status || "").toUpperCase()),
             cancellation_status: t.cancellation_status,
             created_at: t.created_at,
             tournament_id: t.tournament_id,
+            organizer_phone: rawOrganizerPhone,
             tournament: finalTourn
               ? {
                 id: finalTourn.id,
@@ -326,7 +493,8 @@ export default function HubCentral() {
   const executeCancellation = async (teamId: string, status: "REQUESTED_BY_ATHLETE" | "REFUND_REQUESTED") => {
     setIsCancellingId(teamId);
     try {
-      const res = await cancelRegistration(teamId, status);
+      const { data: authData } = await supabase.auth.getSession();
+      const res = await cancelRegistration(teamId, status, authData?.session?.access_token);
 
       if (!res.success) {
         console.error("Erro ao solicitar cancelamento via Server Action:", res.error);
@@ -381,6 +549,8 @@ export default function HubCentral() {
     }
   };
 
+  // Log de Depuração solicitado para verificar os dados reais na memória antes do retorno do JSX
+  
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
       {/* 1. Header de Navegação Global */}
@@ -441,6 +611,9 @@ export default function HubCentral() {
               <Plus className="h-4 w-4" />
               <span>Novo Torneio</span>
             </button>
+
+            {/* Sino de Alertas do Organizador */}
+            <NotificationBell />
 
             {/* Perfil do Usuário com link para /perfil */}
             <Link
@@ -524,7 +697,7 @@ export default function HubCentral() {
           </div>
 
           {/* Cards de Métricas Rápidas */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-8 pt-6 border-t border-zinc-800/80">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-8 pt-6 border-t border-zinc-800/80">
             <div className="bg-[#101012] border border-zinc-800/80 rounded-2xl p-4">
               <div className="flex items-center justify-between text-zinc-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Inscrições Ativas</span>
@@ -545,6 +718,17 @@ export default function HubCentral() {
                 {myTournaments.length}
               </div>
               <span className="text-[10px] text-zinc-500">Torneios criados</span>
+            </div>
+
+            <div className="bg-[#101012] border border-zinc-800/80 rounded-2xl p-4">
+              <div className="flex items-center justify-between text-zinc-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Compartilhados</span>
+                <ShieldCheck className="h-4 w-4 text-purple-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-display">
+                {sharedTournaments.length}
+              </div>
+              <span className="text-[10px] text-zinc-500">Como staff / arbitragem</span>
             </div>
 
             <div className="col-span-2 sm:col-span-1 bg-[#101012] border border-zinc-800/80 rounded-2xl p-4">
@@ -632,17 +816,46 @@ export default function HubCentral() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  
                   {myRegistrations.map((reg) => {
                     const sportType = reg.tournament?.sport_type || "DOMINO";
                     const sportInfo = SPORT_META[sportType] || SPORT_META.DOMINO;
                     const tournamentId = reg.tournament?.id || reg.tournament_id || "";
 
-                    const isPaid = reg.status === "PAID" || reg.payment_status === "PAID";
-                    const isApproved = isPaid || reg.payment_status === "APPROVED" || reg.status === "CONFIRMED";
+                    const tournament = reg.tournament;
+                    const rawRegStatus = String(reg.status || "").toUpperCase();
+                    const rawPaymentStatus = String(reg.payment_status || "").toUpperCase();
+                    const rawTournStatus = String(tournament?.status || reg.tournament?.status || "").toUpperCase();
+                    const tournStatus = rawTournStatus;
+
+                    // 1. Verifica se o atleta está de facto aprovado/pago
+                    const isRegistrationValid =
+                      reg.isApproved === true ||
+                      ["APPROVED", "PAID", "CONFIRMED"].includes(rawRegStatus) ||
+                      ["APPROVED", "PAID", "CONFIRMED"].includes(rawPaymentStatus);
+
+                    // 2. Considera o torneio ativo se estiver IN_PROGRESS ou se já estiver CLOSED (chaves geradas)
+                    const isTournamentActive =
+                      ["IN_PROGRESS", "CLOSED", "EM_ANDAMENTO", "LIVE"].includes(rawTournStatus);
+
+                    const isApproved = isRegistrationValid;
+                    const isPaid = rawRegStatus === "PAID" || rawPaymentStatus === "PAID";
+                    const isTournamentInProgress = isTournamentActive;
                     const isWaitingApproval = !isApproved && (reg.payment_status === "WAITING_APPROVAL" || Boolean(reg.payment_proof_url));
                     const isWaitingPix = !isApproved && !isWaitingApproval && reg.payment_status === "WAITING_PIX";
                     const isPending = !isApproved && !isWaitingApproval && !isWaitingPix;
-                    const isTournamentNotOpen = Boolean(reg.tournament?.status && reg.tournament.status !== "OPEN");
+                    const isTournamentNotOpen = Boolean(tournStatus && tournStatus !== "OPEN");
+                    const cleanOrgDigits = (reg.organizer_phone || "").replace(/\D/g, "");
+                    const organizerPhone =
+                      cleanOrgDigits.length >= 10 && cleanOrgDigits.length <= 11 && !cleanOrgDigits.startsWith("55")
+                        ? `55${cleanOrgDigits}`
+                        : cleanOrgDigits;
+                    const isCancellationRequested =
+                      Boolean((reg as any).cancel_requested) ||
+                      reg.cancellation_status === "CANCELLATION_REQUESTED" ||
+                      reg.cancellation_status === "REQUESTED_BY_ATHLETE" ||
+                      reg.cancellation_status === "REFUND_REQUESTED" ||
+                      reg.status === "CANCELLATION_REQUESTED";
 
                     return (
                       <div
@@ -655,16 +868,18 @@ export default function HubCentral() {
                         {/* Linha decorativa superior sutil */}
                         <div
                           className={`absolute top-0 left-0 right-0 ${
-                            isPaid
-                              ? "h-1.5 bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 shadow-[0_0_12px_rgba(16,185,129,0.7)]"
-                              : isApproved
-                                ? "h-1 bg-emerald-500"
-                                : isWaitingApproval
-                                  ? "h-1 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                                  : isWaitingPix
-                                    ? "h-1 bg-orange-500"
-                                    : "h-1 bg-yellow-500"
-                          }`}
+                            isApproved && isTournamentInProgress
+                              ? "h-1.5 bg-gradient-to-r from-blue-600 via-[#00a2ff] to-cyan-400 shadow-[0_0_12px_rgba(37,99,235,0.7)]"
+                              : isPaid
+                                ? "h-1.5 bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 shadow-[0_0_12px_rgba(16,185,129,0.7)]"
+                                : isApproved
+                                  ? "h-1 bg-emerald-500"
+                                  : isWaitingApproval
+                                    ? "h-1 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                    : isWaitingPix
+                                      ? "h-1 bg-orange-500"
+                                      : "h-1 bg-yellow-500"
+                            }`}
                         />
 
                         <div className="space-y-3.5">
@@ -675,51 +890,42 @@ export default function HubCentral() {
                               <span>{sportInfo.label}</span>
                             </span>
 
-                            {/* Badge de Status de Pagamento e Cancelamento */}
-                            {reg.cancellation_status === "REFUND_REQUESTED" ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-wider">
-                                <AlertTriangle className="h-3 w-3" />
-                                <span>Reembolso Solicitado</span>
-                              </span>
-                            ) : reg.cancellation_status === "REQUESTED_BY_ATHLETE" ? (
+                            {/* Badge de Status no Topo do Card (Precedência Estrita) */}
+                            {isCancellationRequested ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-wider">
                                 <Clock className="h-3 w-3 animate-pulse" />
-                                <span>Cancelamento Solicitado</span>
+                                <span>Estorno Solicitado</span>
                               </span>
                             ) : reg.cancellation_status === "REFUNDED" ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400 text-[10px] font-black uppercase tracking-wider">
                                 <Ban className="h-3 w-3" />
                                 <span>Cancelado / Estornado</span>
                               </span>
+                            ) : isApproved && isTournamentInProgress ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-blue-500 text-blue-400 bg-blue-500/10 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(59,130,246,0.3)] animate-pulse">
+                                <PlayCircle className="w-4 h-4 mr-1 text-blue-400 shrink-0" />
+                                <span>CAMPEONATO EM ANDAMENTO</span>
+                              </span>
+                            ) : isApproved ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500 text-emerald-400 bg-emerald-500/15 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                                <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-400 shrink-0" />
+                                <span>INSCRIÇÃO CONFIRMADA!</span>
+                              </span>
+                            ) : isWaitingApproval ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-wider">
+                                <Clock className="h-3 w-3 animate-pulse" />
+                                <span>Em Análise</span>
+                              </span>
+                            ) : isWaitingPix ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/25 text-orange-400 text-[10px] font-black uppercase tracking-wider">
+                                <Clock className="h-3 w-3 animate-pulse" />
+                                <span>Aguardando Pix</span>
+                              </span>
                             ) : (
-                              <>
-                                {isPaid ? (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.4)] animate-pulse">
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                                    <span>Inscrição Confirmada! ✅</span>
-                                  </span>
-                                ) : isApproved ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-wider">
-                                    <CheckCircle2 className="h-3 w-3 shrink-0" />
-                                    <span>Inscrição Confirmada! ✅</span>
-                                  </span>
-                                ) : isWaitingApproval ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-wider">
-                                    <Clock className="h-3 w-3 animate-pulse" />
-                                    <span>Em Análise</span>
-                                  </span>
-                                ) : isWaitingPix ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/25 text-orange-400 text-[10px] font-black uppercase tracking-wider">
-                                    <Clock className="h-3 w-3 animate-pulse" />
-                                    <span>Aguardando Pix</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/25 text-yellow-400 text-[10px] font-black uppercase tracking-wider">
-                                    <AlertCircle className="h-3 w-3" />
-                                    <span>Pendente</span>
-                                  </span>
-                                )}
-                              </>
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/25 text-yellow-400 text-[10px] font-black uppercase tracking-wider">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Pendente</span>
+                              </span>
                             )}
                           </div>
 
@@ -736,21 +942,36 @@ export default function HubCentral() {
                             )}
                           </div>
 
-                          {/* Feedback de Confirmação para Inscrição Paga */}
-                          {isPaid && (
-                            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] font-medium flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                          {/* Mensagem / Alerta de Status Central (Precedência Estrita) */}
+                          {isCancellationRequested ? (
+                            /* Prioridade 1 (Maior): Se cancel_requested for true ou status for CANCELLATION_REQUESTED */
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-medium flex items-center gap-2 shadow-sm animate-fadeIn">
+                              <Clock className="h-4 w-4 shrink-0 text-amber-400 animate-pulse" />
+                              <span>Aguardando confirmação e estorno por parte do organizador.</span>
+                            </div>
+                          ) : isApproved && isTournamentInProgress ? (
+                            /* Prioridade 2: Se tournament.status === 'IN_PROGRESS' e APPROVED */
+                            <div className="bg-blue-500/10 text-blue-400 border border-blue-500/20 p-3 rounded-xl flex items-center text-xs font-semibold shadow-sm animate-fadeIn">
+                              <Trophy className="w-5 h-5 mr-2 text-blue-400 shrink-0" />
+                              <span>As partidas já começaram! Acompanhe o chaveamento.</span>
+                            </div>
+                          ) : isApproved ? (
+                            /* Prioridade 3: Se APPROVED */
+                            <div className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-3 rounded-xl flex items-center text-xs font-semibold shadow-sm animate-fadeIn">
+                              <CheckCircle2 className="w-5 h-5 mr-2 text-emerald-400 shrink-0" />
                               <span>Vaga confirmada! Você está oficialmente no torneio.</span>
                             </div>
-                          )}
-
-                          {/* Feedback de Comprovante em Análise */}
-                          {isWaitingApproval && (
-                            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] font-medium flex items-center gap-2">
+                          ) : isWaitingApproval ? (
+                            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] font-medium flex items-center gap-2 shadow-sm">
                               <Clock className="h-3.5 w-3.5 text-blue-400 shrink-0 animate-pulse" />
                               <span>Comprovante em análise • O organizador foi notificado.</span>
                             </div>
-                          )}
+                          ) : isWaitingPix || isPending ? (
+                            <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium flex items-center gap-2 shadow-sm">
+                              <Clock className="h-3.5 w-3.5 text-orange-400 shrink-0 animate-pulse" />
+                              <span>Inscrição pendente de pagamento Pix.</span>
+                            </div>
+                          ) : null}
 
                           {/* Dados da Equipe / Dupla Registrada */}
                           <div className="p-3 rounded-xl bg-[#121214] border border-zinc-800/80 space-y-1">
@@ -767,71 +988,81 @@ export default function HubCentral() {
                             )}
                           </div>
 
-                          {/* Alerta de Cancelamento Solicitado ou Botões de Ação */}
-                          {reg.cancellation_status === "REFUND_REQUESTED" ? (
-                            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-medium flex items-center gap-2">
-                              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-                              <span>Cancelamento pós-pagamento solicitado • O reembolso deve ser negociado diretamente com a organização.</span>
-                            </div>
-                          ) : reg.cancellation_status === "REQUESTED_BY_ATHLETE" ? (
-                            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-medium flex items-center gap-2">
-                              <Clock className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-                              <span>Cancelamento solicitado • O organizador foi notificado.</span>
-                            </div>
-                          ) : (
-                            <div className="pt-1 space-y-2">
-                              {/* Botão de Ação Primária: Finalizar Pagamento (se PENDING ou WAITING_PIX e sem comprovante em análise) */}
-                              {(isWaitingPix || isPending) && !isWaitingApproval && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCheckoutRegistration(reg);
-                                  }}
-                                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500 hover:from-orange-400 hover:to-amber-300 text-neutral-950 text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                                  title="Finalizar pagamento e anexar comprovante"
-                                >
-                                  <CreditCard className="h-3.5 w-3.5" />
-                                  <span>Finalizar Pagamento</span>
-                                </button>
-                              )}
-
-                              {/* Botão Cancelar Minha Inscrição */}
-                              <button
-                                type="button"
-                                disabled={isTournamentNotOpen}
+                          {/* Seção de Botões de Ação (Com UM ÚNICO botão de WhatsApp) */}
+                          <div className="pt-1 space-y-2">
+                            {isCancellationRequested ? (
+                              /* Prioridade 1: Renderiza APENAS UM botão de Falar com o Organizador */
+                              <a
+                                href={organizerPhone ? `https://wa.me/${organizerPhone}` : "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (isTournamentNotOpen) return;
-                                  handleRequestCancellation(reg);
+                                  if (!organizerPhone) {
+                                    alert("Telefone do organizador não disponível.");
+                                  }
                                 }}
-                                className={`w-full py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm ${
-                                  isTournamentNotOpen
-                                    ? "border-zinc-800 bg-zinc-900/50 text-zinc-600 cursor-not-allowed opacity-60"
-                                    : "border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 cursor-pointer active:scale-95"
-                                }`}
-                                title={
-                                  isTournamentNotOpen
-                                    ? "Cancelamento indisponível após o fechamento das chaves."
-                                    : "Solicitar cancelamento da inscrição"
-                                }
+                                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                                title="Falar com o organizador via WhatsApp sobre o estorno"
                               >
-                                {isTournamentNotOpen ? (
-                                  <Lock className="h-3.5 w-3.5 text-zinc-600" />
-                                ) : (
-                                  <Ban className="h-3.5 w-3.5 text-red-400" />
+                                <MessageCircle className="h-4 w-4 shrink-0" />
+                                <span>Falar com o Organizador</span>
+                              </a>
+                            ) : (
+                              /* Demais Casos: Ações contextuais + UM botão de Falar com o Organizador */
+                              <>
+                                {/* Botão de Finalizar Pagamento se pendente */}
+                                {(isWaitingPix || isPending) && !isWaitingApproval && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCheckoutRegistration(reg);
+                                    }}
+                                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500 hover:from-orange-400 hover:to-amber-300 text-neutral-950 text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                    title="Finalizar pagamento e anexar comprovante"
+                                  >
+                                    <CreditCard className="h-3.5 w-3.5" />
+                                    <span>Finalizar Pagamento</span>
+                                  </button>
                                 )}
-                                <span>Cancelar Minha Inscrição</span>
-                              </button>
 
-                              {isTournamentNotOpen && (
-                                <p className="text-[10px] text-zinc-500 text-center font-medium mt-1 flex items-center justify-center gap-1">
-                                  <Lock className="h-3 w-3 shrink-0 text-zinc-500" />
-                                  <span>Cancelamento indisponível após o fechamento das chaves.</span>
-                                </p>
-                              )}
-                            </div>
-                          )}
+                                {/* Botão Cancelar Minha Inscrição (apenas antes do torneio fechar) */}
+                                {!isTournamentNotOpen && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRequestCancellation(reg);
+                                    }}
+                                    className="w-full py-2 px-3 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                                    title="Solicitar cancelamento da inscrição"
+                                  >
+                                    <Ban className="h-3.5 w-3.5 text-red-400" />
+                                    <span>Cancelar Minha Inscrição</span>
+                                  </button>
+                                )}
+
+                                {/* Botão ÚNICO Falar com o Organizador */}
+                                <a
+                                  href={organizerPhone ? `https://wa.me/${organizerPhone}` : "#"}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!organizerPhone) {
+                                      alert("Telefone do organizador não disponível.");
+                                    }
+                                  }}
+                                  className="w-full py-2 px-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                                  title="Falar com o organizador via WhatsApp"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                  <span>Falar com o Organizador</span>
+                                </a>
+                              </>
+                            )}
+                          </div>
                         </div>
 
                         {/* Rodapé do Mini Card */}
@@ -940,23 +1171,20 @@ export default function HubCentral() {
                               {tourn.format && (
                                 <>
                                   <span className="text-zinc-600">•</span>
-                                  <span className="text-zinc-400 capitalize">{tourn.format}</span>
+                                  <span className="text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
                                 </>
                               )}
                             </span>
 
                             <div className="flex items-center gap-1.5">
-                              {tourn.staffRole && (
-                                <span className="px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-                                  {tourn.staffRole === "ADMIN"
-                                    ? "Admin"
-                                    : tourn.staffRole === "REFEREE"
-                                    ? "Árbitro"
-                                    : "Mesário"}
+                              {String(tourn.status || "").toUpperCase() === "IN_PROGRESS" ||
+                              String(tourn.status || "").toUpperCase() === "EM_ANDAMENTO" ||
+                              String(tourn.status || "").toUpperCase() === "LIVE" ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 border border-blue-400 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 animate-pulse">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                  <span>CAMPEONATO EM ANDAMENTO</span>
                                 </span>
-                              )}
-
-                              {isFinalizado ? (
+                              ) : isFinalizado ? (
                                 <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 text-[10px] font-bold uppercase tracking-wider">
                                   Finalizado
                                 </span>
@@ -1020,10 +1248,195 @@ export default function HubCentral() {
                         <div className="pt-3 mt-4 border-t border-zinc-800/80">
                           <button
                             type="button"
-                            className="w-full py-2 px-3 rounded-xl bg-zinc-900 group-hover:bg-[#00a2ff] text-zinc-300 group-hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                            className="w-full py-2 px-3 rounded-xl bg-zinc-900 group-hover:bg-[#00a2ff] text-zinc-300 group-hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                           >
                             <LayoutDashboard className="h-3.5 w-3.5" />
                             <span>Gerenciar Painel</span>
+                            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* ======================================================== */}
+            {/* SEÇÃO 3: TORNEIOS COMPARTILHADOS COMIGO (EQUIPE / STAFF) */}
+            {/* ======================================================== */}
+            <section className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-white font-display tracking-tight flex items-center gap-2">
+                      <span>Torneios Compartilhados Comigo</span>
+                      <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-black">
+                        {sharedTournaments.length}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-zinc-400">
+                      Competições nas quais você faz parte da comissão técnica ou arbitragem (Administrador, Árbitro ou Mesário).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {sharedTournaments.length === 0 ? (
+                <div className="border border-dashed border-zinc-800/80 bg-[#141416]/30 rounded-2xl p-6 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 flex items-center justify-center mx-auto">
+                    <Shield className="h-5 w-5 text-purple-400/60" />
+                  </div>
+                  <h3 className="text-xs font-bold text-zinc-300">
+                    Nenhum torneio compartilhado com você no momento
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 max-w-sm mx-auto leading-relaxed">
+                    Quando o organizador de uma competição adicionar seu e-mail como Administrador, Árbitro ou Mesário, ele aparecerá aqui com acesso direto ao painel.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {sharedTournaments.map((tourn) => {
+                    const sportType = tourn.sport_type || "DOMINO";
+                    const sportInfo = SPORT_META[sportType] || SPORT_META.DOMINO;
+                    const maxVagas = tourn.max_teams || 16;
+                    const preenchidas = tourn.teamsCount;
+                    const pct = Math.min(100, Math.round((preenchidas / maxVagas) * 100));
+                    const isFinalizado = tourn.status === "FINALIZADO";
+
+                    return (
+                      <div
+                        key={tourn.id}
+                        onClick={() => {
+                          setCurrentTournamentId(tourn.id);
+                          router.push(`/dashboard/${tourn.id}`);
+                        }}
+                        className="bg-[#1a1a1a] border border-[#27272a] hover:border-purple-500/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-xl hover:shadow-purple-500/10 cursor-pointer group relative overflow-hidden"
+                      >
+                        {/* Linha decorativa superior roxo/indigo */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-[#00a2ff]" />
+
+                        <div className="space-y-4">
+                          {/* Topo do Card: Modalidade & Cargo de Staff */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#121214] border border-zinc-800 text-[11px] font-bold text-zinc-300">
+                              <span>{sportInfo.icon}</span>
+                              <span>{sportInfo.label}</span>
+                              {tourn.format && (
+                                <>
+                                  <span className="text-zinc-600">•</span>
+                                  <span className="text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
+                                </>
+                              )}
+                            </span>
+
+                            {/* Cargo atribuído */}
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                                tourn.staffRole === "ADMIN"
+                                  ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
+                                  : tourn.staffRole === "REFEREE"
+                                  ? "bg-blue-500/15 border-blue-500/30 text-blue-300"
+                                  : "bg-amber-500/15 border-amber-500/30 text-amber-300"
+                              }`}
+                            >
+                              {tourn.staffRole === "ADMIN" ? (
+                                <>
+                                  <ShieldCheck className="h-3 w-3" />
+                                  <span>Administrador</span>
+                                </>
+                              ) : tourn.staffRole === "REFEREE" ? (
+                                <>
+                                  <Shield className="h-3 w-3" />
+                                  <span>Árbitro</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ShieldAlert className="h-3 w-3" />
+                                  <span>Mesário</span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Nome do Torneio */}
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-base font-black text-white font-display tracking-tight group-hover:text-purple-400 transition-colors line-clamp-1">
+                                {tourn.name}
+                              </h3>
+                              {String(tourn.status || "").toUpperCase() === "IN_PROGRESS" ||
+                              String(tourn.status || "").toUpperCase() === "EM_ANDAMENTO" ||
+                              String(tourn.status || "").toUpperCase() === "LIVE" ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600/80 text-white text-[9px] font-black uppercase tracking-wider shrink-0">
+                                  <span className="w-1 h-1 rounded-full bg-white animate-ping" />
+                                  <span>Ao Vivo</span>
+                                </span>
+                              ) : isFinalizado ? (
+                                <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                                  Finalizado
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="flex items-center gap-3 text-[11px] text-zinc-400 mt-1">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-zinc-500 shrink-0" />
+                                <span>{formatDate(tourn.start_date, tourn.start_time)}</span>
+                              </span>
+                              {tourn.location && (
+                                <span className="flex items-center gap-1 truncate max-w-[130px]">
+                                  <MapPin className="h-3 w-3 text-zinc-500 shrink-0" />
+                                  <span className="truncate">{tourn.location}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Estatísticas Rápidas: Vagas Preenchidas */}
+                          <div className="p-3 rounded-xl bg-[#121214] border border-zinc-800/80 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-zinc-500 font-medium">Vagas Ocupadas:</span>
+                              <span className="font-bold text-white">
+                                <strong className="text-purple-400">{preenchidas}</strong> / {maxVagas} equipes
+                              </span>
+                            </div>
+
+                            {/* Barra de Progresso de Ocupação */}
+                            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/50">
+                              <span className="text-zinc-500">Inscrição:</span>
+                              <span className="font-bold text-emerald-400">
+                                {tourn.entry_fee && tourn.entry_fee > 0
+                                  ? `R$ ${tourn.entry_fee.toFixed(2).replace(".", ",")}`
+                                  : "Gratuito"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Botão de Ação / Rodapé */}
+                        <div className="pt-3 mt-4 border-t border-zinc-800/80">
+                          <button
+                            type="button"
+                            className="w-full py-2 px-3 rounded-xl bg-zinc-900 group-hover:bg-purple-600 text-zinc-300 group-hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                          >
+                            <LayoutDashboard className="h-3.5 w-3.5" />
+                            <span>
+                              {tourn.staffRole === "ADMIN"
+                                ? "Painel de Gestão"
+                                : tourn.staffRole === "REFEREE"
+                                ? "Painel de Arbitragem"
+                                : "Mesa de Pontuação"}
+                            </span>
                             <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
                           </button>
                         </div>

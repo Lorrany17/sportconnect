@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { supabase } from "@/lib/supabase";
+import { notifyRegistrationApproved } from "@/app/actions/notifications";
 
 // Inicializa o cliente do Mercado Pago V2
 const client = new MercadoPagoConfig({
@@ -169,7 +170,7 @@ export async function POST(request: Request) {
 
       const { data: teamByMpId, error: teamQueryError } = await supabase
         .from("teams")
-        .select("id, name, tournament_id, status, payment_status, payout_status, mp_payment_id")
+        .select("id, name, tournament_id, status, payment_status, payout_status, mp_payment_id, user_id")
         .eq("mp_payment_id", String(paymentId))
         .maybeSingle();
 
@@ -179,7 +180,7 @@ export async function POST(request: Request) {
         // Fallback por metadata registrada no Mercado Pago
         const { data: teamByMeta } = await supabase
           .from("teams")
-          .select("id, name, tournament_id, status, payment_status, payout_status, mp_payment_id")
+          .select("id, name, tournament_id, status, payment_status, payout_status, mp_payment_id, user_id")
           .eq("id", paymentInfo.metadata.team_id)
           .maybeSingle();
 
@@ -266,6 +267,7 @@ export async function POST(request: Request) {
         payment_status: "APPROVED",
         payout_status: payoutStatus,
         payout_amount: amountToTransfer,
+        amount_paid: transactionAmount,
       };
 
       const teamIdentifier = team?.id;
@@ -276,13 +278,18 @@ export async function POST(request: Request) {
         .select();
 
       // Fallback gracioso: caso a coluna payout_status ainda não tenha sido criada no Supabase (erro 42703)
-      if (updateError && updateError.code === "42703") {
-        console.warn("Aviso: Coluna 'payout_status' ainda não existe na tabela teams. Atualizando status e payment_status.");
+      if (
+        updateError &&
+        (updateError.code === "42703" ||
+          updateError.code === "PGRST204" ||
+          String(updateError.message).includes("amount_paid"))
+      ) {
         const fallbackRes = await supabase
           .from("teams")
           .update({
             status: "PAID",
             payment_status: "APPROVED",
+            amount_paid: transactionAmount,
           })
           .eq(teamIdentifier ? "id" : "mp_payment_id", teamIdentifier || String(paymentId))
           .select();
@@ -299,6 +306,22 @@ export async function POST(request: Request) {
       }
 
       console.log(`Inscrição aprovada via Webhook (${paymentId}): status=PAID, payout_status=${payoutStatus}`, updatedTeams);
+
+      // Notificar atleta sobre a confirmação da inscrição (Gatilho 3: Aprovação)
+      try {
+        const approvedTeam = updatedTeams?.[0] || team;
+        if (approvedTeam) {
+          await notifyRegistrationApproved({
+            teamId: approvedTeam.id,
+            userId: approvedTeam.user_id,
+            tournamentId: approvedTeam.tournament_id,
+            tournamentName: tournament?.name,
+            newStatus: "PAID",
+          });
+        }
+      } catch (notifErr) {
+        console.warn("[Webhook MP] Erro ao notificar atleta sobre aprovação:", notifErr);
+      }
 
       return NextResponse.json(
         {

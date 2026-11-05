@@ -2,9 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
-import { MapPin, Calendar, Users, Trophy, ArrowRight } from "lucide-react";
+import { MapPin, Calendar, Users, Trophy, ArrowRight, Layers, PlayCircle, CheckCircle } from "lucide-react";
 import { Tournament, SportType } from "@/types";
 import { DEFAULT_COVERS, SPORT_SELECT_OPTIONS } from "@/components/CreateTournamentForm";
+import { translateTournamentFormat } from "@/utils/formatMap";
 
 export interface TournamentCardProps {
   tournament: Tournament;
@@ -58,60 +59,46 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
     }).format(Number(fee));
   };
 
-  // Configuração da Badge de Status
-  const getStatusBadge = () => {
-    const status = tournament.status;
+  // Renderização da Badge de Status com suporte a CLOSED como Em Andamento
+  const renderStatusBadge = () => {
+    const rawStatus = tournament.status ? String(tournament.status).toUpperCase() : "";
 
-    if (status === "CANCELLED" || status === "CANCELADO") {
-      return {
-        text: "TORNEIO CANCELADO",
-        classes: "bg-red-500/20 text-red-400 border-red-500/40 shadow-lg shadow-red-500/20",
-        dot: "bg-red-400",
-      };
+    // Torneio Finalizado
+    if (rawStatus === "FINISHED" || rawStatus === "FINALIZADO" || rawStatus === "COMPLETED") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg backdrop-blur-md border border-zinc-700/60 bg-gray-600 text-white text-[10px] font-black uppercase tracking-wider shadow-md">
+          TORNEIO FINALIZADO
+        </span>
+      );
     }
 
-    if (status === "FINALIZADO" || status === "COMPLETED") {
-      return {
-        text: "FINALIZADO",
-        classes: "bg-zinc-800/90 text-zinc-300 border-zinc-700/60",
-        dot: "bg-zinc-500",
-      };
+    // Torneio Cancelado
+    if (rawStatus === "CANCELLED" || rawStatus === "CANCELADO") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg backdrop-blur-md border border-red-500/40 bg-red-600 text-white text-[10px] font-black uppercase tracking-wider shadow-md">
+          TORNEIO CANCELADO
+        </span>
+      );
     }
 
-    if (status === "IN_PROGRESS" || status === "EM_ANDAMENTO" || status === "LIVE") {
-      return {
-        text: "EM ANDAMENTO",
-        classes: "bg-amber-500/90 text-white border-amber-400/40 shadow-lg shadow-amber-500/20",
-        dot: "bg-white animate-pulse",
-      };
+    // Se o status for IN_PROGRESS ou CLOSED, significa que já começou (ou as inscrições fecharam para começar)
+    if (["IN_PROGRESS", "CLOSED", "EM_ANDAMENTO", "LIVE"].includes(rawStatus)) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg backdrop-blur-md border border-blue-400/50 bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-blue-600/30">
+          <PlayCircle className="w-3 h-3 mr-1 shrink-0" />
+          CAMPEONATO EM ANDAMENTO
+        </span>
+      );
     }
 
-    if (status === "CLOSED") {
-      return {
-        text: "INSCRIÇÕES ENCERRADAS",
-        classes: "bg-red-500/90 text-white border-red-400/40 shadow-lg shadow-red-500/20",
-        dot: "bg-white",
-      };
-    }
-
-    // Apenas status OPEN estrito recebe a tag verde de inscrições abertas
-    if (status === "OPEN") {
-      return {
-        text: "INSCRIÇÕES ABERTAS",
-        classes: "bg-emerald-500/90 text-white border-emerald-400/40 shadow-lg shadow-emerald-500/20",
-        dot: "bg-white animate-pulse",
-      };
-    }
-
-    // Fallback para qualquer outro status
-    return {
-      text: "INSCRIÇÕES ENCERRADAS",
-      classes: "bg-zinc-800/90 text-zinc-400 border-zinc-700/60",
-      dot: "bg-zinc-500",
-    };
+    // Se o status for OPEN ou nulo, as inscrições estão abertas
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-lg backdrop-blur-md border border-green-500/40 bg-green-600 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-green-600/20">
+        <CheckCircle className="w-3 h-3 mr-1 shrink-0" />
+        INSCRIÇÕES ABERTAS
+      </span>
+    );
   };
-
-  const statusBadge = getStatusBadge();
   const sportMeta = SPORT_SELECT_OPTIONS.find((s) => s.id === sportType);
 
   // Label para contagem de equipes/duplas/atletas
@@ -143,22 +130,19 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
           {/* Overlay gradiente escuro para legibilidade */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-black/50" />
 
-          {/* Badge de Modalidade (Canto Superior Esquerdo) */}
-          <div className="absolute top-3 left-3 z-10">
+          {/* Grupo de Tags Superiores (Modalidade, Formato, Status) */}
+          <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-[11px] font-black text-white uppercase tracking-wider shadow-md">
               <span>{sportMeta?.icon || "🏆"}</span>
               <span>{sportMeta?.label || sportType}</span>
             </span>
-          </div>
-
-          {/* Badge de Status (Canto Superior Direito) */}
-          <div className="absolute top-3 right-3 z-10">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg backdrop-blur-md border text-[10px] font-black uppercase tracking-wider ${statusBadge.classes}`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
-              <span>{statusBadge.text}</span>
-            </span>
+            {(tournament.format || tournament.tournament_format) && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 text-[10px] font-bold text-blue-300 uppercase tracking-wider shadow-md">
+                <Layers className="h-3 w-3 text-blue-400" />
+                <span>{translateTournamentFormat(tournament.tournament_format || tournament.format)}</span>
+              </span>
+            )}
+            {renderStatusBadge()}
           </div>
         </div>
 
@@ -181,6 +165,12 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-[#00a2ff] shrink-0" />
               <span>{formatDate(tournament.start_date, tournament.start_time)}</span>
+            </div>
+
+            {/* Formato */}
+            <div className="flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-400 shrink-0" />
+              <span>{translateTournamentFormat(tournament.tournament_format || tournament.format)}</span>
             </div>
           </div>
         </div>

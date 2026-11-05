@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   Users,
@@ -37,6 +38,8 @@ import { useTournament } from "@/context/TournamentContext";
 import { useAuth } from "@/context/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { useTournamentPermissions } from "@/hooks/useTournamentPermissions";
+import { confirmCancellation } from "@/app/actions/registration";
+import { notifyRegistrationApproved } from "@/app/actions/notifications";
 
 export interface RegistrationManagementProps {
   teams: Team[];
@@ -60,6 +63,7 @@ export interface RegistrationManagementProps {
   onBack?: () => void;
   tournamentStatus?: string;
   onCloseRegistrations?: () => void;
+  tournamentId?: string;
 }
 
 export default function RegistrationManagement({
@@ -76,8 +80,10 @@ export default function RegistrationManagement({
   onBack,
   tournamentStatus,
   onCloseRegistrations,
+  tournamentId,
 }: RegistrationManagementProps) {
   const { currentSportType, currentTournamentId } = useTournament();
+  const effectiveTournamentId = tournamentId || currentTournamentId || propTeams[0]?.tournamentId;
   const { user } = useAuth();
   const permissions = useTournamentPermissions(currentTournamentId || undefined);
 
@@ -89,6 +95,11 @@ export default function RegistrationManagement({
 
   // Estado local das equipes para atualizações instantâneas de status
   const [localTeams, setLocalTeams] = useState<Team[]>(propTeams);
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sincroniza localTeams sempre que propTeams mudar
   React.useEffect(() => {
@@ -97,12 +108,12 @@ export default function RegistrationManagement({
 
   // Busca direta no Supabase garantindo seleção explícita da coluna cancellation_status
   const fetchTeamsFromDb = React.useCallback(async () => {
-    if (!currentTournamentId) return;
+    if (!effectiveTournamentId) return;
     try {
       const { data: dbTeams, error: teamsError } = await supabase
         .from("teams")
         .select("*, cancellation_status")
-        .eq("tournament_id", currentTournamentId);
+        .eq("tournament_id", effectiveTournamentId);
 
       if (teamsError) {
         console.error("Erro ao buscar equipes no RegistrationManagement:", teamsError);
@@ -121,6 +132,7 @@ export default function RegistrationManagement({
           payment_status: dbT.payment_status || (dbT.status === "CONFIRMED" || dbT.status === "PAID" ? "PAID" : "PENDING"),
           payout_status: dbT.payout_status || "PENDING",
           payout_amount: dbT.payout_amount ? Number(dbT.payout_amount) : undefined,
+          amount_paid: dbT.amount_paid !== undefined && dbT.amount_paid !== null ? Number(dbT.amount_paid) : undefined,
           payment_proof_url: dbT.payment_proof_url,
           manager_name: dbT.manager_name || dbT.player1,
           category: dbT.category || "Amador A",
@@ -150,8 +162,10 @@ export default function RegistrationManagement({
                   id: m.id,
                   team_id: m.team_id,
                   user_id: m.user_id,
-                  name: m.name || "Atleta",
+                  name: m.name || "",
                   email: m.email || "",
+                  cpf: m.cpf || undefined,
+                  phone: m.phone || undefined,
                   is_captain: Boolean(m.is_captain),
                   created_at: m.created_at,
                 });
@@ -166,7 +180,7 @@ export default function RegistrationManagement({
     } catch (err) {
       console.error("Exceção ao buscar equipes:", err);
     }
-  }, [currentTournamentId]);
+  }, [effectiveTournamentId]);
 
   React.useEffect(() => {
     fetchTeamsFromDb();
@@ -189,6 +203,7 @@ export default function RegistrationManagement({
   const [isRefundingId, setIsRefundingId] = useState<string | null>(null);
   const [isDeletingTeamId, setIsDeletingTeamId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [errorToastMessage, setErrorToastMessage] = useState<string | null>(null);
 
   // Acordeão de Elenco / Atletas da Equipe
   const [expandedRosterIds, setExpandedRosterIds] = useState<Record<string, boolean>>({});
@@ -211,6 +226,13 @@ export default function RegistrationManagement({
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
+
+  React.useEffect(() => {
+    if (errorToastMessage) {
+      const timer = setTimeout(() => setErrorToastMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorToastMessage]);
 
   // Definições contextuais de acordo com o esporte (Roteador de Regras)
   const isDomino = currentSportType === "DOMINO";
@@ -239,6 +261,15 @@ export default function RegistrationManagement({
     let cancellations = 0;
 
     localTeams.forEach((t) => {
+      if (
+        t.cancellation_status === "REFUNDED" ||
+        t.payment_status === "CANCELED" ||
+        t.payment_status === "CANCELLED" ||
+        t.status === "CANCELED" ||
+        t.status === "CANCELLED"
+      ) {
+        return;
+      }
       if (t.cancellation_status === "REQUESTED_BY_ATHLETE" || t.cancellation_status === "REFUND_REQUESTED") {
         cancellations++;
       }
@@ -253,7 +284,13 @@ export default function RegistrationManagement({
     });
 
     const total = localTeams.filter(
-      (t) => t.cancellation_status !== "REFUNDED" && t.payment_status !== "CANCELED"
+      (t) =>
+        t.cancellation_status !== "REFUNDED" &&
+        t.payment_status !== "CANCELED" &&
+        t.payment_status !== "CANCELLED" &&
+        t.status !== "CANCELED" &&
+        t.status !== "CANCELLED" &&
+        t.status !== "CANCELLED"
     ).length;
 
     return { total, paid, pending, waitingPix, cancellations };
@@ -269,6 +306,7 @@ export default function RegistrationManagement({
         t.cancellation_status !== "REFUNDED" &&
         t.payment_status !== "CANCELED" &&
         t.status !== "CANCELED" &&
+        t.status !== "CANCELLED" &&
         (t.payment_status === "WAITING_PIX" || t.payment_status === "WAITING_APPROVAL" || Boolean(t.payment_proof_url))
     );
   }, [localTeams]);
@@ -323,7 +361,13 @@ export default function RegistrationManagement({
   const filteredTeams = useMemo(() => {
     return localTeams.filter((t) => {
       // Ignora equipes já estornadas da visualização ativa padrão
-      if (t.cancellation_status === "REFUNDED" || t.payment_status === "CANCELED" || t.status === "CANCELED") {
+      if (
+        t.cancellation_status === "REFUNDED" ||
+        t.payment_status === "CANCELED" ||
+        t.payment_status === "CANCELLED" ||
+        t.status === "CANCELED" ||
+        t.status === "CANCELLED"
+      ) {
         return false;
       }
 
@@ -351,6 +395,103 @@ export default function RegistrationManagement({
 
   // Leitura Segura de Comprovantes via Signed URL de 60 minutos (3600s)
   // Alternar visualização do acordeão de atletas (team_members)
+  const getTeamRosterList = (team: Team): TeamMember[] => {
+    const result: TeamMember[] = [];
+    const seenNames = new Set<string>();
+    const captainRef = (team.manager_name || team.players?.[0] || "").trim().toLowerCase();
+
+    const addMember = (m: Partial<TeamMember> & { name: string }) => {
+      const cleanName = (m.name || "").trim();
+      if (!cleanName) return;
+      const key = cleanName.toLowerCase();
+      // Não adiciona atleta genérico caso exista nome real disponível
+      if (key === "atleta" && (captainRef || (team.players && team.players.length > 0))) {
+        return;
+      }
+      if (seenNames.has(key)) return;
+      seenNames.add(key);
+      const isCap =
+        Boolean(m.is_captain) ||
+        (result.length === 0 && (!captainRef || key === captainRef));
+      result.push({
+        id: m.id || `${team.id}-${result.length}`,
+        team_id: team.id,
+        user_id: m.user_id ?? (isCap ? team.user_id : undefined),
+        name: cleanName,
+        email: m.email || (isCap && team.contact?.includes("@") ? team.contact : ""),
+        cpf: m.cpf || undefined,
+        phone: m.phone || undefined,
+        is_captain: isCap,
+        created_at: m.created_at,
+      });
+    };
+
+    if (captainRef) {
+      const capDisplay = (team.manager_name || team.players?.[0] || "").trim();
+      const dbCap = (teamMembersMap[team.id] || (team as any).members || []).find(
+        (m: any) =>
+          m &&
+          typeof m === "object" &&
+          (m.is_captain || (m.name && m.name.trim().toLowerCase() === captainRef))
+      );
+      if (dbCap) {
+        const finalCapName =
+          dbCap.name && dbCap.name.trim().toLowerCase() !== "atleta"
+            ? dbCap.name
+            : (capDisplay || "Capitão");
+        addMember({ ...dbCap, name: finalCapName, is_captain: true });
+      } else if (capDisplay) {
+        addMember({ name: capDisplay, is_captain: true, user_id: team.user_id });
+      }
+    }
+
+    const dbMembers = teamMembersMap[team.id] || (team as any).members || [];
+    if (Array.isArray(dbMembers)) {
+      dbMembers.forEach((m: any) => {
+        if (m && typeof m === "object" && m.name) {
+          addMember(m);
+        } else if (typeof m === "string") {
+          addMember({ name: m });
+        }
+      });
+    }
+
+    const customAnswers = team.custom_registration_answers;
+    if (customAnswers && Array.isArray(customAnswers.__athlete_members)) {
+      customAnswers.__athlete_members.forEach((m: any) => {
+        if (m && typeof m === "object" && m.name) {
+          addMember(m);
+        }
+      });
+    }
+
+    let rawRoster: any = team.roster;
+    if (typeof rawRoster === "string" && rawRoster.trim()) {
+      try {
+        rawRoster = JSON.parse(rawRoster);
+      } catch {
+        rawRoster = rawRoster.split(",").map((s: string) => s.trim());
+      }
+    }
+    if (Array.isArray(rawRoster)) {
+      rawRoster.forEach((item: any) => {
+        if (typeof item === "string") {
+          addMember({ name: item });
+        } else if (item && typeof item === "object" && item.name) {
+          addMember(item);
+        }
+      });
+    }
+
+    if (Array.isArray(team.players)) {
+      team.players.filter(Boolean).forEach((pName) => {
+        addMember({ name: pName });
+      });
+    }
+
+    return result.sort((a, b) => (a.is_captain === b.is_captain ? 0 : a.is_captain ? -1 : 1));
+  };
+
   const toggleTeamRoster = async (teamId: string) => {
     setExpandedRosterIds((prev) => ({
       ...prev,
@@ -372,8 +513,10 @@ export default function RegistrationManagement({
               id: m.id,
               team_id: m.team_id,
               user_id: m.user_id,
-              name: m.name || "Atleta",
+              name: m.name || "",
               email: m.email || "",
+              cpf: m.cpf || undefined,
+              phone: m.phone || undefined,
               is_captain: Boolean(m.is_captain),
               created_at: m.created_at,
             })),
@@ -482,6 +625,7 @@ export default function RegistrationManagement({
           payment_status: "PAID",
           payout_status: result.payoutStatus || "MANUAL_PENDING",
           payout_amount: result.amountTransferred ?? result.payout_amount,
+          amount_paid: result.amount_paid ?? selectedTeamDetails?.amount_paid,
         })
         .eq("id", teamId);
 
@@ -495,6 +639,7 @@ export default function RegistrationManagement({
                 payment_status: "PAID",
                 payout_status: result.payoutStatus || "MANUAL_PENDING",
                 payout_amount: result.amountTransferred ?? result.payout_amount,
+          amount_paid: result.amount_paid ?? selectedTeamDetails?.amount_paid,
               }
             : t
         )
@@ -538,6 +683,11 @@ export default function RegistrationManagement({
           )
         );
 
+        try {
+          await notifyRegistrationApproved({ teamId, newStatus: "PAID" });
+        } catch (notifErr) {
+          console.warn("Aviso ao notificar atleta no fallback de aprovação:", notifErr);
+        }
         setToastMessage("Inscrição confirmada (PAID)! Atenção: split financeiro pendente.");
         fetchTeamsFromDb();
       } catch (dbErr: any) {
@@ -564,9 +714,43 @@ export default function RegistrationManagement({
     }
 
     setIsRefundingId(teamId);
+    setErrorToastMessage(null);
+    setToastMessage(null);
 
     try {
-      const response = await fetch("/api/checkout/refund", {
+      const { data: authData } = await supabase.auth.getSession();
+      const userAuthToken = authData?.session?.access_token;
+
+      const res = await confirmCancellation(teamId, userAuthToken);
+
+      if (!res || !res.success) {
+        throw new Error(res?.error || "Falha ao processar cancelamento e estorno do Pix.");
+      }
+
+      if (res.success) {
+        // Sucesso estrito: mostrar toast de sucesso, atualizar estado local e fechar modal
+        setToastMessage(res.message || "Inscrição cancelada e Pix estornado com sucesso!");
+        setLocalTeams((prev) =>
+          prev
+            .map((t) =>
+              t.id === teamId
+                ? {
+                    ...t,
+                    status: "CANCELLED",
+                    payment_status: "CANCELED",
+                    cancellation_status: "REFUNDED",
+                  }
+                : t
+            )
+            .filter((t) => t.id !== teamId)
+        );
+        if (selectedTeamDetails?.id === teamId) {
+          setSelectedTeamDetails(null);
+        }
+        await fetchTeamsFromDb();
+      }
+      if (false) {
+        const response = await fetch("/api/checkout/refund", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teamId }),
@@ -581,12 +765,13 @@ export default function RegistrationManagement({
       // Sucesso: mostrar toast e remover equipe da lista ativa
       setToastMessage("Inscrição cancelada e Pix estornado com sucesso!");
       setLocalTeams((prev) => prev.filter((t) => t.id !== teamId));
+      }
       if (selectedTeamDetails?.id === teamId) {
         setSelectedTeamDetails(null);
       }
     } catch (err: any) {
       console.error("Erro no estorno:", err);
-      alert(err.message || "Ocorreu um erro ao processar o cancelamento e estorno.");
+      setErrorToastMessage(err?.message || "Ocorreu um erro ao processar o cancelamento e estorno.");
     } finally {
       setIsRefundingId(null);
     }
@@ -728,6 +913,20 @@ export default function RegistrationManagement({
 
   return (
     <div className="space-y-6 text-[#e4e4e7] animate-fadeIn pb-12">
+      {/* Toast de Erro (Vermelho) */}
+      {errorToastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-red-950/95 border border-red-500/60 text-red-100 text-xs font-bold shadow-2xl shadow-red-950/50 flex items-center gap-3 animate-fadeIn max-w-md">
+          <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+          <span className="leading-relaxed">{errorToastMessage}</span>
+          <button
+            onClick={() => setErrorToastMessage(null)}
+            className="p-1 text-red-300 hover:text-white cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Toast de Notificação */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-zinc-900 border border-blue-500/40 text-white text-xs font-bold shadow-2xl flex items-center gap-3 animate-fadeIn">
@@ -1088,7 +1287,34 @@ export default function RegistrationManagement({
                     </div>
 
                     {/* Jogador 2 ou Roster (se houver) */}
-                    {team.players && team.players[1] && (
+                    {/* Jogador 2 ou Roster (se houver) */}
+                    {team.players && team.players[1] ? (
+                      <div className="flex items-center justify-between text-zinc-400 pt-1 border-t border-zinc-800/50">
+                        <span className="font-medium text-zinc-500">Dupla:</span>
+                        <span className="font-bold text-zinc-300 truncate max-w-[140px]">
+                          {team.players[1]}
+                        </span>
+                      </div>
+                    ) : getTeamRosterList(team).filter((m) => !m.is_captain).length > 0 ? (
+                      <div className="pt-1.5 border-t border-zinc-800/50 space-y-1">
+                        <span className="font-medium text-zinc-500 block text-[11px]">
+                          Atletas da Equipe ({getTeamRosterList(team).filter((m) => !m.is_captain).length}):
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {getTeamRosterList(team)
+                            .filter((m) => !m.is_captain)
+                            .map((m, mIdx) => (
+                              <span
+                                key={m.id || mIdx}
+                                className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-[11px] font-semibold text-zinc-300 truncate max-w-full"
+                              >
+                                {m.name}
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {false && team.players && team.players[1] && (
                       <div className="flex items-center justify-between text-zinc-400 pt-1 border-t border-zinc-800/50">
                         <span className="font-medium text-zinc-500">Dupla:</span>
                         <span className="font-bold text-zinc-300 truncate max-w-[140px]">
@@ -1145,7 +1371,12 @@ export default function RegistrationManagement({
                         <div className="flex items-center gap-1.5">
                           <Users className="h-3.5 w-3.5 text-blue-400" />
                           <span>Ver Elenco/Atletas</span>
-                          {(teamMembersMap[team.id]?.length || team.players?.filter(Boolean).length || 0) > 0 && (
+                          {getTeamRosterList(team).length > 0 && (
+                            <span className="px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-400 text-[10px] font-black">
+                              {getTeamRosterList(team).length}
+                            </span>
+                          )}
+                          {false && (teamMembersMap[team.id]?.length || team.players?.filter(Boolean).length || 0) > 0 && (
                             <span className="px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-400 text-[10px] font-black">
                               {teamMembersMap[team.id]?.length || team.players?.filter(Boolean).length || 0}
                             </span>
@@ -1161,7 +1392,53 @@ export default function RegistrationManagement({
                       {/* Conteúdo Expandido do Acordeão */}
                       {expandedRosterIds[team.id] && (
                         <div className="mt-2 p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/90 space-y-2 animate-fadeIn">
-                          {teamMembersMap[team.id] && teamMembersMap[team.id].length > 0 ? (
+                          {getTeamRosterList(team).length > 0 ? (
+                            <div className="space-y-1.5">
+                              {getTeamRosterList(team).map((member, idx) => (
+                                <div
+                                  key={member.id || idx}
+                                  className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-zinc-100 truncate">
+                                        {member.name}
+                                      </span>
+                                      {member.is_captain && (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                          Capitão
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-zinc-400 truncate flex items-center gap-1 mt-0.5">
+                                      <Mail className="h-2.5 w-2.5 text-zinc-500 shrink-0" />
+                                      <span>{member.email || "E-mail não informado"}</span>
+                                    </div>
+                                    {(member.cpf || member.phone) && (
+                                      <div className="text-[10px] text-zinc-400 flex flex-wrap items-center gap-2 mt-0.5">
+                                        {member.cpf && <span>CPF: {member.cpf}</span>}
+                                        {member.phone && <span>WhatsApp: {member.phone}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="shrink-0 self-start sm:self-auto pt-0.5 sm:pt-0">
+                                    {member.user_id ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold shadow-sm">
+                                        <UserCheck className="h-2.5 w-2.5" />
+                                        <span>Conta Vinculada</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold">
+                                        <Clock className="h-2.5 w-2.5" />
+                                        <span>Convite Pendente</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : false && teamMembersMap[team.id] && teamMembersMap[team.id].length > 0 ? (
                             <div className="space-y-1.5">
                               {teamMembersMap[team.id].map((member, idx) => (
                                 <div
@@ -1416,8 +1693,8 @@ export default function RegistrationManagement({
       </div>
 
       {/* MODAL 1: Adicionar Equipe Manualmente (Mesclagem com o Motor Antigo) */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
+      {mounted && showAddModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
           <div className="bg-[#1a1a1a] border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowAddModal(false)}
@@ -1620,12 +1897,13 @@ export default function RegistrationManagement({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 2: Ver Detalhes / Conferir Pix da Equipe */}
-      {selectedTeamDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
+      {mounted && selectedTeamDetails && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
           <div className="bg-[#1a1a1a] border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-md w-full text-white shadow-2xl relative">
             <button
               onClick={() => setSelectedTeamDetails(null)}
@@ -1656,10 +1934,32 @@ export default function RegistrationManagement({
                 </span>
               </div>
 
-              {selectedTeamDetails.players[1] && (
+              {getTeamRosterList(selectedTeamDetails).filter((m) => !m.is_captain).length > 0 && (
+                <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+                  <span className="text-zinc-500 block">
+                    Elenco / Atletas ({getTeamRosterList(selectedTeamDetails).length}):
+                  </span>
+                  <div className="space-y-1">
+                    {getTeamRosterList(selectedTeamDetails).map((member, mIdx) => (
+                      <div
+                        key={member.id || mIdx}
+                        className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800/80 text-xs"
+                      >
+                        <span className="font-bold text-white truncate">{member.name}</span>
+                        {member.is_captain ? (
+                          <span className="text-[10px] font-black uppercase text-amber-400">Capitão</span>
+                        ) : (
+                          <span className="text-[10px] text-zinc-400">{member.email || "Atleta"}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {false && selectedTeamDetails?.players?.[1] && (
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-500">Parceiro/Jogador 2:</span>
-                  <span className="font-bold text-white">{selectedTeamDetails.players[1]}</span>
+                  <span className="font-bold text-white">{selectedTeamDetails?.players?.[1]}</span>
                 </div>
               )}
 
@@ -1738,10 +2038,34 @@ export default function RegistrationManagement({
               );
             })()}
 
-            {/* Exibição das Respostas do Formulário Personalizado */}
-            {selectedTeamDetails.custom_registration_answers &&
-              typeof selectedTeamDetails.custom_registration_answers === "object" &&
-              Object.keys(selectedTeamDetails.custom_registration_answers).length > 0 && (
+            {/* Exibição das Respostas do Formulário Personalizado (Sanitizado) */}
+            {(() => {
+              if (
+                !selectedTeamDetails.custom_registration_answers ||
+                typeof selectedTeamDetails.custom_registration_answers !== "object"
+              ) {
+                return null;
+              }
+
+              // Filtra respostas válidas: remove chaves internas com duplo underscore (__*) ou objetos/arrays aninhados
+              const validEntries = Object.entries(
+                selectedTeamDetails.custom_registration_answers
+              ).filter(([question, answer]) => {
+                // Oculta qualquer chave interna que comece com duplo underscore (ex: __athlete_members)
+                if (question.startsWith("__")) return false;
+                // Oculta objetos aninhados não serializados
+                if (answer !== null && typeof answer === "object" && !Array.isArray(answer)) return false;
+                // Oculta arrays contendo objetos não primitivos
+                if (Array.isArray(answer) && answer.some((item) => typeof item === "object")) return false;
+                return true;
+              });
+
+              // Se, após filtrar, o objeto não contiver nenhuma chave real, NÃO renderiza o bloco
+              if (validEntries.length === 0) {
+                return null;
+              }
+
+              return (
                 <div className="mt-4 p-4 bg-[#121214] border border-zinc-800 rounded-2xl space-y-2.5">
                   <div className="flex items-center gap-2 pb-2 border-b border-zinc-800">
                     <FileText className="h-4 w-4 text-orange-400" />
@@ -1750,30 +2074,29 @@ export default function RegistrationManagement({
                     </span>
                   </div>
                   <div className="space-y-2 text-xs divide-y divide-zinc-800/60">
-                    {Object.entries(selectedTeamDetails.custom_registration_answers).map(
-                      ([question, answer], idx) => (
-                        <div
-                          key={idx}
-                          className="pt-2 first:pt-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1.5"
-                        >
-                          <span className="text-zinc-400 font-medium sm:max-w-[50%] break-words">
-                            {question}:
-                          </span>
-                          <span className="font-bold text-white sm:text-right bg-zinc-900/90 px-2.5 py-1 rounded-lg border border-zinc-800 break-words">
-                            {typeof answer === "boolean"
-                              ? answer
-                                ? "Sim"
-                                : "Não"
-                              : answer === null || answer === undefined || answer === ""
-                              ? "Não respondido"
-                              : String(answer)}
-                          </span>
-                        </div>
-                      )
-                    )}
+                    {validEntries.map(([question, answer], idx) => (
+                      <div
+                        key={idx}
+                        className="pt-2 first:pt-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1.5"
+                      >
+                        <span className="text-zinc-400 font-medium sm:max-w-[50%] break-words">
+                          {question}:
+                        </span>
+                        <span className="font-bold text-white sm:text-right bg-zinc-900/90 px-2.5 py-1 rounded-lg border border-zinc-800 break-words">
+                          {typeof answer === "boolean"
+                            ? answer
+                              ? "Sim"
+                              : "Não"
+                            : answer === null || answer === undefined || answer === ""
+                            ? "Não respondido"
+                            : String(answer)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
+              );
+            })()}
 
             {/* Ações do Modal */}
             <div className="mt-6 space-y-2.5">
@@ -1879,13 +2202,14 @@ export default function RegistrationManagement({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
 
       {/* MODAL 3: Conferir Comprovantes (Ação em Massa) */}
-      {showProofReviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
+      {mounted && showProofReviewModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
           <div className="bg-[#18181b] border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full text-white shadow-2xl relative max-h-[90vh] overflow-y-auto">
             {/* Linha decorativa superior */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500" />
@@ -2031,14 +2355,15 @@ export default function RegistrationManagement({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ======================================================== */}
       {/* MODAL INDIVIDUAL: VISUALIZAÇÃO DO COMPROVANTE (RECIBO PIX) */}
       {/* ======================================================== */}
-      {viewingReceiptTeam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto animate-fadeIn">
+      {mounted && viewingReceiptTeam && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto animate-fadeIn">
           <div className="bg-[#18181b] border border-zinc-800 rounded-2xl max-w-lg w-full p-6 text-white shadow-2xl relative">
             <button
               onClick={() => setViewingReceiptTeam(null)}
@@ -2159,7 +2484,8 @@ export default function RegistrationManagement({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

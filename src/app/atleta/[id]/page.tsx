@@ -125,7 +125,8 @@ export interface AthleteMatch {
   userTeamSide: "A" | "B";
   userTeamName: string;
   opponentName: string;
-  result: "WIN" | "LOSS" | "DRAW";
+  status?: string;
+  result: "WIN" | "LOSS" | "DRAW" | "SCHEDULED";
   date: string;
 }
 
@@ -189,7 +190,7 @@ export default function PublicAthleteProfilePage() {
         // C. Fetch de Times do Atleta via team_members (com fallback para teams onde user_id = athleteId)
         const { data: memberRows, error: memberError } = await supabase
           .from("team_members")
-          .select("team_id, teams(*, tournaments(name, sport_type))")
+          .select("team_id, teams(*, tournaments(id, name, sport_type, status))")
           .eq("user_id", athleteId);
 
         if (memberError) {
@@ -207,7 +208,7 @@ export default function PublicAthleteProfilePage() {
 
         const { data: directTeams } = await supabase
           .from("teams")
-          .select("*, tournaments(name, sport_type)")
+          .select("*, tournaments(id, name, sport_type, status)")
           .eq("user_id", athleteId)
           .order("created_at", { ascending: false });
 
@@ -357,26 +358,93 @@ export default function PublicAthleteProfilePage() {
           }
 
           const mappedMatches: AthleteMatch[] = matchesRaw.map((m: any) => {
-            const isTeamA = userTeamIds.includes(m.team_a_id);
+            const team1Id = m.team1_id || m.team_a_id;
+            const team2Id = m.team2_id || m.team_b_id;
+            const isTeamA = Boolean(team1Id && userTeamIds.includes(team1Id));
             const userSide: "A" | "B" = isTeamA ? "A" : "B";
 
             const userTeamName = isTeamA
               ? teamsNameMap[m.team_a_id] || "Seu Time"
               : teamsNameMap[m.team_b_id] || "Seu Time";
 
-            const oppTeamId = isTeamA ? m.team_b_id : m.team_a_id;
+            const oppTeamId = isTeamA ? team2Id : team1Id;
             const oppTeamName =
               oppTeamId === "bye"
                 ? "BYE"
                 : teamsNameMap[oppTeamId] || "Adversário";
 
-            const scoreA = Number(m.score_a) || 0;
-            const scoreB = Number(m.score_b) || 0;
+            const tournEarly = tournamentsMap[m.tournament_id];
+            const sportEarly = tournEarly?.sport_type;
+            const matchStatus = String(m.status || "SCHEDULED").toUpperCase();
+            const isFinished =
+              matchStatus === "FINISHED" ||
+              matchStatus === "COMPLETED" ||
+              matchStatus === "FINALIZADO" ||
+              matchStatus === "ENCERRADA";
+
+            const sets1 = Number(m.sets_team1 ?? m.sets_a ?? m.sets1 ?? 0);
+            const sets2 = Number(m.sets_team2 ?? m.sets_b ?? m.sets2 ?? 0);
+            const rawScore1 =
+              m.score_team1 !== undefined && m.score_team1 !== null
+                ? Number(m.score_team1)
+                : m.team1_score !== undefined && m.team1_score !== null
+                ? Number(m.team1_score)
+                : Number(m.score_a ?? m.score1 ?? 0);
+            const rawScore2 =
+              m.score_team2 !== undefined && m.score_team2 !== null
+                ? Number(m.score_team2)
+                : m.team2_score !== undefined && m.team2_score !== null
+                ? Number(m.team2_score)
+                : Number(m.score_b ?? m.score2 ?? 0);
+
+            let resolvedScore1 = rawScore1 || 0;
+            let resolvedScore2 = rawScore2 || 0;
+
+            if (
+              (resolvedScore1 === 0 && resolvedScore2 === 0 && (sets1 > 0 || sets2 > 0)) ||
+              ((sportEarly === "PING_PONG" || sportEarly === "VOLEI") &&
+                (sets1 > 0 || sets2 > 0) &&
+                m.score_team1 === undefined)
+            ) {
+              resolvedScore1 = sets1;
+              resolvedScore2 = sets2;
+            }
+
+            if (resolvedScore1 === 0 && resolvedScore2 === 0) {
+              let parsedSets =
+                m.sets_history || m.set_history || m.history || m.details?.sets || m.detailed_score?.sets;
+              if (typeof parsedSets === "string") {
+                try {
+                  parsedSets = JSON.parse(parsedSets);
+                } catch {
+                  parsedSets = null;
+                }
+              }
+              if (Array.isArray(parsedSets) && parsedSets.length > 0) {
+                let w1 = 0;
+                let w2 = 0;
+                parsedSets.forEach((s: any) => {
+                  const sA = Number(s.scoreA ?? s.score_a ?? 0);
+                  const sB = Number(s.scoreB ?? s.score_b ?? 0);
+                  if (sA > sB) w1++;
+                  else if (sB > sA) w2++;
+                });
+                if (w1 > 0 || w2 > 0) {
+                  resolvedScore1 = w1;
+                  resolvedScore2 = w2;
+                }
+              }
+            }
+
+            const scoreA = resolvedScore1;
+            const scoreB = resolvedScore2;
+            const unusedLegacyScoreA = Number(m.score_a) || 0;
+            const unusedLegacyScoreB = Number(m.score_b) || 0;
 
             const userScore = userSide === "A" ? scoreA : scoreB;
             const oppScore = userSide === "A" ? scoreB : scoreA;
 
-            let result: "WIN" | "LOSS" | "DRAW" = "DRAW";
+            let result: "WIN" | "LOSS" | "DRAW" | "SCHEDULED" = "DRAW";
             if (userScore > oppScore) {
               result = "WIN";
             } else if (userScore < oppScore) {
@@ -407,13 +475,20 @@ export default function PublicAthleteProfilePage() {
               tournamentName,
               sportType,
               phase: m.phase || "Fase Eliminatória",
-              scoreDisplay: `${scoreA} x ${scoreB}`,
+              status: m.status,
+              scoreDisplay: isFinished ? `${scoreA} x ${scoreB}` : "- x -",
+              result: !isFinished
+                ? "SCHEDULED"
+                : userScore === oppScore && m.winner_id
+                ? m.winner_id === (isTeamA ? team1Id : team2Id)
+                  ? "WIN"
+                  : "LOSS"
+                : result,
               userScore,
               opponentScore: oppScore,
               userTeamSide: userSide,
               userTeamName,
               opponentName: oppTeamName,
-              result,
               date: formattedDate,
             };
           });
@@ -465,11 +540,12 @@ export default function PublicAthleteProfilePage() {
   const athleteStats = useMemo(() => {
     const tournamentsCount = userTeams.length;
     const winsCount = recentMatches.filter((m) => m.result === "WIN").length;
-    const totalMatches = recentMatches.length;
+    const finishedMatches = recentMatches.filter((m) => m.result !== "SCHEDULED");
+    const totalMatches = finishedMatches.length;
     const winRate = totalMatches > 0 ? Math.round((winsCount / totalMatches) * 100) : 0;
 
     let streak = 0;
-    for (const m of recentMatches) {
+    for (const m of finishedMatches) {
       if (m.result === "WIN") {
         streak++;
       } else {
@@ -978,19 +1054,24 @@ export default function PublicAthleteProfilePage() {
               ) : (
                 <div className="space-y-2.5">
                   {recentMatches.map((m) => {
-                    const isWin = m.result === "WIN";
+                    const isScheduled = m.result === "SCHEDULED";
+                    const isWin = !isScheduled && m.result === "WIN";
                     const isLoss = m.result === "LOSS";
 
                     const badgeClass = isWin
                       ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
                       : isLoss
                       ? "text-red-400 bg-red-500/10 border-red-500/30"
-                      : "text-zinc-400 bg-zinc-500/10 border-zinc-500/30";
+                      : isScheduled
+                      ? "text-blue-400 bg-blue-500/10 border-blue-500/30"
+                      : "text-amber-400 bg-amber-500/10 border-amber-500/30";
 
                     const badgeText = isWin
                       ? "Vitória 🏆"
                       : isLoss
                       ? "Derrota ❌"
+                      : isScheduled
+                      ? "Programada"
                       : "Empate ⚖️";
 
                     return (

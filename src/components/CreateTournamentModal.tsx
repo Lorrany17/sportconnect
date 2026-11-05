@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Tournament } from "@/types";
 import CreateTournamentForm from "@/components/CreateTournamentForm";
 
@@ -17,10 +18,16 @@ export default function CreateTournamentModal({
   tournamentToEdit,
   onTournamentUpdated,
 }: CreateTournamentModalProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
       <div className="w-full max-w-2xl my-8">
         <CreateTournamentForm
           isModal={true}
@@ -32,6 +39,7 @@ export default function CreateTournamentModal({
           }}
         />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

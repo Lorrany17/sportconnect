@@ -16,6 +16,7 @@ import {
   Sparkles,
   FileText,
   UploadCloud,
+  ArrowLeft,
   ArrowRight,
   Shield,
 } from "lucide-react";
@@ -32,8 +33,13 @@ export interface PixCheckoutFormProps {
   sportType?: string;
   email?: string;
   initialReceiptUrl?: string;
+  onBack?: () => void;
   onClose?: () => void;
   onSuccess?: () => void;
+  onCommitRegistration?: (options: {
+    receiptFile?: File | null;
+    isPayLater?: boolean;
+  }) => Promise<{ success: boolean; teamId?: string; error?: string }>;
 }
 
 interface SplitInfo {
@@ -53,12 +59,15 @@ export default function PixCheckoutForm({
   sportType,
   email,
   initialReceiptUrl,
+  onBack,
   onClose,
   onSuccess,
+  onCommitRegistration,
 }: PixCheckoutFormProps) {
   const router = useRouter();
   const { user } = useAuth();
 
+  const [currentTeamId, setCurrentTeamId] = useState<string>(teamId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeBase64, setQrCodeBase64] = useState<string>("");
@@ -68,14 +77,20 @@ export default function PixCheckoutForm({
   const [split, setSplit] = useState<SplitInfo | null>(null);
   const [copied, setCopied] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
-  const [checkingPayment, setCheckingPayment] = useState(false);
 
   // Estados de upload de comprovante (inicializa como sucesso se já foi anexado na inscrição prévia)
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [isCommitting, setIsCommitting] = useState(false);
   const [receiptSuccess, setReceiptSuccess] = useState(Boolean(initialReceiptUrl));
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [uploadedReceiptUrl, setUploadedReceiptUrl] = useState<string | null>(initialReceiptUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (teamId) {
+      setCurrentTeamId(teamId);
+    }
+  }, [teamId]);
 
   // Formatar Moeda Brasileira
   const formatCurrency = (val: number) => {
@@ -112,7 +127,7 @@ export default function PixCheckoutForm({
         },
         body: JSON.stringify({
           tournamentId,
-          teamId,
+          teamId: currentTeamId || teamId || "",
           totalAmount,
           teamName,
           email,
@@ -163,7 +178,7 @@ export default function PixCheckoutForm({
     } finally {
       setLoading(false);
     }
-  }, [tournamentId, teamId, totalAmount]);
+  }, [tournamentId, teamId, currentTeamId, totalAmount, teamName, email]);
 
   useEffect(() => {
     generatePix();
@@ -204,11 +219,30 @@ export default function PixCheckoutForm({
     setIsUploadingReceipt(true);
 
     try {
-      const userId = user?.id || teamId;
+      const effectiveTeamId = currentTeamId || teamId;
+
+      // 1. Inserção atrasada (Delayed DB Insert) no momento do upload do comprovante
+      if (!effectiveTeamId && onCommitRegistration) {
+        const commitRes = await onCommitRegistration({ receiptFile: file });
+        if (!commitRes.success || !commitRes.teamId) {
+          throw new Error(commitRes.error || "Erro ao registrar comprovante e confirmar inscrição.");
+        }
+        setCurrentTeamId(commitRes.teamId);
+        setReceiptSuccess(true);
+        setReceiptError(null);
+        router.refresh();
+        return;
+      }
+
+      if (!effectiveTeamId) {
+        throw new Error("Identificador da equipe não encontrado.");
+      }
+
+      const userId = user?.id || effectiveTeamId;
       const fileExt = file.name.split(".").pop() || "png";
       const filePath = `${userId}-${Date.now()}.${fileExt}`;
 
-      // 1. Upload do arquivo para o bucket de comprovantes
+      // Upload do arquivo para o bucket de comprovantes
       const { error: uploadError } = await supabase.storage
         .from("receipts")
         .upload(filePath, file, {
@@ -221,39 +255,33 @@ export default function PixCheckoutForm({
         throw uploadError;
       }
 
-      // 2. Tratamento Estrito no Update com captura de erro e status WAITING_APPROVAL
+      // Tratamento Estrito no Update com captura de erro e status WAITING_APPROVAL
       const { data, error: updateError } = await supabase
         .from("teams")
         .update({
           payment_proof_url: filePath,
           payment_status: "WAITING_APPROVAL",
         })
-        .eq("id", teamId)
+        .eq("id", effectiveTeamId)
         .select();
 
-      // Se houver updateError, lança exceção imediatamente (evita falso positivo)
       if (updateError) {
         console.error("Erro no update da equipe com comprovante:", updateError);
         throw updateError;
       }
 
-      // Validação defensiva: confirma se a linha foi de fato modificada no banco
       if (!data || data.length === 0) {
         throw new Error(
           "Não foi possível registrar o comprovante da equipe. Registro não encontrado ou permissão negada."
         );
       }
 
-      // 3. Sucesso real comprovado
       setUploadedReceiptUrl(filePath);
       setReceiptSuccess(true);
       setReceiptError(null);
-
-      // 4. Força atualização do estado do atleta (Next.js router refresh)
       router.refresh();
     } catch (err: unknown) {
       console.error("Erro no envio do comprovante:", err);
-      // Garante rigorosamente que a tela de sucesso NÃO seja exibida
       setReceiptSuccess(false);
       const msg =
         err instanceof Error
@@ -265,16 +293,44 @@ export default function PixCheckoutForm({
     }
   };
 
+  // Ação de concluir pagamento mais tarde com inserção atrasada no banco
+  const handlePayLater = async () => {
+    const effectiveTeamId = currentTeamId || teamId;
+    if (!effectiveTeamId && onCommitRegistration) {
+      setIsCommitting(true);
+      try {
+        const commitRes = await onCommitRegistration({ isPayLater: true });
+        if (!commitRes.success) {
+          setReceiptError(commitRes.error || "Erro ao salvar inscrição para pagamento posterior.");
+          setIsCommitting(false);
+          return;
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Erro ao processar inscrição.";
+        setReceiptError(msg);
+        setIsCommitting(false);
+        return;
+      } finally {
+        setIsCommitting(false);
+      }
+    }
+    router.refresh();
+    if (onClose) {
+      onClose();
+    }
+  };
+
   // Verificação automática periódica de status no Supabase (Polling suave)
   useEffect(() => {
-    if (isPaid || !teamId) return;
+    const pollId = currentTeamId || teamId;
+    if (isPaid || !pollId) return;
 
     const interval = setInterval(async () => {
       try {
         const { data, error: fetchErr } = await supabase
           .from("teams")
           .select("payment_status")
-          .eq("id", teamId)
+          .eq("id", pollId)
           .maybeSingle();
 
         if (!fetchErr && data && data.payment_status === "APPROVED") {
@@ -287,35 +343,10 @@ export default function PixCheckoutForm({
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [isPaid, teamId, handleRedirect]);
-
-  // Botão de simulação manual de confirmação (Webhook mock para testes rápidos)
-  const handleSimulatePaymentApproval = async () => {
-    try {
-      setCheckingPayment(true);
-      const { error: updateErr } = await supabase
-        .from("teams")
-        .update({
-          payment_status: "APPROVED",
-          status: "CONFIRMED",
-        })
-        .eq("id", teamId);
-
-      if (updateErr) {
-        console.warn("Erro ao simular aprovação:", updateErr.message);
-      }
-
-      setIsPaid(true);
-      setTimeout(handleRedirect, 2500);
-    } catch (err) {
-      console.error("Erro ao simular webhook:", err);
-    } finally {
-      setCheckingPayment(false);
-    }
-  };
+  }, [isPaid, currentTeamId, teamId, handleRedirect]);
 
   return (
-    <div className="w-full max-w-xl mx-auto bg-[#0f0f0f] border border-[#27272a] rounded-3xl p-6 sm:p-8 text-[#e4e4e7] shadow-2xl relative overflow-hidden selection:bg-orange-500/30 selection:text-white">
+    <div className="w-full max-w-xl mx-auto max-h-[90vh] overflow-y-auto bg-[#0f0f0f] border border-[#27272a] rounded-3xl p-5 sm:p-8 pb-8 sm:pb-12 text-[#e4e4e7] shadow-2xl relative selection:bg-orange-500/30 selection:text-white">
       {/* Linha decorativa superior no topo do card */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500" />
 
@@ -404,9 +435,22 @@ export default function PixCheckoutForm({
         <div className="space-y-6">
           {/* 1. Header do Pedido */}
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-[11px] font-black uppercase tracking-wider">
+            <div className="flex flex-wrap items-center gap-2 pr-10">
+              {onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white text-[11px] font-bold transition-all cursor-pointer active:scale-95"
+                  title="Voltar para o formulário de inscrição"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Voltar</span>
+                </button>
+              )}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-[11px] font-black uppercase tracking-wider">
               <Clock className="w-3.5 h-3.5 animate-pulse" />
               <span>INSCRIÇÃO PENDENTE</span>
+            </div>
             </div>
 
             <h2 className="text-xl sm:text-2xl font-black text-white font-display mt-2 tracking-tight">
@@ -453,7 +497,7 @@ export default function PixCheckoutForm({
           )}
 
           {/* 2. Card de Valor Total e Transparência do Split */}
-          <div className="bg-[#1a1a1a] border border-[#27272a] rounded-2xl p-5 text-center shadow-inner space-y-1">
+          <div className="w-full bg-[#1a1a1a] border border-[#27272a] rounded-2xl p-5 text-center shadow-inner space-y-1">
             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
               VALOR TOTAL
             </span>
@@ -462,7 +506,7 @@ export default function PixCheckoutForm({
             </div>
 
             {split && (
-              <div className="pt-2 border-t border-zinc-800/80 mt-2 flex items-center justify-center gap-4 text-[11px] text-zinc-400">
+              <div className="pt-2 border-t border-zinc-800/80 mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
                 <span>
                   Taxa SportConnect (10%):{" "}
                   <strong className="text-zinc-300">
@@ -481,7 +525,7 @@ export default function PixCheckoutForm({
           </div>
 
           {/* 3. Área do QR Code com Loading Spinner */}
-          <div className="bg-[#1a1a1a] border border-[#27272a] rounded-2xl p-6 text-center space-y-4">
+          <div className="w-full bg-[#1a1a1a] border border-[#27272a] rounded-2xl p-4 sm:p-6 text-center space-y-4">
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center space-y-3">
                 <div className="relative">
@@ -657,33 +701,36 @@ export default function PixCheckoutForm({
             </div>
 
             {/* Ações de Apoio / Fechamento */}
-            <div className="flex items-center justify-between gap-3 pt-1">
-              {onClose && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer text-center"
-                >
-                  Concluir Pagamento Mais Tarde
-                </button>
-              )}
-
-              {/* Opção discreta de simular webhook em desenvolvimento/testes */}
+            {/* Ações de Apoio / Fechamento */}
+            {onBack && (
               <button
                 type="button"
-                onClick={handleSimulatePaymentApproval}
-                disabled={checkingPayment}
-                className="py-2.5 px-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800/60 text-[10px] font-bold text-zinc-500 hover:text-emerald-400 transition-all cursor-pointer shrink-0 flex items-center gap-1.5"
-                title="Simula a confirmação via webhook bancário instantâneo"
+                onClick={onBack}
+                className="w-full py-2.5 px-4 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700/70 text-xs font-bold text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2"
               >
-                {checkingPayment ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-3 h-3" />
-                )}
-                <span>Simular Aprovação</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Editar dados da inscrição</span>
               </button>
-            </div>
+            )}
+            {onClose && (
+              <div className="pt-1 pb-2">
+                <button
+                  type="button"
+                  onClick={handlePayLater}
+                  disabled={isUploadingReceipt || isCommitting}
+                  className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCommitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Salvando Inscrição...</span>
+                    </span>
+                  ) : (
+                    <span>Concluir Pagamento Mais Tarde</span>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

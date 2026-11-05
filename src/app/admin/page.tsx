@@ -292,6 +292,8 @@ export default function AdminPage() {
           rules: t.rules,
           gender_category: t.gender_category,
           organizer_pix_key: t.organizer_pix_key,
+          pix_key_type: t.pix_key_type,
+          rulebook_url: t.rulebook_url,
           sponsors: t.sponsors || [],
           custom_registration_fields: t.custom_registration_fields,
         }));
@@ -447,6 +449,8 @@ export default function AdminPage() {
             cover_url: newRow.cover_url,
             rules: newRow.rules,
             organizer_pix_key: newRow.organizer_pix_key,
+            pix_key_type: newRow.pix_key_type,
+            rulebook_url: newRow.rulebook_url,
           };
           setTournaments((prev) => [newTournament, ...prev.filter((t) => t.id !== newRow.id)]);
           triggerLiveToast(`✨ Novo torneio criado via WebSocket: "${newRow.name}"`, "create", newRow.id);

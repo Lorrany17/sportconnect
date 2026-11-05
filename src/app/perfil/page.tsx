@@ -33,6 +33,7 @@ import {
   Calendar,
   Layers,
   Lock,
+  PlayCircle,
 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PublicHeader from "@/components/PublicHeader";
@@ -132,6 +133,7 @@ const ACHIEVEMENTS = [
 export interface AthleteTeam extends Team {
   tournamentName?: string;
   sportType?: SportType | string;
+  tournamentStatus?: string;
 }
 
 export interface AthleteMatch {
@@ -146,7 +148,8 @@ export interface AthleteMatch {
   userTeamSide: "A" | "B";
   userTeamName: string;
   opponentName: string;
-  result: "WIN" | "LOSS" | "DRAW";
+  status?: string;
+  result: "WIN" | "LOSS" | "DRAW" | "SCHEDULED";
   date: string;
 }
 
@@ -318,7 +321,7 @@ export default function PerfilPage() {
 
   // =========================================================================
   // 3. MOTOR BÁSICO DE NÍVEL E XP (GAMIFICAÇÃO)
-  // Regra: 50 XP por cada equipa/torneio inscrito + 20 XP por cada partida jogada
+  // Regra: 50 XP por cada equipe/torneio inscrito + 20 XP por cada partida jogada
   // Nível atual = Math.floor(totalXP / 100) + 1
   // Progresso = (totalXP % 100) / 100 * 100
   // =========================================================================
@@ -348,11 +351,12 @@ export default function PerfilPage() {
   const athleteStats = useMemo(() => {
     const tournamentsCount = userTeams.length;
     const winsCount = recentMatches.filter((m) => m.result === "WIN").length;
-    const totalMatches = recentMatches.length;
+    const finishedMatches = recentMatches.filter((m) => m.result !== "SCHEDULED");
+    const totalMatches = finishedMatches.length;
     const winRate = totalMatches > 0 ? Math.round((winsCount / totalMatches) * 100) : 0;
 
     let streak = 0;
-    for (const m of recentMatches) {
+    for (const m of finishedMatches) {
       if (m.result === "WIN") {
         streak++;
       } else {
@@ -430,7 +434,7 @@ export default function PerfilPage() {
         // Busca os times onde o usuário é membro (capitão ou atleta/parceiro convidado)
         const { data: memberRows, error: memberError } = await supabase
           .from("team_members")
-          .select("team_id, teams(*, tournaments(name, sport_type))")
+          .select("team_id, teams(*, tournaments(name, sport_type, status))")
           .eq("user_id", user.id);
 
         if (memberError) {
@@ -450,7 +454,7 @@ export default function PerfilPage() {
         // Fallback / Compatibilidade Histórica: busca também onde user_id = user.id na tabela teams
         const { data: directTeams } = await supabase
           .from("teams")
-          .select("*, tournaments(name, sport_type)")
+          .select("*, tournaments(name, sport_type, status)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -480,7 +484,7 @@ export default function PerfilPage() {
         if (missingTournIds.length > 0) {
           const { data: fbData } = await supabase
             .from("tournaments")
-            .select("id, name, sport_type")
+            .select("id, name, sport_type, status")
             .in("id", missingTournIds);
 
           if (fbData) {
@@ -505,6 +509,7 @@ export default function PerfilPage() {
             status: dbT.status,
             tournamentId: dbT.tournament_id,
             tournamentName: finalTourn?.name || "Torneio Oficial",
+            tournamentStatus: finalTourn?.status,
             sportType: finalTourn?.sport_type || "DOMINO",
             payment_status: dbT.payment_status,
             manager_name: dbT.manager_name || dbT.player1,
@@ -517,7 +522,7 @@ export default function PerfilPage() {
         }
 
         // 2. Fetch de "Histórico Recente de Partidas"
-        // Extrai um array com os IDs dessas equipas (userTeamIds)
+        // Extrai um array com os IDs dessas equipes (userTeamIds)
         const userTeamIds = rawTeams.map((t: any) => t.id).filter(Boolean);
 
         if (userTeamIds.length === 0) {
@@ -610,26 +615,93 @@ export default function PerfilPage() {
 
           // Mapeia partidas identificando o lado do usuário e comparando scores
           const mappedMatches: AthleteMatch[] = matchesRaw.map((m: any) => {
-            const isTeamA = userTeamIds.includes(m.team_a_id);
+            const team1Id = m.team1_id || m.team_a_id;
+            const team2Id = m.team2_id || m.team_b_id;
+            const isTeamA = Boolean(team1Id && userTeamIds.includes(team1Id));
             const userSide: "A" | "B" = isTeamA ? "A" : "B";
 
             const userTeamName = isTeamA
               ? teamsNameMap[m.team_a_id] || "Seu Time"
               : teamsNameMap[m.team_b_id] || "Seu Time";
 
-            const oppTeamId = isTeamA ? m.team_b_id : m.team_a_id;
+            const oppTeamId = isTeamA ? team2Id : team1Id;
             const oppTeamName =
               oppTeamId === "bye"
                 ? "BYE"
                 : teamsNameMap[oppTeamId] || "Adversário";
 
-            const scoreA = Number(m.score_a) || 0;
-            const scoreB = Number(m.score_b) || 0;
+            const tournEarly = tournamentsMap[m.tournament_id];
+            const sportEarly = tournEarly?.sport_type;
+            const matchStatus = String(m.status || "SCHEDULED").toUpperCase();
+            const isFinished =
+              matchStatus === "FINISHED" ||
+              matchStatus === "COMPLETED" ||
+              matchStatus === "FINALIZADO" ||
+              matchStatus === "ENCERRADA";
+
+            const sets1 = Number(m.sets_team1 ?? m.sets_a ?? m.sets1 ?? 0);
+            const sets2 = Number(m.sets_team2 ?? m.sets_b ?? m.sets2 ?? 0);
+            const rawScore1 =
+              m.score_team1 !== undefined && m.score_team1 !== null
+                ? Number(m.score_team1)
+                : m.team1_score !== undefined && m.team1_score !== null
+                  ? Number(m.team1_score)
+                  : Number(m.score_a ?? m.score1 ?? 0);
+            const rawScore2 =
+              m.score_team2 !== undefined && m.score_team2 !== null
+                ? Number(m.score_team2)
+                : m.team2_score !== undefined && m.team2_score !== null
+                  ? Number(m.team2_score)
+                  : Number(m.score_b ?? m.score2 ?? 0);
+
+            let resolvedScore1 = rawScore1 || 0;
+            let resolvedScore2 = rawScore2 || 0;
+
+            if (
+              (resolvedScore1 === 0 && resolvedScore2 === 0 && (sets1 > 0 || sets2 > 0)) ||
+              ((sportEarly === "PING_PONG" || sportEarly === "VOLEI") &&
+                (sets1 > 0 || sets2 > 0) &&
+                m.score_team1 === undefined)
+            ) {
+              resolvedScore1 = sets1;
+              resolvedScore2 = sets2;
+            }
+
+            if (resolvedScore1 === 0 && resolvedScore2 === 0) {
+              let parsedSets =
+                m.sets_history || m.set_history || m.history || m.details?.sets || m.detailed_score?.sets;
+              if (typeof parsedSets === "string") {
+                try {
+                  parsedSets = JSON.parse(parsedSets);
+                } catch {
+                  parsedSets = null;
+                }
+              }
+              if (Array.isArray(parsedSets) && parsedSets.length > 0) {
+                let w1 = 0;
+                let w2 = 0;
+                parsedSets.forEach((s: any) => {
+                  const sA = Number(s.scoreA ?? s.score_a ?? 0);
+                  const sB = Number(s.scoreB ?? s.score_b ?? 0);
+                  if (sA > sB) w1++;
+                  else if (sB > sA) w2++;
+                });
+                if (w1 > 0 || w2 > 0) {
+                  resolvedScore1 = w1;
+                  resolvedScore2 = w2;
+                }
+              }
+            }
+
+            const scoreA = resolvedScore1;
+            const scoreB = resolvedScore2;
+            const unusedLegacyScoreA = Number(m.score_a) || 0;
+            const unusedLegacyScoreB = Number(m.score_b) || 0;
 
             const userScore = userSide === "A" ? scoreA : scoreB;
             const oppScore = userSide === "A" ? scoreB : scoreA;
 
-            let result: "WIN" | "LOSS" | "DRAW" = "DRAW";
+            let result: "WIN" | "LOSS" | "DRAW" | "SCHEDULED" = "DRAW";
             if (userScore > oppScore) {
               result = "WIN";
             } else if (userScore < oppScore) {
@@ -660,13 +732,20 @@ export default function PerfilPage() {
               tournamentName,
               sportType,
               phase: m.phase || "Fase Eliminatória",
-              scoreDisplay: `${scoreA} x ${scoreB}`,
+              status: m.status,
+              scoreDisplay: isFinished ? `${scoreA} x ${scoreB}` : "- x -",
+              result: !isFinished
+                ? "SCHEDULED"
+                : userScore === oppScore && m.winner_id
+                  ? m.winner_id === (isTeamA ? team1Id : team2Id)
+                    ? "WIN"
+                    : "LOSS"
+                  : result,
               userScore,
               opponentScore: oppScore,
               userTeamSide: userSide,
               userTeamName,
               opponentName: oppTeamName,
-              result,
               date: formattedDate,
             };
           });
@@ -925,8 +1004,8 @@ export default function PerfilPage() {
                 <div className="relative group shrink-0">
                   <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-[#1e1e24] p-1 border-2 border-amber-400/60 shadow-xl shadow-amber-500/10 overflow-hidden relative flex items-center justify-center">
                     {displayAvatar &&
-                    !displayAvatar.startsWith("http") &&
-                    !displayAvatar.startsWith("data:") ? (
+                      !displayAvatar.startsWith("http") &&
+                      !displayAvatar.startsWith("data:") ? (
                       <div className="w-full h-full rounded-2xl bg-gradient-to-br from-[#24242c] via-[#1a1a20] to-amber-950/20 flex items-center justify-center select-none shadow-inner">
                         <span className="text-5xl sm:text-6xl transition-transform group-hover:scale-110">
                           {displayAvatar}
@@ -1166,11 +1245,10 @@ export default function PerfilPage() {
                   <span>Conquistas e Emblemas ({achievements.length})</span>
                 </h3>
                 <span
-                  className={`text-[11px] font-bold flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
-                    unlockedAchievementsCount > 0
-                      ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/35"
-                      : "text-zinc-500 bg-zinc-900/80 border-zinc-800"
-                  }`}
+                  className={`text-[11px] font-bold flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${unlockedAchievementsCount > 0
+                    ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/35"
+                    : "text-zinc-500 bg-zinc-900/80 border-zinc-800"
+                    }`}
                 >
                   {unlockedAchievementsCount > 0 ? (
                     <>
@@ -1197,11 +1275,10 @@ export default function PerfilPage() {
                   return (
                     <div
                       key={ach.id}
-                      className={`p-4 rounded-2xl bg-[#121214] border transition-all flex items-start gap-3.5 shadow-md group ${
-                        isUnlocked
-                          ? "border-purple-500/40 bg-gradient-to-br from-[#16161a] via-[#121214] to-purple-950/20 hover:border-purple-400/60 shadow-lg shadow-purple-500/5 opacity-100"
-                          : "border-[#27272a] opacity-50 grayscale hover:grayscale-0 hover:opacity-75"
-                      }`}
+                      className={`p-4 rounded-2xl bg-[#121214] border transition-all flex items-start gap-3.5 shadow-md group ${isUnlocked
+                        ? "border-purple-500/40 bg-gradient-to-br from-[#16161a] via-[#121214] to-purple-950/20 hover:border-purple-400/60 shadow-lg shadow-purple-500/5 opacity-100"
+                        : "border-[#27272a] opacity-50 grayscale hover:grayscale-0 hover:opacity-75"
+                        }`}
                     >
                       <div
                         className={`w-11 h-11 rounded-2xl ${ach.bg} border flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform`}
@@ -1211,11 +1288,10 @@ export default function PerfilPage() {
                       <div className="space-y-0.5 flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
                           <h4
-                            className={`text-xs font-bold transition-colors truncate ${
-                              isUnlocked
-                                ? "text-white group-hover:text-purple-300"
-                                : "text-white group-hover:text-amber-300"
-                            }`}
+                            className={`text-xs font-bold transition-colors truncate ${isUnlocked
+                              ? "text-white group-hover:text-purple-300"
+                              : "text-white group-hover:text-amber-300"
+                              }`}
                           >
                             {ach.title}
                           </h4>
@@ -1261,21 +1337,26 @@ export default function PerfilPage() {
                 ) : (
                   <div className="space-y-2.5">
                     {recentMatches.map((m) => {
-                      const isWin = m.result === "WIN";
+                      const isScheduled = m.result === "SCHEDULED";
+                      const isWin = !isScheduled && m.result === "WIN";
                       const isLoss = m.result === "LOSS";
 
                       // Badge de resultado com cor apropriada: Verde (Vitória), Vermelho (Derrota), Cinzento (Empate)
                       const badgeClass = isWin
                         ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
                         : isLoss
-                        ? "text-red-400 bg-red-500/10 border-red-500/30"
-                        : "text-zinc-400 bg-zinc-500/10 border-zinc-500/30";
+                          ? "text-red-400 bg-red-500/10 border-red-500/30"
+                          : isScheduled
+                            ? "text-blue-400 bg-blue-500/10 border-blue-500/30"
+                            : "text-amber-400 bg-amber-500/10 border-amber-500/30";
 
                       const badgeText = isWin
                         ? "Vitória 🏆"
                         : isLoss
-                        ? "Derrota ❌"
-                        : "Empate ⚖️";
+                          ? "Derrota ❌"
+                          : isScheduled
+                            ? "Programada"
+                            : "Empate ⚖️";
 
                       return (
                         <div
@@ -1385,10 +1466,20 @@ export default function PerfilPage() {
                             </span>
                           )}
                         </div>
-                        {team.status === "PAID" || team.payment_status === "PAID" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
+                        {["IN_PROGRESS", "CLOSED", "EM_ANDAMENTO", "LIVE"].includes(
+                          String(team.tournamentStatus || "").toUpperCase()
+                        ) ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-blue-500 bg-blue-500/15 text-blue-400 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
+                            <PlayCircle className="h-3 w-3 text-blue-400" />
+                            <span>CAMPEONATO EM ANDAMENTO</span>
+                          </span>
+                        ) : team.status === "PAID" ||
+                          team.payment_status === "PAID" ||
+                          team.status === "APPROVED" ||
+                          team.payment_status === "APPROVED" ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border border-emerald-500 bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
                             <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                            <span>Inscrição Confirmada! ✅</span>
+                            <span>Inscrição Confirmada!</span>
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0">
@@ -1458,8 +1549,8 @@ export default function PerfilPage() {
                     {/* Prévia da Foto */}
                     <div className="w-16 h-16 rounded-2xl bg-zinc-900 border-2 border-amber-400/80 p-0.5 shadow-lg shrink-0 overflow-hidden flex items-center justify-center">
                       {selectedAvatarUrl &&
-                      !selectedAvatarUrl.startsWith("http") &&
-                      !selectedAvatarUrl.startsWith("data:") ? (
+                        !selectedAvatarUrl.startsWith("http") &&
+                        !selectedAvatarUrl.startsWith("data:") ? (
                         <div className="w-full h-full rounded-xl bg-gradient-to-br from-[#24242c] via-[#1a1a20] to-amber-950/30 flex items-center justify-center select-none">
                           <span className="text-3xl">{selectedAvatarUrl}</span>
                         </div>
@@ -1486,11 +1577,10 @@ export default function PerfilPage() {
                     <button
                       type="button"
                       onClick={() => setAvatarTab("upload")}
-                      className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        avatarTab === "upload"
-                          ? "bg-amber-500 text-black shadow-md font-black"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
+                      className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${avatarTab === "upload"
+                        ? "bg-amber-500 text-black shadow-md font-black"
+                        : "text-zinc-400 hover:text-white"
+                        }`}
                     >
                       <UploadCloud className="h-3.5 w-3.5" />
                       <span>Fazer Upload</span>
@@ -1499,11 +1589,10 @@ export default function PerfilPage() {
                     <button
                       type="button"
                       onClick={() => setAvatarTab("url")}
-                      className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        avatarTab === "url"
-                          ? "bg-amber-500 text-black shadow-md font-black"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
+                      className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${avatarTab === "url"
+                        ? "bg-amber-500 text-black shadow-md font-black"
+                        : "text-zinc-400 hover:text-white"
+                        }`}
                     >
                       <LinkIcon className="h-3.5 w-3.5" />
                       <span>Link da Web</span>
@@ -1512,11 +1601,10 @@ export default function PerfilPage() {
                     <button
                       type="button"
                       onClick={() => setAvatarTab("presets")}
-                      className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        avatarTab === "presets"
-                          ? "bg-amber-500 text-black shadow-md font-black"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
+                      className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${avatarTab === "presets"
+                        ? "bg-amber-500 text-black shadow-md font-black"
+                        : "text-zinc-400 hover:text-white"
+                        }`}
                     >
                       <Sparkles className="h-3.5 w-3.5" />
                       <span>Avatares</span>
@@ -1586,11 +1674,10 @@ export default function PerfilPage() {
                               type="button"
                               key={emoji}
                               onClick={() => setSelectedAvatarUrl(emoji)}
-                              className={`aspect-square rounded-2xl border-2 transition-all cursor-pointer relative bg-zinc-900/90 hover:bg-zinc-800 flex items-center justify-center select-none text-4xl ${
-                                isSelected
-                                  ? "border-amber-400 bg-amber-500/10 ring-2 ring-amber-400/40 scale-105"
-                                  : "border-zinc-800 hover:border-zinc-600"
-                              }`}
+                              className={`aspect-square rounded-2xl border-2 transition-all cursor-pointer relative bg-zinc-900/90 hover:bg-zinc-800 flex items-center justify-center select-none text-4xl ${isSelected
+                                ? "border-amber-400 bg-amber-500/10 ring-2 ring-amber-400/40 scale-105"
+                                : "border-zinc-800 hover:border-zinc-600"
+                                }`}
                               title={`Avatar ${emoji}`}
                             >
                               <span>{emoji}</span>
@@ -1670,14 +1757,12 @@ export default function PerfilPage() {
                         role="switch"
                         aria-checked={formShowPhone}
                         onClick={() => setFormShowPhone((prev) => !prev)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          formShowPhone ? "bg-amber-400" : "bg-zinc-700"
-                        }`}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formShowPhone ? "bg-amber-400" : "bg-zinc-700"
+                          }`}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out ${
-                            formShowPhone ? "translate-x-5 bg-black" : "translate-x-0 bg-zinc-300"
-                          }`}
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out ${formShowPhone ? "translate-x-5 bg-black" : "translate-x-0 bg-zinc-300"
+                            }`}
                         />
                       </button>
                     </div>

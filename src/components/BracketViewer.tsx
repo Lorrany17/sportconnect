@@ -11,26 +11,23 @@ import {
   RefreshCw,
   ExternalLink,
   Network,
-  Users,
-  CheckCircle2,
-  Calendar,
-  BarChart2,
-  X,
-  Activity,
-  Layers,
-  Award,
-  Sparkles,
+  Settings,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { Tournament, Team, SportType, Match, SetScore } from "@/types";
+import { Tournament, Team, SportType, Match } from "@/types";
 import { useTournament } from "@/context/TournamentContext";
 import PublicHeader from "@/components/PublicHeader";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
+import TournamentView, { normalizeTournamentFormat } from "@/components/TournamentView";
+import { swapTeams, updateMatchParticipants } from "@/app/actions/bracket";
 
 interface BracketViewerProps {
   tournamentId?: string;
   showPublicHeader?: boolean;
   onBack?: () => void;
+  canManage?: boolean;
+  onRegenerateBracket?: () => void;
+  isRegenerating?: boolean;
 }
 
 const SPORT_LABELS: Record<SportType, string> = {
@@ -161,6 +158,9 @@ export default function BracketViewer({
   tournamentId: propTournamentId,
   showPublicHeader = true,
   onBack,
+  canManage = false,
+  onRegenerateBracket,
+  isRegenerating = false,
 }: BracketViewerProps) {
   const router = useRouter();
   const context = useTournament();
@@ -174,6 +174,8 @@ export default function BracketViewer({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedDetailMatch, setSelectedDetailMatch] = useState<Match | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const getMatchDetailData = useCallback(
     (match: Match) => {
@@ -296,6 +298,8 @@ export default function BracketViewer({
           end_date: tourData.end_date,
           rules: tourData.rules,
           format: tourData.format,
+          tournament_format: tourData.tournament_format,
+          match_rules: tourData.match_rules,
           cover_url: tourData.cover_url,
           sponsors: tourData.sponsors || [],
         });
@@ -317,6 +321,9 @@ export default function BracketViewer({
         status: t.status,
         tournamentId: t.tournament_id,
         payment_status: t.payment_status,
+        cancellation_status: t.cancellation_status,
+        group_name: t.group_name,
+        declared_skill_level: t.declared_skill_level,
         user_id: t.user_id,
       }));
       setTeams(mappedTeams);
@@ -348,7 +355,9 @@ export default function BracketViewer({
           ) {
             let parsed = ctxSets;
             if (typeof parsed === "string") {
-              try { parsed = JSON.parse(parsed); } catch {}
+              try {
+                parsed = JSON.parse(parsed);
+              } catch {}
             }
             return {
               ...m,
@@ -370,7 +379,7 @@ export default function BracketViewer({
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [effectiveTournamentId]);
+  }, [effectiveTournamentId, context.matches]);
 
   useEffect(() => {
     fetchData();
@@ -396,6 +405,213 @@ export default function BracketViewer({
     }
   };
 
+  // Verifica se alguma partida do torneio foi iniciada ou disputada
+  const hasStartedMatches = useMemo(() => {
+    if (!matches || matches.length === 0) return false;
+    return matches.some((m: any) => {
+      const status = String(m.status || "").toUpperCase();
+      const isLive = status === "LIVE" || status === "IN_PROGRESS" || status === "PLAYING";
+      const hasBothTeams =
+        Boolean(m.team1_id || m.team_a_id || m.teamA?.id) &&
+        Boolean(m.team2_id || m.team_b_id || m.teamB?.id);
+      const isCompleted = (status === "COMPLETED" || status === "FINISHED" || status === "ENCERRADA" || status === "FINALIZADO") && hasBothTeams;
+      return isLive || isCompleted;
+    });
+  }, [matches]);
+
+  const canEditBracket = Boolean(canManage && !hasStartedMatches && matches.length > 0);
+  const canRegenerate = Boolean(canManage && !hasStartedMatches && matches.length > 0 && onRegenerateBracket);
+
+  const handleSwapTeams = async (
+    srcMatchId: string,
+    srcSlot: "team1" | "team2" | "A" | "B",
+    destMatchId: string,
+    destSlot: "team1" | "team2" | "A" | "B"
+  ) => {
+    if (!effectiveTournamentId || isSavingEdit) return;
+    setIsSavingEdit(true);
+
+    const isSlot1 = (s: string) => s === "team1" || s === "A";
+
+    // Encontra as partidas e os IDs de equipe correspondentes (suportando null)
+    const srcMatch = matches.find((m) => m.id === srcMatchId);
+    const destMatch = matches.find((m) => m.id === destMatchId);
+
+    const srcTeamId = srcMatch
+      ? (isSlot1(srcSlot)
+          ? (srcMatch.team1_id || srcMatch.team_a_id || srcMatch.teamA?.id || null)
+          : (srcMatch.team2_id || srcMatch.team_b_id || srcMatch.teamB?.id || null))
+      : null;
+
+    const destTeamId = destMatch
+      ? (isSlot1(destSlot)
+          ? (destMatch.team1_id || destMatch.team_a_id || destMatch.teamA?.id || null)
+          : (destMatch.team2_id || destMatch.team_b_id || destMatch.teamB?.id || null))
+      : null;
+
+    // 1. Atualização Otimista Imediata no Estado Local (UI responsiva com zero delay)
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id === srcMatchId && m.id === destMatchId) {
+          // Inversão na mesma partida
+          const newT1 = isSlot1(srcSlot) ? destTeamId : srcTeamId;
+          const newT2 = isSlot1(srcSlot) ? srcTeamId : destTeamId;
+          return {
+            ...m,
+            team1_id: newT1,
+            team_a_id: newT1,
+            team2_id: newT2,
+            team_b_id: newT2,
+          };
+        }
+        if (m.id === srcMatchId) {
+          const currentT1 = m.team1_id || m.team_a_id || null;
+          const currentT2 = m.team2_id || m.team_b_id || null;
+          return {
+            ...m,
+            team1_id: isSlot1(srcSlot) ? destTeamId : currentT1,
+            team_a_id: isSlot1(srcSlot) ? destTeamId : currentT1,
+            team2_id: !isSlot1(srcSlot) ? destTeamId : currentT2,
+            team_b_id: !isSlot1(srcSlot) ? destTeamId : currentT2,
+          };
+        }
+        if (m.id === destMatchId) {
+          const currentT1 = m.team1_id || m.team_a_id || null;
+          const currentT2 = m.team2_id || m.team_b_id || null;
+          return {
+            ...m,
+            team1_id: isSlot1(destSlot) ? srcTeamId : currentT1,
+            team_a_id: isSlot1(destSlot) ? srcTeamId : currentT1,
+            team2_id: !isSlot1(destSlot) ? srcTeamId : currentT2,
+            team_b_id: !isSlot1(destSlot) ? srcTeamId : currentT2,
+          };
+        }
+        return m;
+      })
+    );
+
+    try {
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+      const res = await swapTeams({
+        tournamentId: effectiveTournamentId,
+        match1Id: srcMatchId,
+        slot1: srcSlot,
+        team1Id: srcTeamId,
+        match2Id: destMatchId,
+        slot2: destSlot,
+        team2Id: destTeamId,
+        targetTeamId: destTeamId,
+        userAuthToken: token,
+      });
+
+      if (!res.success) {
+        alert(res.error || "Erro ao trocar equipes de posição.");
+        await fetchData();
+        return;
+      }
+
+      await fetchData();
+      try {
+        router.refresh();
+      } catch {}
+    } catch (err: unknown) {
+      console.error("Erro ao trocar equipes:", err);
+      const msg = err instanceof Error ? err.message : "Erro ao trocar equipes de posição.";
+      alert(msg);
+      await fetchData();
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleReplaceTeam = async (
+    matchId: string,
+    slot: "team1" | "team2" | "A" | "B",
+    newTeamId: string | null
+  ) => {
+    if (!effectiveTournamentId || isSavingEdit) return;
+
+    setIsSavingEdit(true);
+    try {
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+
+      // Se a equipe selecionada já estiver alocada em outra partida da 1ª rodada, executa um SWAP
+      if (newTeamId) {
+        const otherMatch = matches.find(
+          (m) =>
+            m.id !== matchId &&
+            (m.round === 1 || !m.round) &&
+            ((m.team1_id === newTeamId || m.team_a_id === newTeamId || m.teamA?.id === newTeamId) ||
+              (m.team2_id === newTeamId || m.team_b_id === newTeamId || m.teamB?.id === newTeamId))
+        );
+
+        if (otherMatch) {
+          const otherSlot =
+            (otherMatch.team1_id === newTeamId ||
+              otherMatch.team_a_id === newTeamId ||
+              otherMatch.teamA?.id === newTeamId)
+              ? "team1"
+              : "team2";
+
+          const res = await swapTeams({
+            tournamentId: effectiveTournamentId,
+            match1Id: otherMatch.id,
+            slot1: otherSlot,
+            team1Id: newTeamId,
+            match2Id: matchId,
+            slot2: slot,
+            userAuthToken: token,
+          });
+
+          if (!res.success) {
+            alert(res.error || "Erro ao trocar equipes de posição.");
+            return;
+          }
+          await fetchData();
+          try {
+            router.refresh();
+          } catch {}
+          return;
+        }
+      }
+
+      // Caso contrário (equipe não alocada ou seleção de BYE / null), atualiza o confronto diretamente
+      const match = matches.find((m) => m.id === matchId);
+      if (!match) return;
+
+      const currentT1 = match.team1_id || match.team_a_id || match.teamA?.id || null;
+      const currentT2 = match.team2_id || match.team_b_id || match.teamB?.id || null;
+
+      const updatedT1 = slot === "team1" || slot === "A" ? newTeamId : currentT1;
+      const updatedT2 = slot === "team2" || slot === "B" ? newTeamId : currentT2;
+
+      const res = await updateMatchParticipants({
+        tournamentId: effectiveTournamentId,
+        matchId,
+        team1Id: updatedT1,
+        team2Id: updatedT2,
+        userAuthToken: token,
+      });
+
+      if (!res.success) {
+        alert(res.error || "Erro ao atualizar confronto.");
+        return;
+      }
+      await fetchData();
+      try {
+        router.refresh();
+      } catch {}
+    } catch (err: unknown) {
+      console.error("Erro ao atualizar confronto:", err);
+      const msg = err instanceof Error ? err.message : "Erro ao atualizar confronto.";
+      alert(msg);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   // Mapa de equipes para consulta O(1)
   const teamsMap = useMemo(() => {
     const map = new Map<string, Team>();
@@ -403,60 +619,21 @@ export default function BracketViewer({
     return map;
   }, [teams]);
 
-  // Agrupamento de partidas por round (crescente: 1 -> Oitavas, 2 -> Quartas, etc.)
-  const roundsMap = useMemo(() => {
-    const map = new Map<number, DbMatchRow[]>();
-
-    matches.forEach((m) => {
-      // Se a coluna round existir, utiliza-a; senão tenta inferir do phase ou assume 1
-      let roundNum = m.round;
-      if (!roundNum || isNaN(roundNum)) {
-        const ph = (m.phase || "").toLowerCase();
-        if (ph.includes("final") && !ph.includes("semi") && !ph.includes("quarta") && !ph.includes("oitava")) {
-          roundNum = 4;
-        } else if (ph.includes("semi")) {
-          roundNum = 3;
-        } else if (ph.includes("quarta")) {
-          roundNum = 2;
-        } else {
-          roundNum = 1;
-        }
-      }
-
-      if (!map.has(roundNum)) {
-        map.set(roundNum, []);
-      }
-      map.get(roundNum)!.push(m);
-    });
-
-    // Ordena partidas dentro de cada rodada
-    map.forEach((list) => {
-      list.sort((a, b) => (a.match_order || 0) - (b.match_order || 0));
-    });
-
-    return map;
-  }, [matches]);
-
-  const sortedRounds = useMemo(() => {
-    return Array.from(roundsMap.keys()).sort((a, b) => a - b);
-  }, [roundsMap]);
-
-  // Nomes amigáveis para as colunas de cada round
-  const getRoundLabel = (round: number, totalRounds: number) => {
-    const distance = totalRounds - round;
-    if (distance === 0) return "Grande Final";
-    if (distance === 1) return "Semifinal";
-    if (distance === 2) return "Quartas de Final";
-    if (distance === 3) return "Oitavas de Final";
-    if (distance === 4) return "16 avos de Final";
-    return `Rodada ${round}`;
-  };
-
   const activeMatchesCount = matches.filter((m) => m.status === "LIVE").length;
 
   const sportLabel = tournament?.sport_type
     ? SPORT_LABELS[tournament.sport_type] || "Torneio Esportivo"
     : "Torneio Esportivo";
+
+  const resolvedFormat = useMemo(() => {
+    return normalizeTournamentFormat(tournament);
+  }, [tournament]);
+
+  const formatHeaderLabel = useMemo(() => {
+    if (resolvedFormat === "LEAGUE") return "Tabela de Pontos Corridos";
+    if (resolvedFormat === "GROUPS") return "Fase de Grupos + Eliminatórias";
+    return "Chaveamento Oficial Mata-Mata";
+  }, [resolvedFormat]);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
@@ -474,7 +651,57 @@ export default function BracketViewer({
               <span>Voltar ao Torneio</span>
             </button>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Botão de Edição Manual do Chaveamento */}
+              {canEditBracket && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditMode(!isEditMode)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    isEditMode
+                      ? "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-lg shadow-amber-500/10"
+                      : "bg-[#1e1e1e] hover:bg-zinc-800 border-[#27272a] text-zinc-300 hover:text-white"
+                  }`}
+                  title={
+                    isEditMode
+                      ? "Sair do modo de edição manual"
+                      : "Editar manualmente equipes e confrontos da 1ª rodada"
+                  }
+                >
+                  <Settings
+                    className={`h-3.5 w-3.5 ${
+                      isEditMode ? "animate-spin text-amber-400" : "text-zinc-400"
+                    }`}
+                  />
+                  <span>{isEditMode ? "Concluir Edição" : "Editar Chaveamento"}</span>
+                </button>
+              )}
+
+              {/* Botão de Regeneração Direta */}
+              {canRegenerate && (
+                <button
+                  type="button"
+                  onClick={onRegenerateBracket}
+                  disabled={isRegenerating}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  title="Regenerar o chaveamento do zero com as equipes confirmadas"
+                >
+                  {isRegenerating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00a2ff]" />
+                  ) : (
+                    <Network className="h-3.5 w-3.5 text-[#00a2ff]" />
+                  )}
+                  <span className="hidden sm:inline">Regenerar Chave</span>
+                </button>
+              )}
+
+              {isSavingEdit && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium">
+                  <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+                  <span>Salvando alteração...</span>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleRefresh}
@@ -512,7 +739,7 @@ export default function BracketViewer({
                     <span className="text-zinc-500 text-xs">•</span>
                     <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
                       <Trophy className="h-3.5 w-3.5 text-amber-400" />
-                      <span>Chaveamento Oficial Mata-Mata</span>
+                      <span>{formatHeaderLabel}</span>
                     </span>
                   </div>
 
@@ -548,12 +775,12 @@ export default function BracketViewer({
             </div>
           )}
 
-          {/* 3. Árvore Visual de Chaveamento em Flexbox */}
+          {/* 3. Visualização Dinâmica por Formato do Torneio (KNOCKOUT / LEAGUE / GROUPS) */}
           {loading ? (
             <div className="py-24 text-center space-y-3">
               <Loader2 className="h-9 w-9 text-[#00a2ff] animate-spin mx-auto" />
               <p className="text-xs font-bold text-zinc-400">
-                Carregando chaveamento da competição...
+                Carregando chaveamento e classificação da competição...
               </p>
             </div>
           ) : matches.length === 0 ? (
@@ -563,10 +790,14 @@ export default function BracketViewer({
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-white">
-                  Chaveamento Ainda Não Gerado
+                  {resolvedFormat === "LEAGUE"
+                    ? "Tabela e Rodadas Ainda Não Geradas"
+                    : "Chaveamento Ainda Não Gerado"}
                 </h3>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  As chaves e confrontos deste campeonato ainda não foram sorteados pela organização. Assim que as inscrições forem encerradas e o chaveamento oficial for gerado, a árvore de confrontos aparecerá aqui em tempo real.
+                  {resolvedFormat === "LEAGUE"
+                    ? "Os confrontos de todas as rodadas deste campeonato em pontos corridos ainda não foram gerados pela organização. Assim que as inscrições forem encerradas e a tabela oficial for gerada, a classificação e as rodadas aparecerão aqui em tempo real."
+                    : "As chaves e confrontos deste campeonato ainda não foram sorteados pela organização. Assim que as inscrições forem encerradas e o chaveamento oficial for gerado, a árvore de confrontos aparecerá aqui em tempo real."}
                 </p>
               </div>
               <div className="pt-2">
@@ -581,232 +812,16 @@ export default function BracketViewer({
               </div>
             </div>
           ) : (
-            <div className="w-full bg-[#141416]/70 border border-[#27272a] rounded-3xl p-4 sm:p-6 shadow-2xl overflow-hidden">
-              {/* Barra de Instrução Horizontal */}
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-zinc-800/80 text-xs text-zinc-400">
-                <div className="flex items-center gap-2">
-                  <Network className="h-4 w-4 text-[#00a2ff]" />
-                  <span className="font-bold text-zinc-300">
-                    Árvore Eliminatória ({sortedRounds.length} Fases • {matches.length} Partidas)
-                  </span>
-                </div>
-                <span className="text-[11px] text-zinc-500 hidden sm:inline">
-                  Deslize para os lados para visualizar da 1ª Fase até a Final
-                </span>
-              </div>
-
-              {/* Grid Flexbox Horizontal das Fases lado a lado */}
-              <div className="flex flex-row items-stretch gap-6 sm:gap-10 overflow-x-auto py-4 px-2 min-h-[560px] scrollbar-thin">
-                {sortedRounds.map((roundNum) => {
-                  const roundMatches = roundsMap.get(roundNum) || [];
-                  const roundTitle = getRoundLabel(roundNum, sortedRounds.length);
-                  const isFinal = roundNum === sortedRounds[sortedRounds.length - 1];
-
-                  return (
-                    <div
-                      key={roundNum}
-                      className="flex flex-col min-w-[260px] max-w-[300px] shrink-0"
-                    >
-                      {/* Cabeçalho da Rodada / Coluna */}
-                      <div className="text-center pb-3.5 mb-2 border-b border-zinc-800">
-                        <span
-                          className={`text-xs font-black uppercase tracking-wider block ${
-                            isFinal ? "text-amber-400" : "text-[#00a2ff]"
-                          }`}
-                        >
-                          {roundTitle}
-                        </span>
-                        <span className="text-[11px] text-zinc-500 font-medium">
-                          {roundMatches.length}{" "}
-                          {roundMatches.length === 1 ? "confronto" : "confrontos"}
-                        </span>
-                      </div>
-
-                      {/* Partidas da Rodada distribuídas verticalmente com justify-around */}
-                      <div className="flex flex-col justify-around flex-1 gap-6 py-2">
-                        {roundMatches.map((match, idx) => {
-                          const team1Id = match.team1_id || match.team_a_id;
-                          const team2Id = match.team2_id || match.team_b_id;
-
-                          const team1 = team1Id ? teamsMap.get(team1Id) : null;
-                          const team2 = team2Id ? teamsMap.get(team2Id) : null;
-
-                          const isLive = match.status === "LIVE";
-                          const isCompleted = match.status === "COMPLETED";
-
-                          const isBye =
-                            roundNum === 1 &&
-                            ((Boolean(team1Id) && !team2Id) || (!team1Id && Boolean(team2Id)));
-
-                          // Se o ID for nulo, exibe "BYE" se for rodada 1 com vaga livre, ou "A definir" nas fases seguintes
-                          const team1Name = team1
-                            ? team1.name
-                            : isBye
-                            ? "BYE (Avanço Automático)"
-                            : "A definir";
-                          const team2Name = team2
-                            ? team2.name
-                            : isBye
-                            ? "BYE (Avanço Automático)"
-                            : "A definir";
-
-                          const score1 = match.score_a ?? 0;
-                          const score2 = match.score_b ?? 0;
-                          const sets1 = match.sets_a ?? 0;
-                          const sets2 = match.sets_b ?? 0;
-                          const isSetsSport =
-                            sets1 > 0 ||
-                            sets2 > 0 ||
-                            tournament?.sport_type === "PING_PONG" ||
-                            tournament?.sport_type === "VOLEI";
-
-                          const displayScore1 = isSetsSport && (sets1 > 0 || sets2 > 0) ? sets1 : score1;
-                          const displayScore2 = isSetsSport && (sets1 > 0 || sets2 > 0) ? sets2 : score2;
-
-                          const isWinner1 =
-                            isCompleted &&
-                            ((match.winner_id && match.winner_id === team1Id) ||
-                              (!isBye && (isSetsSport && (sets1 > 0 || sets2 > 0) ? sets1 > sets2 : score1 > score2)));
-                          const isWinner2 =
-                            isCompleted &&
-                            ((match.winner_id && match.winner_id === team2Id) ||
-                              (!isBye && (isSetsSport && (sets1 > 0 || sets2 > 0) ? sets2 > sets1 : score2 > score1)));
-
-                          const hasDetails =
-                            !isBye &&
-                            (isCompleted || isLive || match.status === "IN_PROGRESS") &&
-                            Boolean(team1Id || team2Id);
-
-                          return (
-                            <div
-                              key={match.id}
-                              className={`bg-[#18181b] border rounded-2xl p-3.5 sm:p-4 shadow-xl transition-all duration-300 relative group ${
-                                isLive
-                                  ? "border-amber-500/60 ring-1 ring-amber-500/30"
-                                  : isFinal
-                                  ? "border-amber-500/30 hover:border-amber-500/60"
-                                  : "border-zinc-800 hover:border-[#00a2ff]/50"
-                              }`}
-                            >
-                              {/* Header do Card da Partida */}
-                              <div className="flex items-center justify-between text-[10px] font-bold pb-2 mb-2 border-b border-zinc-800/80">
-                                <span className="text-zinc-500 uppercase tracking-wider">
-                                  Jogo #{match.match_order || idx + 1}
-                                </span>
-
-                                <div className="flex items-center gap-1.5">
-                                  {isLive ? (
-                                    <span className="flex items-center gap-1 text-amber-400 font-black animate-pulse">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                      <span>AO VIVO</span>
-                                    </span>
-                                  ) : isCompleted ? (
-                                    <span className="text-emerald-400 flex items-center gap-1 font-semibold">
-                                      <CheckCircle2 className="h-3 w-3" />
-                                      <span>{isBye ? "Avanço por BYE" : "Encerrada"}</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-zinc-500">Programada</span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Equipe 1 */}
-                              <div
-                                className={`flex items-center justify-between py-1.5 px-2 rounded-xl transition-colors ${
-                                  isWinner1
-                                    ? "bg-emerald-500/10 text-emerald-300 font-black"
-                                    : "text-zinc-200"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0 pr-2">
-                                  <div
-                                    className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                                      team1
-                                        ? "bg-blue-600/20 text-[#00a2ff] border border-blue-500/30"
-                                        : "bg-zinc-800 text-zinc-500"
-                                    }`}
-                                  >
-                                    {team1 ? team1.name.slice(0, 1).toUpperCase() : "?"}
-                                  </div>
-                                  <span
-                                    className={`text-xs truncate ${
-                                      !team1 ? "text-zinc-500 italic font-normal" : "font-semibold"
-                                    }`}
-                                    title={team1Name}
-                                  >
-                                    {team1Name}
-                                  </span>
-                                </div>
-
-                                <div className="shrink-0 font-mono text-xs font-black min-w-[20px] text-right">
-                                  {isCompleted || isLive ? displayScore1 : "-"}
-                                </div>
-                              </div>
-
-                              {/* Linha Divisória com Badge "VS" */}
-                              <div className="relative my-1 flex items-center justify-center">
-                                <div className="w-full border-t border-zinc-800/80" />
-                                <span className="absolute bg-[#18181b] px-1.5 text-[9px] font-black uppercase text-zinc-600 tracking-wider">
-                                  VS
-                                </span>
-                              </div>
-
-                              {/* Equipe 2 */}
-                              <div
-                                className={`flex items-center justify-between py-1.5 px-2 rounded-xl transition-colors ${
-                                  isWinner2
-                                    ? "bg-emerald-500/10 text-emerald-300 font-black"
-                                    : "text-zinc-200"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0 pr-2">
-                                  <div
-                                    className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                                      team2
-                                        ? "bg-blue-600/20 text-[#00a2ff] border border-blue-500/30"
-                                        : "bg-zinc-800 text-zinc-500"
-                                    }`}
-                                  >
-                                    {team2 ? team2.name.slice(0, 1).toUpperCase() : "?"}
-                                  </div>
-                                  <span
-                                    className={`text-xs truncate ${
-                                      !team2 ? "text-zinc-500 italic font-normal" : "font-semibold"
-                                    }`}
-                                    title={team2Name}
-                                  >
-                                    {team2Name}
-                                  </span>
-                                </div>
-
-                                <div className="shrink-0 font-mono text-xs font-black min-w-[20px] text-right">
-                                  {isCompleted || isLive ? displayScore2 : "-"}
-                                </div>
-                              </div>
-
-                              {/* Botão Ver Detalhes no Rodapé do Card */}
-                              {hasDetails && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedDetailMatch(match);
-                                  }}
-                                  className="w-full mt-2.5 pt-2 border-t border-zinc-800/70 flex items-center justify-center gap-1.5 text-[10px] font-bold text-zinc-400 hover:text-[#00a2ff] transition-all cursor-pointer group/det"
-                                >
-                                  <BarChart2 className="h-3 w-3 text-zinc-500 group-hover/det:text-[#00a2ff] transition-colors" />
-                                  <span>Ver Detalhes</span>
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <TournamentView
+              format={tournament?.tournament_format || tournament?.format}
+              tournament={tournament}
+              teams={teams}
+              matches={matches}
+              onSelectMatch={(match) => setSelectedDetailMatch(match)}
+              isEditMode={isEditMode}
+              onSwapTeams={handleSwapTeams}
+              onReplaceTeam={handleReplaceTeam}
+            />
           )}
         </main>
       </div>
@@ -884,5 +899,3 @@ export default function BracketViewer({
     </div>
   );
 }
-
-
