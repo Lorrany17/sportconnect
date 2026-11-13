@@ -363,4 +363,243 @@ export async function syncUserStaffAndNotifications(
   }
 }
 
+export interface UploadRegulationResponse {
+  success: boolean;
+  publicUrl?: string;
+  error?: string;
+}
+
+/**
+ * Server Action para upload seguro do Regulamento Oficial em PDF no Supabase Storage.
+ * Garante que o bucket 'tournament-documents' exista e seja público antes de enviar o arquivo.
+ */
+export async function uploadTournamentRegulationPdf(
+  formData: FormData
+): Promise<UploadRegulationResponse> {
+  try {
+    const file = formData.get("file") as File | null;
+    if (!file) {
+      return { success: false, error: "Nenhum ficheiro PDF recebido para upload." };
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    const bucketName = "tournament-documents";
+
+    // 1. Garantir que o bucket 'tournament-documents' existe e está configurado como público
+    try {
+      const { data: bucketInfo, error: getBucketErr } =
+        await supabaseAdmin.storage.getBucket(bucketName);
+
+      if (getBucketErr || !bucketInfo) {
+        await supabaseAdmin.storage.createBucket(bucketName, {
+          public: true,
+          fileSizeLimit: 15 * 1024 * 1024,
+        });
+      } else if (!bucketInfo.public) {
+        await supabaseAdmin.storage.updateBucket(bucketName, {
+          public: true,
+        });
+      }
+    } catch (bucketSetupErr) {
+      console.warn("[uploadTournamentRegulationPdf] Aviso ao verificar bucket:", bucketSetupErr);
+    }
+
+    const cleanDocName = (file.name || "regulamento.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const uniqueDocName = `regulamento_${Date.now()}_${cleanDocName}`;
+    const arrayBuffer = await file.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuffer);
+
+    // 2. Upload no bucket 'tournament-documents' via Service Role (bypass de RLS de escrita)
+    const { error: uploadErr } = await supabaseAdmin.storage
+      .from(bucketName)
+      .upload(uniqueDocName, fileBuffer, {
+        contentType: "application/pdf",
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (!uploadErr) {
+      const { data: urlData } = supabaseAdmin.storage
+        .from(bucketName)
+        .getPublicUrl(uniqueDocName);
+
+      if (urlData?.publicUrl) {
+        return { success: true, publicUrl: urlData.publicUrl };
+      }
+    } else {
+      console.warn(
+        "[uploadTournamentRegulationPdf] Falha no bucket principal, tentando fallback em 'covers':",
+        uploadErr
+      );
+    }
+
+    // 3. Fallback de segurança no bucket 'covers' caso 'tournament-documents' esteja indisponível
+    const fallbackPath = `documents/${uniqueDocName}`;
+    const { error: fallbackErr } = await supabaseAdmin.storage
+      .from("covers")
+      .upload(fallbackPath, fileBuffer, {
+        contentType: "application/pdf",
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (fallbackErr) {
+      return {
+        success: false,
+        error: uploadErr?.message || fallbackErr.message || "Falha ao enviar o PDF para o Storage.",
+      };
+    }
+
+    const { data: fallbackUrlData } = supabaseAdmin.storage
+      .from("covers")
+      .getPublicUrl(fallbackPath);
+
+    return {
+      success: true,
+      publicUrl: fallbackUrlData?.publicUrl,
+    };
+  } catch (err: any) {
+    console.error("[uploadTournamentRegulationPdf] Exceção:", err);
+    return {
+      success: false,
+      error: err?.message || "Erro inesperado ao fazer upload do regulamento em PDF.",
+    };
+  }
+}
+
+export interface SaveTournamentResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+/**
+ * Server Action para criar ou atualizar um torneio na tabela 'tournaments',
+ * garantindo a persistência da URL do regulamento em 'regulation_url', 'rulebook_url' e 'match_rules'.
+ */
+export async function saveTournamentAction(
+  payload: Record<string, any>,
+  tournamentId?: string
+): Promise<SaveTournamentResponse> {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+
+    const resolvedRegulationUrl =
+      payload.regulation_url !== undefined
+        ? payload.regulation_url
+        : payload.rulebook_url !== undefined
+          ? payload.rulebook_url
+          : null;
+
+    const currentMatchRules =
+      payload.match_rules && typeof payload.match_rules === "object"
+        ? { ...payload.match_rules }
+        : {};
+
+    const resolvedPhaseExceptions =
+      payload.phase_exceptions !== undefined
+        ? payload.phase_exceptions
+        : currentMatchRules.phase_exceptions !== undefined
+          ? currentMatchRules.phase_exceptions
+          : {};
+
+    const enrichedPayload: Record<string, any> = {
+      ...payload,
+      rulebook_url: resolvedRegulationUrl,
+      regulation_url: resolvedRegulationUrl,
+      phase_exceptions: resolvedPhaseExceptions,
+      match_rules: {
+        ...currentMatchRules,
+        rulebook_url: resolvedRegulationUrl,
+        regulation_url: resolvedRegulationUrl,
+        phase_exceptions: resolvedPhaseExceptions,
+      },
+    };
+
+    const executeWrite = async (body: Record<string, any>) => {
+      if (tournamentId) {
+        return await supabaseAdmin
+          .from("tournaments")
+          .update(body)
+          .eq("id", tournamentId)
+          .select()
+          .single();
+      } else {
+        return await supabaseAdmin
+          .from("tournaments")
+          .insert(body)
+          .select()
+          .single();
+      }
+    };
+
+    let { data, error } = await executeWrite(enrichedPayload);
+
+    // Fallback resiliente caso o cache do PostgREST ainda não tenha 'regulation_url', 'rulebook_url' ou 'phase_exceptions'
+    if (error && error.message) {
+      const retryPayload = { ...enrichedPayload };
+      let shouldRetry = false;
+
+      if (error.message.includes("regulation_url")) {
+        delete retryPayload.regulation_url;
+        shouldRetry = true;
+      }
+      if (error.message.includes("rulebook_url")) {
+        delete retryPayload.rulebook_url;
+        shouldRetry = true;
+      }
+      if (error.message.includes("phase_exceptions")) {
+        delete retryPayload.phase_exceptions;
+        shouldRetry = true;
+      }
+
+      if (shouldRetry) {
+        const retryRes = await executeWrite(retryPayload);
+        data = retryRes.data;
+        error = retryRes.error;
+      }
+    }
+
+    if (error) {
+      console.error("[saveTournamentAction] Erro ao salvar torneio:", error);
+      return { success: false, error: error.message };
+    }
+
+    const savedId = data?.id || tournamentId;
+    revalidatePath("/hub");
+    revalidatePath("/explorar");
+    revalidatePath("/dashboard");
+    if (savedId) {
+      revalidatePath(`/torneio/${savedId}`);
+      revalidatePath(`/dashboard/${savedId}`);
+    }
+
+    return {
+      success: true,
+      data: {
+        ...data,
+        regulation_url:
+          data?.regulation_url ??
+          data?.rulebook_url ??
+          resolvedRegulationUrl,
+        rulebook_url:
+          data?.rulebook_url ??
+          data?.regulation_url ??
+          resolvedRegulationUrl,
+        phase_exceptions:
+          data?.phase_exceptions ??
+          data?.match_rules?.phase_exceptions ??
+          resolvedPhaseExceptions,
+      },
+    };
+  } catch (err: any) {
+    console.error("[saveTournamentAction] Exceção:", err);
+    return {
+      success: false,
+      error: err?.message || "Erro inesperado ao salvar os dados do torneio.",
+    };
+  }
+}
+
+
 

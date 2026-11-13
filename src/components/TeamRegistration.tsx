@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useTournament } from "@/context/TournamentContext";
 import { useAuth } from "@/context/AuthProvider";
 import AuthModal from "@/components/AuthModal";
+import { extractModalityFormat } from "@/components/CreateTournamentForm";
 
 interface TeamRegistrationProps {
   teams: Team[];
@@ -86,15 +87,37 @@ export default function TeamRegistration({
     }
   }, [toast]);
 
-  // Definições contextuais de acordo com o esporte
+  // Definições contextuais de acordo com o esporte e formato travado do torneio
+  const modalityFormat = extractModalityFormat({
+    ...(currentTournament || {}),
+    sport_type: currentTournament?.sport_type || currentSportType,
+  });
+  const formatLower = modalityFormat.toLowerCase();
+
   const isDomino = currentSportType === "DOMINO";
   const isPingPong = currentSportType === "PING_PONG";
   const isFutsal = currentSportType === "FUTSAL";
   const isVolei = currentSportType === "VOLEI";
-  const isTeamSport = isFutsal || isVolei;
 
-  const isPingPongSolo = isPingPong && pingPongFormat === "solo";
-  const isPingPongDuplas = isPingPong && pingPongFormat === "duplas";
+  const isPingPongSolo =
+    formatLower.includes("solo") ||
+    formatLower.includes("1v1") ||
+    formatLower.includes("1x1") ||
+    formatLower.includes("individual") ||
+    Number((currentTournament as any)?.team_size) === 1;
+
+  const isPingPongDuplas =
+    !isPingPongSolo &&
+    (formatLower.includes("dupla") ||
+      formatLower.includes("2v2") ||
+      formatLower.includes("2x2") ||
+      isDomino ||
+      Number((currentTournament as any)?.team_size) === 2);
+
+  const isTeamSport =
+    !isPingPongSolo &&
+    !isPingPongDuplas &&
+    (isFutsal || isVolei || Number((currentTournament as any)?.team_size) > 2);
 
   // Nomenclatura dinâmica
   const entitySingular = isPingPongSolo ? "Jogador" : isTeamSport ? "Equipe" : "Dupla";
@@ -636,42 +659,15 @@ export default function TeamRegistration({
               )}
             </div>
 
-            {/* Se for Ping Pong, exibe seletor de Formato: Solo (1v1) ou Duplas (2v2) */}
-            {isPingPong && (
-              <div className="mb-5 p-3 rounded-xl bg-neutral-100 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
-                <label className="block text-[10px] font-black uppercase tracking-wider text-brand-text-muted mb-2">
-                  Formato da Disputa
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={!isAuthenticated || isReadOnly}
-                    onClick={() => setPingPongFormat("solo")}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      pingPongFormat === "solo"
-                        ? "bg-brand-electric text-white shadow-md shadow-brand-electric/20"
-                        : "bg-white/60 dark:bg-neutral-800 text-stone-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-700"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    <span>Solo (1v1)</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!isAuthenticated || isReadOnly}
-                    onClick={() => setPingPongFormat("duplas")}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      pingPongFormat === "duplas"
-                        ? "bg-brand-electric text-white shadow-md shadow-brand-electric/20"
-                        : "bg-white/60 dark:bg-neutral-800 text-stone-700 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-700"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    <span>Duplas (2v2)</span>
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Formato da Modalidade Travado */}
+            <div className="mb-4 px-3 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 flex items-center justify-between text-xs">
+              <span className="font-black uppercase tracking-wider text-brand-text-muted text-[10px]">
+                Formato da Modalidade
+              </span>
+              <span className="font-bold text-brand-electric-light">
+                {modalityFormat}
+              </span>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* CASO 1: PING PONG SOLO */}
@@ -933,7 +929,15 @@ export default function TeamRegistration({
                         </div>
                         {!isReadOnly && isAuthenticated && (
                           <button
-                            onClick={() => onDeleteTeam(team.id)}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "Tem certeza que deseja excluir esta inscrição? Esta ação é irreversível."
+                                )
+                              ) {
+                                onDeleteTeam(team.id);
+                              }
+                            }}
                             className="text-neutral-400 hover:text-red-500 hover:bg-red-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
                             title={`Remover ${entitySingular}`}
                           >

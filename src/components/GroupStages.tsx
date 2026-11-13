@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Layers,
   CheckCircle2,
   Calendar,
   Network,
   Trophy,
+  Loader2,
 } from "lucide-react";
 import { Tournament, Team, Match } from "@/types";
 import {
@@ -14,6 +15,11 @@ import {
   normalizeGroupLetter,
   extractMatchGroupName,
 } from "@/utils/groupStandings";
+import { getLiveMatchScore } from "@/utils/liveMatchScore";
+import { generateKnockoutStage } from "@/app/actions/bracket";
+import { useAuth } from "@/context/AuthProvider";
+import { useTournamentPermissions } from "@/hooks/useTournamentPermissions";
+import { supabase } from "@/lib/supabase";
 import { KnockoutTree } from "@/components/TournamentView";
 
 export interface GroupStageItem {
@@ -30,6 +36,10 @@ export interface GroupStagesProps {
   matches?: Match[];
   tournament?: Tournament | null;
   onSelectMatch?: (match: Match) => void;
+  onGenerateKnockout?: () => void;
+  isAdmin?: boolean;
+  isOrganizer?: boolean;
+  canManage?: boolean;
 }
 
 export default function GroupStages({
@@ -38,7 +48,25 @@ export default function GroupStages({
   matches = [],
   tournament,
   onSelectMatch,
+  onGenerateKnockout,
+  isAdmin: propIsAdmin,
+  isOrganizer: propIsOrganizer,
+  canManage: propCanManage,
 }: GroupStagesProps) {
+  const { user, isAdmin: isAuthAdmin } = useAuth();
+  const permissions = useTournamentPermissions(tournament?.id);
+
+  const isOrganizerUser = Boolean(
+    propIsOrganizer ||
+    propIsAdmin ||
+    propCanManage ||
+    isAuthAdmin ||
+    permissions.isOwner ||
+    permissions.isAdmin ||
+    permissions.canEditSettings ||
+    (user?.id && tournament?.owner_id && user.id === tournament.owner_id)
+  );
+
   const teamsMap = useMemo(() => {
     const map = new Map<string, Team>();
     teams.forEach((t) => map.set(t.id, t));
@@ -87,9 +115,21 @@ export default function GroupStages({
       );
 
       const teamGroupMap = new Map<string, string>();
+
+      const savedAssignments =
+        (tournament?.match_rules as any)?.group_assignments ||
+        (tournament?.match_rules as any)?.group_stage?.group_assignments;
+      if (savedAssignments && typeof savedAssignments === "object") {
+        Object.entries(savedAssignments).forEach(([tId, g]) => {
+          if (g) teamGroupMap.set(tId, normalizeGroupLetter(String(g)));
+        });
+      }
+
       activeTeams.forEach((t) => {
-        const g = normalizeGroupLetter(t.group_name);
-        if (g) teamGroupMap.set(t.id, g);
+        if (t.group_name && !teamGroupMap.has(t.id)) {
+          const g = normalizeGroupLetter(t.group_name);
+          if (g) teamGroupMap.set(t.id, g);
+        }
       });
 
       grpMatches.forEach((m) => {
@@ -190,6 +230,39 @@ export default function GroupStages({
 
   const isSetsSport =
     tournament?.sport_type === "PING_PONG" || tournament?.sport_type === "VOLEI";
+
+  const allGroupsFinished =
+    groupMatchesTotal > 0 && groupMatchesCompleted === groupMatchesTotal;
+
+  const [isGeneratingKnockout, setIsGeneratingKnockout] = useState(false);
+  const [generateKnockoutError, setGenerateKnockoutError] = useState<string | null>(null);
+  const [generateKnockoutSuccess, setGenerateKnockoutSuccess] = useState<string | null>(null);
+
+  const handleGenerateKnockoutClick = async () => {
+    if (!tournament?.id || isGeneratingKnockout) return;
+    setIsGeneratingKnockout(true);
+    setGenerateKnockoutError(null);
+    setGenerateKnockoutSuccess(null);
+
+    try {
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+
+      const res = await generateKnockoutStage(tournament.id, token);
+      if (res.success) {
+        setGenerateKnockoutSuccess(res.message || "Fase Eliminatória gerada com sucesso!");
+        if (onGenerateKnockout) {
+          onGenerateKnockout();
+        }
+      } else {
+        setGenerateKnockoutError(res.error || "Não foi possível gerar a fase eliminatória.");
+      }
+    } catch (err: any) {
+      setGenerateKnockoutError(err.message || "Erro inesperado ao gerar a fase eliminatória.");
+    } finally {
+      setIsGeneratingKnockout(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -382,13 +455,14 @@ export default function GroupStages({
                         const isCompleted =
                           statusUpper === "COMPLETED" || statusUpper === "FINISHED";
 
-                        const sets1 = match.sets_a ?? match.setsA ?? 0;
-                        const sets2 = match.sets_b ?? match.setsB ?? 0;
-                        const score1 = match.score_a ?? match.scoreA ?? 0;
-                        const score2 = match.score_b ?? match.scoreB ?? 0;
-                        const useSets = isSetsSport && (sets1 > 0 || sets2 > 0);
-                        const s1 = useSets ? sets1 : score1;
-                        const s2 = useSets ? sets2 : score2;
+                        const groupLiveScore = getLiveMatchScore(match, tournament?.sport_type);
+                        const matchIsSets = groupLiveScore.isSetsSport;
+                        const sets1 = groupLiveScore.setsA;
+                        const sets2 = groupLiveScore.setsB;
+                        const score1 = groupLiveScore.rawScoreA;
+                        const score2 = groupLiveScore.rawScoreB;
+                        const activePts1 = groupLiveScore.activePointsA;
+                        const activePts2 = groupLiveScore.activePointsB;
 
                         return (
                           <div
@@ -400,7 +474,7 @@ export default function GroupStages({
                             }}
                             className={`px-3 py-2.5 rounded-xl bg-[#18181b] border text-xs flex items-center justify-between gap-2 transition-all ${
                               isLive
-                                ? "border-amber-500/50"
+                                ? "border-amber-500/50 ring-1 ring-amber-500/20"
                                 : isCompleted
                                 ? "border-zinc-800 hover:border-[#00a2ff]/40 cursor-pointer"
                                 : "border-zinc-800/60"
@@ -414,17 +488,49 @@ export default function GroupStages({
                               {t1?.name || "Equipe 1"}
                             </span>
 
-                            <div className="px-2.5 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 font-mono text-[11px] font-black text-white shrink-0">
-                              {isCompleted || isLive ? (
-                                <>
-                                  <span className={s1 > s2 ? "text-emerald-400" : "text-white"}>
-                                    {s1}
-                                  </span>
-                                  <span className="text-zinc-600 mx-1">x</span>
-                                  <span className={s2 > s1 ? "text-emerald-400" : "text-white"}>
-                                    {s2}
-                                  </span>
-                                </>
+                            <div className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 font-mono text-[11px] font-black text-white shrink-0">
+                              {isCompleted ? (
+                                matchIsSets ? (
+                                  <>
+                                    <span className={sets1 > sets2 ? "text-emerald-400" : "text-white"}>
+                                      {sets1}
+                                    </span>
+                                    <span className="text-zinc-600 mx-1">x</span>
+                                    <span className={sets2 > sets1 ? "text-emerald-400" : "text-white"}>
+                                      {sets2}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className={score1 > score2 ? "text-emerald-400" : "text-white"}>
+                                      {score1}
+                                    </span>
+                                    <span className="text-zinc-600 mx-1">x</span>
+                                    <span className={score2 > score1 ? "text-emerald-400" : "text-white"}>
+                                      {score2}
+                                    </span>
+                                  </>
+                                )
+                              ) : isLive ? (
+                                matchIsSets ? (
+                                  <div className="flex items-center gap-1 font-mono text-xs">
+                                    <span className="text-white font-black">{sets1}</span>
+                                    <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30">
+                                      ({activePts1})
+                                    </span>
+                                    <span className="text-zinc-500 mx-0.5">x</span>
+                                    <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30">
+                                      ({activePts2})
+                                    </span>
+                                    <span className="text-white font-black">{sets2}</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className="text-white">{score1}</span>
+                                    <span className="text-zinc-600 mx-1">x</span>
+                                    <span className="text-white">{score2}</span>
+                                  </>
+                                )
                               ) : (
                                 <span className="text-zinc-500">- x -</span>
                               )}
@@ -446,29 +552,117 @@ export default function GroupStages({
       </div>
 
       {/* 2. Fase Eliminatória (Mata-Mata) abaixo das Tabelas de Grupos */}
-      {knockoutMatches.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <Network className="h-4 w-4 text-amber-400" />
-              <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-white font-display">
-                Fase Eliminatória • Mata-Mata
-              </h3>
-            </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Network className="h-4 w-4 text-amber-400" />
+            <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-white font-display">
+              Fase Eliminatória • Mata-Mata
+            </h3>
+          </div>
+          {knockoutMatches.length > 0 && (
             <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
               <Trophy className="h-3.5 w-3.5 text-amber-400" />
               <span>Cruzamento Oficial (1º vs 2º)</span>
             </span>
-          </div>
+          )}
+        </div>
 
+        {knockoutMatches.length > 0 ? (
           <KnockoutTree
             matches={knockoutMatches}
             teams={teams}
             tournament={tournament}
             onSelectMatch={onSelectMatch}
           />
-        </div>
-      )}
+        ) : (
+          allGroupsFinished ? (
+            isOrganizerUser ? (
+              <div className="border-2 border-dashed border-emerald-500/40 bg-gradient-to-b from-emerald-950/30 to-[#141416]/90 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl shadow-emerald-950/20 animate-fadeIn">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+                  <Trophy className="h-6 w-6 text-emerald-400" />
+                </div>
+
+                <div className="space-y-1.5 max-w-lg mx-auto">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[11px] font-black uppercase tracking-wider text-emerald-300">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                    <span>Fase de Grupos 100% Concluída</span>
+                  </div>
+                  <h4 className="text-base font-bold text-white">
+                    Todos os jogos dos grupos foram finalizados!
+                  </h4>
+                  <p className="text-xs text-zinc-300 leading-relaxed">
+                    As classificações dos grupos estão consolidadas. Como organizador, clique no botão abaixo para encerrar a 1ª fase e gerar os confrontos das Semifinais com cruzamento oficial (1º A vs 2º B e 1º B vs 2º A).
+                  </p>
+                </div>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    disabled={isGeneratingKnockout}
+                    onClick={handleGenerateKnockoutClick}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isGeneratingKnockout ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-black" />
+                        <span>Gerando Semifinais...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trophy className="h-4 w-4 text-black" />
+                        <span>🏆 Encerrar Fase de Grupos e Gerar Semifinais</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {generateKnockoutError && (
+                  <p className="text-xs text-red-400 font-semibold mt-2">
+                    {generateKnockoutError}
+                  </p>
+                )}
+
+                {generateKnockoutSuccess && (
+                  <p className="text-xs text-emerald-400 font-semibold mt-2">
+                    {generateKnockoutSuccess}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="border border-dashed border-zinc-800 bg-[#141416]/60 rounded-2xl p-6 sm:p-8 text-center space-y-3 animate-fadeIn">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                  <Trophy className="h-5 w-5 text-amber-400" />
+                </div>
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-400">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                    <span>Fase de Grupos Concluída</span>
+                  </div>
+                  <h4 className="text-sm font-bold text-zinc-200">
+                    Classificação Definida
+                  </h4>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto italic">
+                    Aguardando a organização oficializar os resultados e gerar as semifinais.
+                  </p>
+                </div>
+              </div>
+            )
+          ) : (
+            <div className="border border-dashed border-zinc-800 bg-[#141416]/60 rounded-2xl p-8 text-center space-y-2">
+              <Trophy className="h-7 w-7 text-amber-400/70 mx-auto" />
+              <h4 className="text-sm font-bold text-zinc-200">
+                Aguardando Encerramento da Fase de Grupos
+              </h4>
+              <p className="text-xs text-zinc-400 max-w-lg mx-auto">
+                {groupMatchesTotal > 0
+                  ? `Partidas finalizadas: ${groupMatchesCompleted} de ${groupMatchesTotal}. Assim que todos os jogos da Fase de Grupos forem finalizados, o botão para gerar o Mata-Mata será liberado aqui.`
+                  : "Assim que todas as partidas da Fase de Grupos forem finalizadas, o organizador encerrará a 1ª fase e a árvore de confrontos do Mata-Mata aparecerá automaticamente aqui."}
+              </p>
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }

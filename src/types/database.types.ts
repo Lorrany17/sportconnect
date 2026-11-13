@@ -107,6 +107,11 @@ export interface Database {
           start_date?: string | null;
           start_time?: string | null;
           end_date?: string | null;
+          rules?: string | null;
+          rulebook_url?: string | null;
+          regulation_url?: string | null;
+          current_stage?: string | null;
+          has_third_place_match?: boolean | null;
           created_at?: string;
         };
         Insert: {
@@ -123,6 +128,11 @@ export interface Database {
           start_date?: string | null;
           start_time?: string | null;
           end_date?: string | null;
+          rules?: string | null;
+          rulebook_url?: string | null;
+          regulation_url?: string | null;
+          current_stage?: string | null;
+          has_third_place_match?: boolean | null;
           created_at?: string;
         };
         Update: {
@@ -139,6 +149,11 @@ export interface Database {
           start_date?: string | null;
           start_time?: string | null;
           end_date?: string | null;
+          rules?: string | null;
+          rulebook_url?: string | null;
+          regulation_url?: string | null;
+          current_stage?: string | null;
+          has_third_place_match?: boolean | null;
           created_at?: string;
         };
       };

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Tournament, Team, Match } from "@/types";
 import { calculateGroupStandings } from "@/utils/groupStandings";
+import { getLiveMatchScore } from "@/utils/liveMatchScore";
 
 export interface LeagueTableProps {
   teams: Team[];
@@ -189,12 +190,12 @@ export default function LeagueTable({
                           {row.teamName}
                         </span>
                         {isFirst && row.played > 0 && (
-                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          <span className="print:hidden text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                             Líder
                           </span>
                         )}
                         {!isFirst && isTop3 && row.played > 0 && (
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#00a2ff]/10 text-[#00a2ff] border border-[#00a2ff]/20">
+                          <span className="print:hidden text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#00a2ff]/10 text-[#00a2ff] border border-[#00a2ff]/20">
                             G3
                           </span>
                         )}
@@ -300,7 +301,7 @@ export default function LeagueTable({
                         Rodada {roundNum}
                       </span>
                       {completedInRound === roundMatches.length && roundMatches.length > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                        <span className="print:hidden inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
                           <CheckCircle2 className="h-3 w-3" />
                           <span>Concluída</span>
                         </span>
@@ -323,13 +324,14 @@ export default function LeagueTable({
                       const isCompleted =
                         statusUpper === "COMPLETED" || statusUpper === "FINISHED";
 
-                      const sets1 = match.sets_a ?? match.setsA ?? 0;
-                      const sets2 = match.sets_b ?? match.setsB ?? 0;
-                      const score1 = match.score_a ?? match.scoreA ?? 0;
-                      const score2 = match.score_b ?? match.scoreB ?? 0;
-                      const useSets = isSetsSport && (sets1 > 0 || sets2 > 0);
-                      const s1 = useSets ? sets1 : score1;
-                      const s2 = useSets ? sets2 : score2;
+                      const leagueLiveScore = getLiveMatchScore(match, tournament?.sport_type);
+                      const matchIsSets = leagueLiveScore.isSetsSport;
+                      const sets1 = leagueLiveScore.setsA;
+                      const sets2 = leagueLiveScore.setsB;
+                      const score1 = leagueLiveScore.rawScoreA;
+                      const score2 = leagueLiveScore.rawScoreB;
+                      const activePts1 = leagueLiveScore.activePointsA;
+                      const activePts2 = leagueLiveScore.activePointsB;
 
                       return (
                         <div
@@ -354,7 +356,7 @@ export default function LeagueTable({
                           <div className="flex-1 min-w-0 text-right pr-2">
                             <span
                               className={`text-xs font-bold truncate block ${
-                                isCompleted && s1 > s2
+                                isCompleted && (matchIsSets ? sets1 > sets2 : score1 > score2)
                                   ? "text-emerald-400"
                                   : "text-zinc-100"
                               }`}
@@ -364,26 +366,58 @@ export default function LeagueTable({
                             </span>
                           </div>
 
-                          <div className="px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800 font-mono text-xs font-black text-white shrink-0 flex items-center gap-1.5">
-                            {isCompleted || isLive ? (
-                              <>
-                                <span className={s1 > s2 ? "text-emerald-400" : "text-white"}>
-                                  {s1}
-                                </span>
-                                <span className="text-zinc-600">x</span>
-                                <span className={s2 > s1 ? "text-emerald-400" : "text-white"}>
-                                  {s2}
-                                </span>
-                              </>
+                          <div className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 print:bg-white print:border-neutral-400 print:text-black font-mono text-[11px] font-black text-white shrink-0">
+                            {isCompleted ? (
+                              matchIsSets ? (
+                                <>
+                                  <span className={sets1 > sets2 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    {sets1}
+                                  </span>
+                                  <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
+                                  <span className={sets2 > sets1 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    {sets2}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className={score1 > score2 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    {score1}
+                                  </span>
+                                  <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
+                                  <span className={score2 > score1 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    {score2}
+                                  </span>
+                                </>
+                              )
+                            ) : isLive ? (
+                              matchIsSets ? (
+                                <div className="flex items-center gap-1 font-mono text-xs">
+                                  <span className="text-white print:text-black font-black">{sets1}</span>
+                                  <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
+                                    ({activePts1})
+                                  </span>
+                                  <span className="text-zinc-500 print:text-neutral-700 mx-0.5">x</span>
+                                  <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
+                                    ({activePts2})
+                                  </span>
+                                  <span className="text-white print:text-black font-black">{sets2}</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-white print:text-black">{score1}</span>
+                                  <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
+                                  <span className="text-white print:text-black">{score2}</span>
+                                </>
+                              )
                             ) : (
-                              <span className="text-zinc-500">- x -</span>
+                              <span className="text-zinc-500 print:text-black font-mono">[&nbsp;&nbsp;] x [&nbsp;&nbsp;]</span>
                             )}
                           </div>
 
                           <div className="flex-1 min-w-0 text-left pl-2">
                             <span
                               className={`text-xs font-bold truncate block ${
-                                isCompleted && s2 > s1
+                                isCompleted && (matchIsSets ? sets2 > sets1 : score2 > score1)
                                   ? "text-emerald-400"
                                   : "text-zinc-100"
                               }`}

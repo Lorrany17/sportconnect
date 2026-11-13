@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -30,6 +30,8 @@ import {
   Lock,
   Unlock,
   Swords,
+  CloudOff,
+  RefreshCw,
 } from "lucide-react";
 import { Tournament, Team, Match, SportType } from "@/types";
 import { useTournament } from "@/context/TournamentContext";
@@ -88,6 +90,7 @@ export default function OrganizerDashboard({
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [canManage, setCanManage] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
   const [hasDbMatches, setHasDbMatches] = useState<boolean | null>(null);
   const [isGeneratingBracket, setIsGeneratingBracket] = useState(false);
   const [dbConfirmedCount, setDbConfirmedCount] = useState<number | null>(null);
@@ -128,7 +131,9 @@ export default function OrganizerDashboard({
     }
 
     try {
-      setIsLoading(true);
+      if (!hasLoadedOnceRef.current) {
+        setIsLoading(true);
+      }
 
       // A. Consulta na tabela profiles para verificar se o utilizador logado é Super Admin
       let superAdmin = false;
@@ -182,12 +187,27 @@ export default function OrganizerDashboard({
             format: tourData.format,
             tournament_format: tourData.tournament_format,
             match_rules: tourData.match_rules,
+            phase_exceptions:
+              tourData.phase_exceptions ||
+              tourData.match_rules?.phase_exceptions ||
+              {},
             rules: tourData.rules,
             cover_url: tourData.cover_url,
             gender_category: tourData.gender_category,
             organizer_pix_key: tourData.organizer_pix_key,
             pix_key_type: tourData.pix_key_type,
-            rulebook_url: tourData.rulebook_url,
+            rulebook_url:
+              tourData.regulation_url ||
+              tourData.rulebook_url ||
+              tourData.match_rules?.regulation_url ||
+              tourData.match_rules?.rulebook_url ||
+              null,
+            regulation_url:
+              tourData.regulation_url ||
+              tourData.rulebook_url ||
+              tourData.match_rules?.regulation_url ||
+              tourData.match_rules?.rulebook_url ||
+              null,
             sponsors: tourData.sponsors || [],
             custom_registration_fields: tourData.custom_registration_fields,
             prize_first: tourData.prize_first,
@@ -274,7 +294,10 @@ export default function OrganizerDashboard({
             payment_proof_url: dbT.payment_proof_url,
             contact: dbT.contact,
             user_id: dbT.user_id,
-            custom_registration_answers: dbT.custom_registration_answers,
+            custom_registration_answers:
+              dbT.custom_registration_answers || dbT.custom_responses || undefined,
+            custom_responses:
+              dbT.custom_responses || dbT.custom_registration_answers || undefined,
             createdAt: dbT.created_at || new Date().toISOString(),
             status: dbT.status,
             amount_paid:
@@ -318,9 +341,10 @@ export default function OrganizerDashboard({
     } catch (err) {
       console.error("Erro ao carregar dados do torneio no OrganizerDashboard:", err);
     } finally {
+      hasLoadedOnceRef.current = true;
       setIsLoading(false);
     }
-  }, [user, propTournament, context.currentTournamentId]);
+  }, [user?.id, user?.email, propTournament?.id, context.currentTournamentId]);
 
   useEffect(() => {
     fetchTournamentData();
@@ -913,36 +937,76 @@ export default function OrganizerDashboard({
 
   if (currentView !== "overview") {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto w-full text-[#e4e4e7] animate-fadeIn pb-16">
+      <div className="space-y-6 max-w-7xl mx-auto w-full min-w-0 text-[#e4e4e7] animate-fadeIn pb-16 print:space-y-2 print:max-w-none print:w-full print:bg-white print:text-black print:pb-0">
+        {/* Indicador Global de Modo Offline / Sincronização */}
+        {(!context.isOnline || context.pendingSyncCount > 0 || context.syncStatus === "SYNCING" || context.syncStatus === "SYNCED") && (
+          <div
+            className={`print:hidden p-3.5 px-4 rounded-2xl border text-xs font-bold flex flex-wrap items-center justify-between gap-3 transition-all ${
+              context.syncStatus === "SYNCING"
+                ? "bg-blue-500/15 border-blue-500/40 text-blue-300"
+                : !context.isOnline || context.pendingSyncCount > 0
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
+                : "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {context.syncStatus === "SYNCING" ? (
+                <RefreshCw className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+              ) : !context.isOnline || context.pendingSyncCount > 0 ? (
+                <CloudOff className="h-4 w-4 text-amber-400 shrink-0" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              )}
+              <span>
+                {context.syncStatus === "SYNCING"
+                  ? `Sincronizando ${context.pendingSyncCount} ${context.pendingSyncCount === 1 ? "alteração pendente" : "alterações pendentes"} com o servidor...`
+                  : !context.isOnline || context.pendingSyncCount > 0
+                  ? `Modo Offline - ${context.pendingSyncCount} ${context.pendingSyncCount === 1 ? "alteração pendente salva" : "alterações pendentes salvas"} no dispositivo`
+                  : "Sincronizado — Todas as alterações foram salvas na nuvem"}
+              </span>
+            </div>
+            {context.isOnline && context.pendingSyncCount > 0 && context.syncStatus !== "SYNCING" && (
+              <button
+                type="button"
+                onClick={() => context.syncOfflineQueue()}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all"
+              >
+                <RefreshCw className="h-3 w-3" />
+                <span>Sincronizar Agora</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Barra Superior Unificada dos Módulos */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#27272a] pb-4">
-          <div className="flex items-center gap-3">
+        <div className="print:hidden flex flex-wrap items-center justify-between gap-3 border-b border-[#27272a] pb-4">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={handleReturnToOverview}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
             >
               <ArrowLeft className="h-4 w-4 text-[#00a2ff]" />
               <span>Voltar ao Painel Geral</span>
             </button>
 
-            <span className="text-zinc-600 hidden sm:inline">•</span>
+            <span className="text-zinc-600 hidden md:inline">•</span>
 
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-xs font-bold text-white truncate max-w-[200px]">
+            <div className="hidden sm:flex items-center gap-2 min-w-0">
+              <span className="text-xs font-bold text-white truncate max-w-[160px] md:max-w-[200px]">
                 {currentTour?.name || "Campeonato"}
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-[#00a2ff]/10 text-[#00a2ff] text-[10px] font-black uppercase tracking-wider border border-[#00a2ff]/20">
+              <span className="hidden md:inline-flex px-2 py-0.5 rounded-md bg-[#00a2ff]/10 text-[#00a2ff] text-[10px] font-black uppercase tracking-wider border border-[#00a2ff]/20 shrink-0">
                 {sportLabel}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
             <NotificationBell />
 
-            {/* Pill Reativa de Status do Torneio */}
+            {/* Pill Reativa de Status do Torneio - oculta em ecrãs pequenos */}
             <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-black uppercase tracking-wider shadow-sm ${statusPill.pillClass}`}
+              className={`hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-black uppercase tracking-wider shadow-sm ${statusPill.pillClass}`}
             >
               <span className={`w-2 h-2 rounded-full ${statusPill.dotClass}`} />
               <span>{statusPill.label}</span>
@@ -950,7 +1014,7 @@ export default function OrganizerDashboard({
 
             {/* Badge Super Admin nos submódulos */}
             {isSuperAdmin && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 to-indigo-600/25 border border-purple-500/40 text-purple-300 text-xs font-black uppercase tracking-wider shadow-sm">
+              <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 to-indigo-600/25 border border-purple-500/40 text-purple-300 text-xs font-black uppercase tracking-wider shadow-sm">
                 <ShieldCheck className="h-3.5 w-3.5 text-purple-400 shrink-0" />
                 <span>SUPER ADMIN</span>
               </div>
@@ -987,10 +1051,10 @@ export default function OrganizerDashboard({
             )}
 
             {/* Roteador interno rápido entre os três módulos */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#1e1e1e] border border-[#27272a]">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#1e1e1e] border border-[#27272a] w-full sm:w-auto justify-between sm:justify-start overflow-x-auto">
               <button
                 onClick={() => handleShortcutClick("teams")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${currentView === "teams"
+                className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${currentView === "teams"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
                   : "text-zinc-400 hover:text-white"
                   }`}
@@ -1001,7 +1065,7 @@ export default function OrganizerDashboard({
 
               <button
                 onClick={() => handleShortcutClick("bracket")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${currentView === "bracket"
+                className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${currentView === "bracket"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
                   : "text-zinc-400 hover:text-white"
                   }`}
@@ -1012,7 +1076,7 @@ export default function OrganizerDashboard({
 
               <button
                 onClick={() => handleShortcutClick("referee")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${currentView === "referee"
+                className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${currentView === "referee"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
                   : "text-zinc-400 hover:text-white"
                   }`}
@@ -1026,7 +1090,7 @@ export default function OrganizerDashboard({
 
         {/* Banner de permissão específico para equipe / leitura */}
         {!canEditSettings && !canEditScores && !canManageFinances && !isSuperAdmin && (
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-3">
+          <div className="print:hidden p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
             <div>
               <span className="font-bold">Modo de Visualização Restrita: </span>
@@ -1038,7 +1102,7 @@ export default function OrganizerDashboard({
         )}
 
         {(permissions.isReferee || permissions.isScorekeeper) && !permissions.isAdmin && !isSuperAdmin && (
-          <div className="p-3 px-4 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-300 text-xs flex items-center gap-3">
+          <div className="print:hidden p-3 px-4 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-300 text-xs flex items-center gap-3">
             <Shield className="h-4 w-4 text-[#00a2ff] shrink-0" />
             <div>
               <span className="font-bold">Acesso de Equipe ({permissions.isReferee ? "Árbitro" : "Mesário"}): </span>
@@ -1052,6 +1116,7 @@ export default function OrganizerDashboard({
         {/* Renderização condicional do Módulo Selecionado */}
         {currentView === "teams" && (
           <RegistrationManagement
+            tournament={currentTour}
             teams={currentTeams}
             tournamentId={currentTour?.id}
             matches={context.matches}
@@ -1081,7 +1146,7 @@ export default function OrganizerDashboard({
         )}
 
         {currentView === "bracket" && canAdvanceToKnockout && canEditSettings && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 print:hidden">
             <div className="bg-gradient-to-r from-emerald-950/60 via-teal-950/40 to-blue-950/50 border border-emerald-500/40 rounded-2xl p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
@@ -1135,7 +1200,14 @@ export default function OrganizerDashboard({
             onSubtractPoint={context.handleSubtractPoint}
             onAddRound={context.handleAddRound}
             onStartMatch={context.handleStartMatch}
-            onFinishMatch={context.handleFinishMatch}
+            onFinishMatch={async (matchId, winnerId) => {
+              await context.handleFinishMatch(matchId, winnerId);
+              await fetchTournamentData();
+            }}
+            onResetMatch={async (matchId) => {
+              await context.handleResetMatch(matchId);
+              await fetchTournamentData();
+            }}
             isReadOnly={!canEditScores || context.isReadOnly}
             sportType={sportType}
           />
@@ -1178,6 +1250,46 @@ export default function OrganizerDashboard({
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full text-[#e4e4e7] animate-fadeIn pb-12">
+      {/* Indicador Global de Modo Offline / Sincronização */}
+      {(!context.isOnline || context.pendingSyncCount > 0 || context.syncStatus === "SYNCING" || context.syncStatus === "SYNCED") && (
+        <div
+          className={`print:hidden p-3.5 px-4 rounded-2xl border text-xs font-bold flex flex-wrap items-center justify-between gap-3 transition-all ${
+            context.syncStatus === "SYNCING"
+              ? "bg-blue-500/15 border-blue-500/40 text-blue-300"
+              : !context.isOnline || context.pendingSyncCount > 0
+              ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
+              : "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {context.syncStatus === "SYNCING" ? (
+              <RefreshCw className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+            ) : !context.isOnline || context.pendingSyncCount > 0 ? (
+              <CloudOff className="h-4 w-4 text-amber-400 shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            )}
+            <span>
+              {context.syncStatus === "SYNCING"
+                ? `Sincronizando ${context.pendingSyncCount} ${context.pendingSyncCount === 1 ? "alteração pendente" : "alterações pendentes"} com o servidor...`
+                : !context.isOnline || context.pendingSyncCount > 0
+                ? `Modo Offline - ${context.pendingSyncCount} ${context.pendingSyncCount === 1 ? "alteração pendente salva" : "alterações pendentes salvas"} no dispositivo`
+                : "Sincronizado — Todas as alterações foram salvas na nuvem"}
+            </span>
+          </div>
+          {context.isOnline && context.pendingSyncCount > 0 && context.syncStatus !== "SYNCING" && (
+            <button
+              type="button"
+              onClick={() => context.syncOfflineQueue()}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all"
+            >
+              <RefreshCw className="h-3 w-3" />
+              <span>Sincronizar Agora</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 1. Cabeçalho de Navegação com Voltar ao Hub, Super Admin Badge e Status Pill */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#27272a] pb-4">
         {/* Lado esquerdo: Botão Voltar ao Hub */}
@@ -1190,12 +1302,12 @@ export default function OrganizerDashboard({
         </button>
 
         {/* Lado direito: Badges de status e botão de opções (Compartilhar/Editar/Excluir/Cancelar) */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <NotificationBell />
 
           {/* Badge Super Admin em destaque */}
           {isSuperAdmin && (
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 via-indigo-600/20 to-purple-600/25 border border-purple-500/50 text-purple-300 text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-500/20 animate-pulse">
+            <div className="hidden md:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 via-indigo-600/20 to-purple-600/25 border border-purple-500/50 text-purple-300 text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-500/20 animate-pulse">
               <ShieldCheck className="h-4 w-4 text-purple-400 shrink-0" />
               <span>SUPER ADMIN</span>
             </div>
@@ -1203,7 +1315,7 @@ export default function OrganizerDashboard({
 
           {/* Badge de Staff Role se aplicável */}
           {!isSuperAdmin && !permissions.isOwner && permissions.role && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-bold tracking-wide shadow-sm">
+            <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-bold tracking-wide shadow-sm">
               <Shield className="h-3.5 w-3.5 text-blue-400" />
               <span>
                 {permissions.role === "ADMIN"
@@ -1215,9 +1327,9 @@ export default function OrganizerDashboard({
             </div>
           )}
 
-          {/* Pill Reativa de Status do Torneio */}
+          {/* Pill Reativa de Status do Torneio - oculta em ecrãs pequenos */}
           <div
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-black uppercase tracking-wider shadow-sm ${statusPill.pillClass}`}
+            className={`hidden md:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-black uppercase tracking-wider shadow-sm ${statusPill.pillClass}`}
           >
             <span className={`w-2 h-2 rounded-full ${statusPill.dotClass}`} />
             <span>{statusPill.label}</span>

@@ -330,6 +330,7 @@ ALTER TABLE public.matches ADD COLUMN IF NOT EXISTS penalties_b INTEGER DEFAULT 
 ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS tournament_format TEXT DEFAULT 'KNOCKOUT';
 ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS pix_key_type TEXT DEFAULT 'CPF';
 ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS rulebook_url TEXT;
+ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS regulation_url TEXT;
 
 -- Bucket de Storage para Documentos e Regulamentos (tournament-documents)
 INSERT INTO storage.buckets (id, name, public) 
@@ -455,3 +456,9 @@ ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS cpf TEXT;
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS phone TEXT;
 NOTIFY pgrst, 'reload schema';
+
+-- 23. Suporte a transição de fases (current_stage)
+ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS current_stage TEXT DEFAULT 'group_stage';
+
+-- 24. Suporte a Disputa de 3º Lugar
+ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS has_third_place_match BOOLEAN DEFAULT false;

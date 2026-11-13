@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,14 +12,19 @@ import {
   ExternalLink,
   Network,
   Settings,
+  Printer,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Tournament, Team, SportType, Match } from "@/types";
-import { useTournament } from "@/context/TournamentContext";
+import { useTournament, deduplicateMatches, getFriendlyIdFromUuid } from "@/context/TournamentContext";
 import PublicHeader from "@/components/PublicHeader";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
-import TournamentView, { normalizeTournamentFormat } from "@/components/TournamentView";
+import TournamentView, {
+  normalizeTournamentFormat,
+  buildBlankKnockoutMatches,
+} from "@/components/TournamentView";
 import { swapTeams, updateMatchParticipants } from "@/app/actions/bracket";
+import { isThirdPlaceMatch } from "@/utils/bracketTree";
 
 interface BracketViewerProps {
   tournamentId?: string;
@@ -47,7 +52,7 @@ export type DbMatchRow = Match;
 export async function getTournamentMatches(tournamentId: string): Promise<Match[]> {
   const { data, error } = await supabase
     .from("matches")
-    .select("*")
+    .select("*, detailed_score, details")
     .eq("tournament_id", tournamentId);
 
   if (error) {
@@ -58,32 +63,39 @@ export async function getTournamentMatches(tournamentId: string): Promise<Match[
   return (data || []).map((dbM: any) => {
     // Lista de candidatos em ordem de prioridade
     const candidates: any[] = [
+      dbM.detailed_score?.sets,
+      dbM.detailed_score?.historicoSets,
+      dbM.detailed_score?.rounds,
+      dbM.detailed_score,
+      dbM.details?.sets,
+      dbM.details?.historicoSets,
+      dbM.details?.rounds,
+      dbM.historicoSets,
+      dbM.historico_sets,
       dbM.sets_history,
       dbM.set_history,
       dbM.history,
-      dbM.details?.sets,
       dbM.details?.set_history,
       dbM.details?.sets_history,
-      dbM.detailed_score?.sets,
-      dbM.historicoSets,
-      dbM.historico_sets,
     ];
 
-    // Se details for string JSON, tenta extrair os sets
+    // Se details for string JSON, tenta extrair os sets/rounds
     if (typeof dbM.details === "string") {
       try {
         const pd = JSON.parse(dbM.details);
         if (Array.isArray(pd)) candidates.push(pd);
+        if (Array.isArray(pd?.rounds)) candidates.push(pd.rounds);
         if (Array.isArray(pd?.sets)) candidates.push(pd.sets);
         if (Array.isArray(pd?.set_history)) candidates.push(pd.set_history);
       } catch {}
     }
 
-    // Se detailed_score for string JSON, tenta extrair os sets
+    // Se detailed_score for string JSON, tenta extrair os sets/rounds
     if (typeof dbM.detailed_score === "string") {
       try {
         const pds = JSON.parse(dbM.detailed_score);
         if (Array.isArray(pds)) candidates.push(pds);
+        if (Array.isArray(pds?.rounds)) candidates.push(pds.rounds);
         if (Array.isArray(pds?.sets)) candidates.push(pds.sets);
       } catch {}
     }
@@ -106,41 +118,11 @@ export async function getTournamentMatches(tournamentId: string): Promise<Match[
       }
     }
 
-    // Se o banco ainda não possuir a coluna sets_history, mas tiver sets_a e sets_b gravados,
-    // reconstitui os sets para exibição imediata para contas de teste e público geral
-    if ((!foundSets || foundSets.length === 0) && (Number(dbM.sets_a) > 0 || Number(dbM.sets_b) > 0)) {
-      const s1 = Number(dbM.sets_a || 0);
-      const s2 = Number(dbM.sets_b || 0);
-      const total = s1 + s2;
-      const synth: any[] = [];
-      let remA = s1;
-      let remB = s2;
-      for (let i = 1; i <= total; i++) {
-        let wonA = false;
-        if (i === total && dbM.status === "COMPLETED") {
-          wonA = s1 > s2;
-        } else if (remA > 0 && remB > 0) {
-          wonA = i % 2 !== 0;
-        } else if (remA > 0) {
-          wonA = true;
-        } else {
-          wonA = false;
-        }
-        if (wonA) remA--; else remB--;
-        synth.push({
-          setNumber: i,
-          scoreA: wonA ? 11 : 8,
-          scoreB: wonA ? 8 : 11,
-          wonA,
-          wonB: !wonA,
-        });
-      }
-      foundSets = synth;
-    }
-
     // Preserva o objeto completo vindo do Supabase sem filtrar props
     return {
       ...dbM,
+      detailed_score: dbM.detailed_score,
+      detailedScore: dbM.detailed_score || dbM.detailedScore || { rounds: [] },
       // Se encontrou sets não-vazios, replica nas propriedades para máxima compatibilidade
       ...(foundSets && foundSets.length > 0
         ? {
@@ -170,7 +152,12 @@ export default function BracketViewer({
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
+  const teamsRef = useRef<Team[]>(teams);
+  useEffect(() => {
+    teamsRef.current = teams;
+  }, [teams]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isBackgroundFetching, setIsBackgroundFetching] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedDetailMatch, setSelectedDetailMatch] = useState<Match | null>(null);
@@ -180,10 +167,14 @@ export default function BracketViewer({
   const getMatchDetailData = useCallback(
     (match: Match) => {
       let setHistory: any =
+        match.detailed_score?.sets ||
+        match.detailed_score?.rounds ||
+        (Array.isArray(match.detailed_score) ? match.detailed_score : null) ||
         match.sets_history ||
         match.set_history ||
         match.history ||
         match.details?.sets ||
+        match.details?.rounds ||
         match.details?.set_history ||
         match.details?.sets_history ||
         match.historicoSets ||
@@ -263,79 +254,324 @@ export default function BracketViewer({
     [context.matches]
   );
 
-  const fetchData = useCallback(async () => {
-    if (!effectiveTournamentId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setErrorMessage("");
-
-      // 1. Torneio
-      const { data: tourData, error: tourError } = await supabase
-        .from("tournaments")
-        .select("*")
-        .eq("id", effectiveTournamentId)
-        .maybeSingle();
-
-      if (tourError) throw tourError;
-
-      if (tourData) {
-        setTournament({
-          id: tourData.id,
-          name: tourData.name,
-          status: tourData.status as "ATIVO" | "FINALIZADO",
-          createdAt: tourData.created_at,
-          sport_type: (tourData.sport_type as SportType) || "DOMINO",
-          owner_id: tourData.owner_id,
-          max_teams: tourData.max_teams ? Number(tourData.max_teams) : undefined,
-          entry_fee: tourData.entry_fee ? Number(tourData.entry_fee) : undefined,
-          location: tourData.location,
-          start_date: tourData.start_date,
-          start_time: tourData.start_time,
-          end_date: tourData.end_date,
-          rules: tourData.rules,
-          format: tourData.format,
-          tournament_format: tourData.tournament_format,
-          match_rules: tourData.match_rules,
-          cover_url: tourData.cover_url,
-          sponsors: tourData.sponsors || [],
-        });
+  const fetchData = useCallback(
+    async (isSilent = false) => {
+      if (!effectiveTournamentId) {
+        setInitialLoading(false);
+        return;
       }
 
-      // 2. Equipes inscritas
-      const { data: teamsData, error: teamsError } = await supabase
-        .from("teams")
-        .select("*")
-        .eq("tournament_id", effectiveTournamentId);
+      try {
+        if (!isSilent) {
+          setInitialLoading(true);
+        } else {
+          setIsBackgroundFetching(true);
+        }
+        setErrorMessage("");
 
-      if (teamsError) throw teamsError;
+        // 1. Torneio
+        const { data: tourData, error: tourError } = await supabase
+          .from("tournaments")
+          .select("*")
+          .eq("id", effectiveTournamentId)
+          .maybeSingle();
 
-      const mappedTeams: Team[] = (teamsData || []).map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        players: [t.player1 || "Jogador 1", t.player2 || "Jogador 2"],
-        createdAt: t.created_at || new Date().toISOString(),
-        status: t.status,
-        tournamentId: t.tournament_id,
-        payment_status: t.payment_status,
-        cancellation_status: t.cancellation_status,
-        group_name: t.group_name,
-        declared_skill_level: t.declared_skill_level,
-        user_id: t.user_id,
-      }));
-      setTeams(mappedTeams);
+        if (tourError) throw tourError;
 
-      // 3. Partidas do torneio via getTournamentMatches com processamento de sets_history
-      const dbMatches = await getTournamentMatches(effectiveTournamentId);
+        if (tourData) {
+          setTournament({
+            id: tourData.id,
+            name: tourData.name,
+            status: tourData.status as "ATIVO" | "FINALIZADO",
+            createdAt: tourData.created_at,
+            sport_type: (tourData.sport_type as SportType) || "DOMINO",
+            owner_id: tourData.owner_id,
+            max_teams: tourData.max_teams ? Number(tourData.max_teams) : undefined,
+            entry_fee: tourData.entry_fee ? Number(tourData.entry_fee) : undefined,
+            location: tourData.location,
+            start_date: tourData.start_date,
+            start_time: tourData.start_time,
+            end_date: tourData.end_date,
+            rules: tourData.rules,
+            format: tourData.format,
+            tournament_format: tourData.tournament_format,
+            match_rules: tourData.match_rules,
+            cover_url: tourData.cover_url,
+            sponsors: tourData.sponsors || [],
+          });
+        }
 
-      // Mescla com context.matches para garantir que qualquer set atualizado na Súmula Digital
-      // seja exibido no chaveamento imediatamente
-      const enrichedMatches = dbMatches.map((m) => {
-        const team1Id = m.team1_id || m.team_a_id;
-        const team2Id = m.team2_id || m.team_b_id;
+        // 2. Equipes inscritas
+        const { data: teamsData, error: teamsError } = await supabase
+          .from("teams")
+          .select("*")
+          .eq("tournament_id", effectiveTournamentId);
+
+        if (teamsError) throw teamsError;
+
+        const mappedTeams: Team[] = (teamsData || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          players: [t.player1 || "Jogador 1", t.player2 || "Jogador 2"],
+          createdAt: t.created_at || new Date().toISOString(),
+          status: t.status,
+          tournamentId: t.tournament_id,
+          payment_status: t.payment_status,
+          cancellation_status: t.cancellation_status,
+          group_name: t.group_name,
+          declared_skill_level: t.declared_skill_level,
+          user_id: t.user_id,
+        }));
+        setTeams(mappedTeams);
+
+        // 3. Partidas do torneio via getTournamentMatches com processamento de sets_history
+        const dbMatches = await getTournamentMatches(effectiveTournamentId);
+
+        // Mescla com context.matches para garantir que qualquer set atualizado na Súmula Digital
+        // seja exibido no chaveamento imediatamente e que os times sejam devidamente associados
+        const enrichedMatches = dbMatches.map((m) => {
+          const team1Id = m.team1_id || m.team_a_id || m.teamA?.id;
+          const team2Id = m.team2_id || m.team_b_id || m.teamB?.id;
+
+          const resolvedTeamA =
+            mappedTeams.find((t) => t.id === team1Id) ||
+            (team1Id === "bye" ? { id: "bye", name: "Avanço Direto", players: [], createdAt: "" } : m.teamA);
+          const resolvedTeamB =
+            mappedTeams.find((t) => t.id === team2Id) ||
+            (team2Id === "bye" ? { id: "bye", name: "Avanço Direto", players: [], createdAt: "" } : m.teamB);
+
+          const ctxMatch = context.matches.find(
+            (cm) =>
+              cm.id === m.id ||
+              (team1Id &&
+                team2Id &&
+                ((cm.teamA?.id === team1Id && cm.teamB?.id === team2Id) ||
+                  (cm.teamA?.id === team2Id && cm.teamB?.id === team1Id) ||
+                  (cm.team1_id === team1Id && cm.team2_id === team2Id)))
+          );
+
+          let updatedMatch = {
+            ...m,
+            teamA: resolvedTeamA,
+            teamB: resolvedTeamB,
+            team1_id: team1Id,
+            team2_id: team2Id,
+            team_a_id: team1Id,
+            team_b_id: team2Id,
+          };
+
+          if (ctxMatch) {
+            const ctxSets = ctxMatch.sets_history || ctxMatch.historicoSets;
+            if (
+              ctxSets &&
+              (!m.sets_history ||
+                (Array.isArray(m.sets_history) && m.sets_history.length === 0))
+            ) {
+              let parsed = ctxSets;
+              if (typeof parsed === "string") {
+                try {
+                  parsed = JSON.parse(parsed);
+                } catch {}
+              }
+              updatedMatch = {
+                ...updatedMatch,
+                sets_history: parsed,
+                set_history: parsed,
+                history: parsed,
+                historicoSets: Array.isArray(parsed) ? parsed : [],
+              };
+            }
+          }
+          return updatedMatch;
+        });
+
+        setMatches(enrichedMatches);
+      } catch (err: any) {
+        console.error("Erro ao carregar chaveamento no BracketViewer:", err);
+        if (!isSilent) {
+          setErrorMessage(err.message || "Erro ao carregar dados do chaveamento.");
+        }
+      } finally {
+        setInitialLoading(false);
+        setIsBackgroundFetching(false);
+        setIsRefreshing(false);
+      }
+    },
+    [effectiveTournamentId, context.matches]
+  );
+
+  // Initial Load (executa apenas uma vez por torneio)
+  useEffect(() => {
+    fetchData(false);
+  }, [effectiveTournamentId]);
+
+  // Listener em Tempo Real (Supabase Realtime): escuta alterações em matches
+  // com mutação otimista de estado local sem recarregamento ou spinner de página inteira
+  useEffect(() => {
+    if (!effectiveTournamentId) return;
+
+    const channel = supabase
+      .channel(`bracket-viewer-matches-${effectiveTournamentId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "matches",
+          filter: `tournament_id=eq.${effectiveTournamentId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (!updated || !updated.id) return;
+
+          // Mutação atômica no array local de partidas com fusão profunda e substituição por índice estrito
+          setMatches((prevMatches) => {
+            const index = prevMatches.findIndex((m) => {
+              const matchUuid = (m as any).uuid || (m as any).db_id;
+              return (
+                m.id === updated.id ||
+                matchUuid === updated.id
+              );
+            });
+
+            if (index === -1) {
+              return prevMatches;
+            }
+
+            const m = prevMatches[index];
+            const incomingSets =
+              updated.detailed_score?.sets ||
+              updated.detailed_score?.historicoSets ||
+              updated.detailed_score?.rounds ||
+              (typeof updated.detailed_score === "string"
+                ? (() => {
+                    try {
+                      const parsed = JSON.parse(updated.detailed_score);
+                      return parsed?.sets || parsed?.historicoSets || parsed?.rounds || (Array.isArray(parsed) ? parsed : null);
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null) ||
+              updated.details?.sets ||
+              (typeof updated.details === "string"
+                ? (() => {
+                    try {
+                      return JSON.parse(updated.details)?.sets;
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null) ||
+              updated.sets_history ||
+              updated.set_history ||
+              updated.historicoSets ||
+              m.sets_history;
+
+            const newTeamAId = updated.team_a_id ?? updated.team1_id ?? m.team_a_id ?? m.team1_id;
+            const newTeamBId = updated.team_b_id ?? updated.team2_id ?? m.team_b_id ?? m.team2_id;
+
+            const currentTeams = teamsRef.current || [];
+            const resolvedTeamA =
+              currentTeams.find((t) => t.id === newTeamAId) ||
+              (newTeamAId === "bye" ? { id: "bye", name: "Avanço Direto", players: [], createdAt: "" } : m.teamA);
+            const resolvedTeamB =
+              currentTeams.find((t) => t.id === newTeamBId) ||
+              (newTeamBId === "bye" ? { id: "bye", name: "Avanço Direto", players: [], createdAt: "" } : m.teamB);
+
+            const newStatus = updated.status ? String(updated.status).toUpperCase().trim() : m.status;
+            const newScoreA = updated.score_a !== undefined && updated.score_a !== null ? Number(updated.score_a) : (updated.scoreA !== undefined ? Number(updated.scoreA) : m.score_a);
+            const newScoreB = updated.score_b !== undefined && updated.score_b !== null ? Number(updated.score_b) : (updated.scoreB !== undefined ? Number(updated.scoreB) : m.score_b);
+            const newSetsA = updated.sets_a !== undefined && updated.sets_a !== null ? Number(updated.sets_a) : (updated.setsA !== undefined ? Number(updated.setsA) : m.sets_a);
+            const newSetsB = updated.sets_b !== undefined && updated.sets_b !== null ? Number(updated.sets_b) : (updated.setsB !== undefined ? Number(updated.setsB) : m.sets_b);
+
+            const updatedMatch: Match = {
+              ...m,
+              ...updated,
+              id: m.id,
+              uuid: updated.id || (m as any).uuid,
+              db_id: updated.id || (m as any).db_id,
+              teamA: resolvedTeamA,
+              teamB: resolvedTeamB,
+              score_a: newScoreA,
+              score_b: newScoreB,
+              scoreA: newScoreA,
+              scoreB: newScoreB,
+              sets_a: newSetsA,
+              sets_b: newSetsB,
+              setsA: newSetsA,
+              setsB: newSetsB,
+              penalties_a: updated.penalties_a ?? m.penalties_a,
+              penalties_b: updated.penalties_b ?? m.penalties_b,
+              status: newStatus,
+              winner_id: updated.winner_id ?? updated.winnerId ?? m.winner_id,
+              winnerId: updated.winner_id ?? updated.winnerId ?? m.winnerId,
+              details: updated.details ?? m.details,
+              detailed_score: updated.detailed_score !== undefined ? updated.detailed_score : m.detailed_score,
+              detailedScore: updated.detailed_score !== undefined ? updated.detailed_score : (m.detailedScore ?? m.detailed_score),
+              sets_history: incomingSets,
+              set_history: incomingSets,
+              history: incomingSets,
+              historicoSets: Array.isArray(incomingSets) ? incomingSets : m.historicoSets,
+              team1_id: newTeamAId,
+              team2_id: newTeamBId,
+              team_a_id: newTeamAId,
+              team_b_id: newTeamBId,
+            };
+
+            const copy = [...prevMatches];
+            copy[index] = updatedMatch;
+            return deduplicateMatches(copy);
+          });
+
+          // Silent background refetch para conciliar dados relacionais sem travar a interface
+          fetchData(true);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "matches",
+          filter: `tournament_id=eq.${effectiveTournamentId}`,
+        },
+        () => {
+          fetchData(true);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "matches",
+          filter: `tournament_id=eq.${effectiveTournamentId}`,
+        },
+        (payload) => {
+          const deletedId = (payload.old as any)?.id;
+          if (deletedId) {
+            setMatches((prev) => prev.filter((m) => m.id !== deletedId));
+          }
+          fetchData(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [effectiveTournamentId, fetchData]);
+
+  // Sincronização Otimista com context.matches (sem disparar recarregamento ou spinner)
+  useEffect(() => {
+    if (!context.matches || context.matches.length === 0) return;
+    setMatches((prevMatches) => {
+      if (!prevMatches || prevMatches.length === 0) return prevMatches;
+      let hasChanges = false;
+      const updatedList = prevMatches.map((m) => {
+        const team1Id = m.team1_id || m.team_a_id || m.teamA?.id;
+        const team2Id = m.team2_id || m.team_b_id || m.teamB?.id;
         const ctxMatch = context.matches.find(
           (cm) =>
             cm.id === m.id ||
@@ -345,54 +581,69 @@ export default function BracketViewer({
                 (cm.teamA?.id === team2Id && cm.teamB?.id === team1Id) ||
                 (cm.team1_id === team1Id && cm.team2_id === team2Id)))
         );
+        if (!ctxMatch) return m;
 
-        if (ctxMatch) {
-          const ctxSets = ctxMatch.sets_history || ctxMatch.historicoSets;
-          if (
-            ctxSets &&
-            (!m.sets_history ||
-              (Array.isArray(m.sets_history) && m.sets_history.length === 0))
-          ) {
-            let parsed = ctxSets;
-            if (typeof parsed === "string") {
-              try {
-                parsed = JSON.parse(parsed);
-              } catch {}
-            }
-            return {
-              ...m,
-              sets_history: parsed,
-              set_history: parsed,
-              history: parsed,
-              historicoSets: Array.isArray(parsed) ? parsed : [],
-            };
-          }
+        const newScoreA = ctxMatch.scoreA ?? ctxMatch.score_a ?? m.score_a;
+        const newScoreB = ctxMatch.scoreB ?? ctxMatch.score_b ?? m.score_b;
+        const newSetsA = ctxMatch.setsA ?? ctxMatch.sets_a ?? m.sets_a;
+        const newSetsB = ctxMatch.setsB ?? ctxMatch.sets_b ?? m.sets_b;
+        const newStatus = ctxMatch.status ?? m.status;
+        const newSetsHist =
+          ctxMatch.sets_history ||
+          ctxMatch.historicoSets ||
+          ctxMatch.set_history ||
+          m.sets_history;
+
+        const newTeamAId = ctxMatch.team_a_id ?? ctxMatch.team1_id ?? ctxMatch.teamA?.id ?? m.team_a_id;
+        const newTeamBId = ctxMatch.team_b_id ?? ctxMatch.team2_id ?? ctxMatch.teamB?.id ?? m.team_b_id;
+        const newTeamA = ctxMatch.teamA || (newTeamAId ? teamsRef.current?.find((t) => t.id === newTeamAId) : null) || m.teamA;
+        const newTeamB = ctxMatch.teamB || (newTeamBId ? teamsRef.current?.find((t) => t.id === newTeamBId) : null) || m.teamB;
+
+        if (
+          m.score_a !== newScoreA ||
+          m.score_b !== newScoreB ||
+          m.sets_a !== newSetsA ||
+          m.sets_b !== newSetsB ||
+          m.status !== newStatus ||
+          m.sets_history !== newSetsHist ||
+          m.team_a_id !== newTeamAId ||
+          m.team_b_id !== newTeamBId ||
+          m.teamA?.name !== newTeamA?.name ||
+          m.teamB?.name !== newTeamB?.name
+        ) {
+          hasChanges = true;
+          return {
+            ...m,
+            teamA: newTeamA,
+            teamB: newTeamB,
+            team_a_id: newTeamAId,
+            team_b_id: newTeamBId,
+            team1_id: newTeamAId,
+            team2_id: newTeamBId,
+            score_a: newScoreA,
+            score_b: newScoreB,
+            scoreA: newScoreA,
+            scoreB: newScoreB,
+            sets_a: newSetsA,
+            sets_b: newSetsB,
+            setsA: newSetsA,
+            setsB: newSetsB,
+            status: newStatus,
+            sets_history: newSetsHist,
+            set_history: newSetsHist,
+            history: newSetsHist,
+            historicoSets: Array.isArray(newSetsHist) ? newSetsHist : m.historicoSets,
+          };
         }
         return m;
       });
-
-      setMatches(enrichedMatches);
-    } catch (err: any) {
-      console.error("Erro ao carregar chaveamento no BracketViewer:", err);
-      setErrorMessage(err.message || "Erro ao carregar dados do chaveamento.");
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [effectiveTournamentId, context.matches]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+      return hasChanges ? updatedList : prevMatches;
+    });
+  }, [context.matches]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    fetchData();
-    try {
-      router.refresh();
-    } catch {
-      // ignore
-    }
+    fetchData(true);
   };
 
   const handleBack = () => {
@@ -636,13 +887,17 @@ export default function BracketViewer({
   }, [resolvedFormat]);
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
+    <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] print:bg-white print:text-black print:min-h-0 flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
       <div>
-        {showPublicHeader && <PublicHeader activePage="chaveamento" />}
+        {showPublicHeader && (
+          <div className="print:hidden">
+            <PublicHeader activePage="chaveamento" />
+          </div>
+        )}
 
-        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:max-w-none print:w-full print:p-0 print:space-y-4">
           {/* 1. Barra de Navegação & Ações */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#27272a] pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#27272a] pb-4 print:hidden">
             <button
               onClick={handleBack}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
@@ -652,6 +907,17 @@ export default function BracketViewer({
             </button>
 
             <div className="flex flex-wrap items-center gap-3">
+              {/* Botão de Impressão / Exportação do Chaveamento */}
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] hover:border-[#00a2ff]/40 text-xs font-bold text-zinc-200 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                title="Imprimir ou baixar árvore do chaveamento em PDF"
+              >
+                <Printer className="h-3.5 w-3.5 text-[#00a2ff]" />
+                <span>🖨️ Imprimir / Baixar Chaveamento</span>
+              </button>
+
               {/* Botão de Edição Manual do Chaveamento */}
               {canEditBracket && (
                 <button
@@ -723,39 +989,46 @@ export default function BracketViewer({
                   <span>{activeMatchesCount} Partida(s) Ao Vivo</span>
                 </div>
               )}
+
+              {isBackgroundFetching && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-medium animate-pulse print:hidden">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                  <span className="hidden sm:inline">Sincronizando placar...</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* 2. Cabeçalho Informativo do Torneio */}
           {tournament && (
-            <div className="bg-[#18181b] border border-[#27272a] rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-indigo-500 to-purple-500" />
+            <div className="bg-[#18181b] border border-[#27272a] print:bg-white print:text-black print:border-neutral-300 print:shadow-none rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-indigo-500 to-purple-500 print:hidden" />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md bg-[#00a2ff]/10 text-[#00a2ff] text-[10px] font-black uppercase tracking-wider border border-[#00a2ff]/20">
+                    <span className="px-2.5 py-0.5 rounded-md bg-[#00a2ff]/10 text-[#00a2ff] print:bg-transparent print:text-black print:border-neutral-400 text-[10px] font-black uppercase tracking-wider border border-[#00a2ff]/20">
                       {sportLabel}
                     </span>
                     <span className="text-zinc-500 text-xs">•</span>
-                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                      <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                    <span className="text-xs font-bold text-emerald-400 print:text-black flex items-center gap-1">
+                      <Trophy className="h-3.5 w-3.5 text-amber-400 print:text-black" />
                       <span>{formatHeaderLabel}</span>
                     </span>
                   </div>
 
-                  <h1 className="text-xl sm:text-3xl font-black text-white font-display tracking-tight">
+                  <h1 className="text-xl sm:text-3xl font-black text-white print:text-black font-display tracking-tight">
                     {tournament.name}
                   </h1>
 
                   {tournament.location && (
-                    <p className="text-xs text-zinc-400 flex items-center gap-1.5 pt-0.5">
-                      <MapPin className="h-3.5 w-3.5 text-[#00a2ff]" />
+                    <p className="text-xs text-zinc-400 print:text-neutral-700 flex items-center gap-1.5 pt-0.5">
+                      <MapPin className="h-3.5 w-3.5 text-[#00a2ff] print:text-black" />
                       <span>{tournament.location}</span>
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-center">
+                <div className="flex items-center gap-2 self-start sm:self-center print:hidden">
                   <Link
                     href={`/torneio/${tournament.id}`}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-xs font-bold text-zinc-200 hover:text-white transition-all cursor-pointer shadow-sm"
@@ -776,7 +1049,7 @@ export default function BracketViewer({
           )}
 
           {/* 3. Visualização Dinâmica por Formato do Torneio (KNOCKOUT / LEAGUE / GROUPS) */}
-          {loading ? (
+          {initialLoading && !tournament && matches.length === 0 ? (
             <div className="py-24 text-center space-y-3">
               <Loader2 className="h-9 w-9 text-[#00a2ff] animate-spin mx-auto" />
               <p className="text-xs font-bold text-zinc-400">
@@ -784,43 +1057,93 @@ export default function BracketViewer({
               </p>
             </div>
           ) : matches.length === 0 ? (
-            <div className="border-2 border-dashed border-[#27272a] bg-[#141416]/50 rounded-3xl p-12 text-center space-y-4 max-w-xl mx-auto my-12">
-              <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center mx-auto shadow-md">
-                <Network className="h-7 w-7 text-[#00a2ff]" />
+            <>
+              <div className="print:hidden border-2 border-dashed border-[#27272a] bg-[#141416]/50 rounded-3xl p-12 text-center space-y-4 max-w-xl mx-auto my-12">
+                <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center mx-auto shadow-md">
+                  <Network className="h-7 w-7 text-[#00a2ff]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-white">
+                    {resolvedFormat === "LEAGUE"
+                      ? "Tabela e Rodadas Ainda Não Geradas"
+                      : "Chaveamento Ainda Não Gerado"}
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    {resolvedFormat === "LEAGUE"
+                      ? "Os confrontos de todas as rodadas deste campeonato em pontos corridos ainda não foram gerados pela organização. Assim que as inscrições forem encerradas e a tabela oficial for gerada, a classificação e as rodadas aparecerão aqui em tempo real."
+                      : "As chaves e confrontos deste campeonato ainda não foram sorteados pela organização. Assim que as inscrições forem encerradas e o chaveamento oficial for gerado, a árvore de confrontos aparecerá aqui em tempo real."}
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00a2ff] hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>Voltar aos Detalhes</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-zinc-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-[#00a2ff]" />
+                    <span>Imprimir Chave Vazia</span>
+                  </button>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-white">
-                  {resolvedFormat === "LEAGUE"
-                    ? "Tabela e Rodadas Ainda Não Geradas"
-                    : "Chaveamento Ainda Não Gerado"}
-                </h3>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  {resolvedFormat === "LEAGUE"
-                    ? "Os confrontos de todas as rodadas deste campeonato em pontos corridos ainda não foram gerados pela organização. Assim que as inscrições forem encerradas e a tabela oficial for gerada, a classificação e as rodadas aparecerão aqui em tempo real."
-                    : "As chaves e confrontos deste campeonato ainda não foram sorteados pela organização. Assim que as inscrições forem encerradas e o chaveamento oficial for gerado, a árvore de confrontos aparecerá aqui em tempo real."}
-                </p>
+
+              {/* Árvore em branco para impressão antes do sorteio */}
+              <div className="hidden print:block">
+                <TournamentView
+                  format={tournament?.tournament_format || tournament?.format}
+                  tournament={tournament}
+                  teams={teams}
+                  matches={buildBlankKnockoutMatches(Math.max(4, teams.length || 8))}
+                />
               </div>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00a2ff] hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  <span>Voltar aos Detalhes</span>
-                </button>
-              </div>
-            </div>
+            </>
           ) : (
             <TournamentView
               format={tournament?.tournament_format || tournament?.format}
               tournament={tournament}
               teams={teams}
               matches={matches}
-              onSelectMatch={(match) => setSelectedDetailMatch(match)}
+              onSelectMatch={(clickedMatch) => {
+                const matchId = clickedMatch.id || (clickedMatch as any).uuid;
+                const fid = getFriendlyIdFromUuid(matchId);
+                const fullMatch =
+                  matches.find((m) => m.id === matchId || m.id === fid || (m as any).uuid === matchId) ||
+                  context.matches.find((m) => m.id === matchId || m.id === fid || (m as any).uuid === matchId) ||
+                  clickedMatch;
+
+                const completeMatch: Match = {
+                  ...clickedMatch,
+                  ...fullMatch,
+                  detailed_score: fullMatch.detailed_score ?? clickedMatch.detailed_score,
+                  detailedScore:
+                    (fullMatch as any).detailedScore ??
+                    (clickedMatch as any).detailedScore ??
+                    fullMatch.detailed_score ??
+                    clickedMatch.detailed_score,
+                  historicoSets:
+                    Array.isArray(fullMatch.historicoSets) && fullMatch.historicoSets.length > 0
+                      ? fullMatch.historicoSets
+                      : clickedMatch.historicoSets,
+                };
+                console.log("SELECIONANDO PARTIDA NO CARD (COMPLETA):", completeMatch);
+                setSelectedDetailMatch(completeMatch);
+              }}
               isEditMode={isEditMode}
+              canManage={canManage}
+              isOrganizer={canManage}
+              isAdmin={canManage}
               onSwapTeams={handleSwapTeams}
               onReplaceTeam={handleReplaceTeam}
+              onGenerateKnockout={() => {
+                fetchData(true);
+              }}
             />
           )}
         </main>
@@ -828,7 +1151,7 @@ export default function BracketViewer({
 
       {/* 4. Faixa Discreta de Patrocinadores Oficiais no Rodapé */}
       {tournament?.sponsors && tournament.sponsors.length > 0 && (
-        <section className="w-full border-t border-[#27272a] bg-[#121214]/90 backdrop-blur-md py-3.5 px-4 sm:px-6 mt-8">
+        <section className="w-full border-t border-[#27272a] bg-[#121214]/90 backdrop-blur-md py-3.5 px-4 sm:px-6 mt-8 print:hidden">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3 sm:gap-6">
             <span className="text-[11px] font-black uppercase tracking-wider text-zinc-500 whitespace-nowrap">
               Patrocinadores Oficiais:
@@ -882,20 +1205,48 @@ export default function BracketViewer({
       )}
 
       {/* Footer Limpo */}
-      <footer className="border-t border-[#27272a] py-6 text-center text-xs text-zinc-500 bg-[#141416]/50">
+      <footer className="border-t border-[#27272a] py-6 text-center text-xs text-zinc-500 bg-[#141416]/50 print:hidden">
         <div>SportConnect • Plataforma de Competições Esportivas</div>
       </footer>
 
       {/* 5. Modal de Detalhes do Confronto */}
-      {selectedDetailMatch && (
-        <MatchDetailsModal
-          match={selectedDetailMatch}
-          tournament={tournament}
-          teamsMap={teamsMap}
-          onClose={() => setSelectedDetailMatch(null)}
-          getMatchDetailData={getMatchDetailData}
-        />
-      )}
+      {selectedDetailMatch && (() => {
+        const fid = getFriendlyIdFromUuid(selectedDetailMatch.id);
+        const liveMatch =
+          matches.find((m) => m.id === selectedDetailMatch.id || m.id === fid || (m as any).uuid === selectedDetailMatch.id) ||
+          context.matches.find((m) => m.id === selectedDetailMatch.id || m.id === fid || (m as any).uuid === selectedDetailMatch.id) ||
+          selectedDetailMatch;
+
+        const mergedForModal: Match = {
+          ...selectedDetailMatch,
+          ...liveMatch,
+          detailed_score: liveMatch.detailed_score ?? selectedDetailMatch.detailed_score,
+          detailedScore:
+            (liveMatch as any).detailedScore ??
+            (selectedDetailMatch as any).detailedScore ??
+            liveMatch.detailed_score ??
+            selectedDetailMatch.detailed_score,
+          historicoSets:
+            Array.isArray(liveMatch.historicoSets) && liveMatch.historicoSets.length > 0
+              ? liveMatch.historicoSets
+              : selectedDetailMatch.historicoSets,
+        };
+
+        // Trace exigido no Item 1:
+        console.log("PASSANDO PARA O MODAL:", mergedForModal);
+
+        return (
+          <MatchDetailsModal
+            matchId={mergedForModal.id}
+            match={mergedForModal}
+            matches={matches}
+            tournament={tournament}
+            teamsMap={teamsMap}
+            onClose={() => setSelectedDetailMatch(null)}
+            getMatchDetailData={getMatchDetailData}
+          />
+        );
+      })()}
     </div>
   );
 }

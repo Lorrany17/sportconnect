@@ -169,6 +169,45 @@ export function formatPixKey(value: string, type: string): string {
   return value;
 }
 
+/**
+ * Faz o parse seguro do objeto match_rules (JSONB ou string)
+ */
+export function parseMatchRulesObject(rawRules: any): Record<string, any> {
+  if (!rawRules) return {};
+  if (typeof rawRules === "object") return rawRules;
+  if (typeof rawRules === "string") {
+    try {
+      return JSON.parse(rawRules);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+/**
+ * Extrai o formato da modalidade (ex: 'solo', 'duplas', '5x5') a partir do torneio e de match_rules
+ */
+export function extractModalityFormat(tournament?: any): string {
+  if (!tournament) return "duplas";
+  const rules = parseMatchRulesObject(tournament.match_rules);
+  const modFmt = rules?.modality_format || tournament.format || "";
+  const sport = String(tournament.sport_type || "").toUpperCase();
+
+  if (modFmt) {
+    const lower = String(modFmt).toLowerCase();
+    if (lower.includes("solo") || lower.includes("individual") || lower.includes("1x1")) return "solo";
+    if (lower.includes("dupla") || lower.includes("2x2")) return "duplas";
+    if (lower.includes("5x5") || lower.includes("equipe") || lower.includes("time")) return "equipe";
+    return String(modFmt);
+  }
+
+  if (sport === "DOMINO") return "duplas";
+  if (sport === "PING_PONG" || sport === "TENIS") return "solo";
+  if (sport === "FUTSAL" || sport === "FUTEBOL" || sport === "VOLEI") return "equipe";
+  return "duplas";
+}
+
 export default function CreateTournamentForm({
   onClose,
   onSuccess,
@@ -203,6 +242,39 @@ export default function CreateTournamentForm({
   const [tournamentFormat, setTournamentFormat] = useState<string>(
     initialData?.tournament_format || "KNOCKOUT"
   );
+  const [numGroups, setNumGroups] = useState<number>(() => {
+    const r =
+      typeof initialData?.match_rules === "string"
+        ? (() => {
+          try {
+            return JSON.parse(initialData.match_rules);
+          } catch {
+            return {};
+          }
+        })()
+        : initialData?.match_rules;
+    return Number(r?.num_groups || (initialData as any)?.num_groups || 2);
+  });
+  const [qualifiersPerGroup, setQualifiersPerGroup] = useState<number>(() => {
+    const r =
+      typeof initialData?.match_rules === "string"
+        ? (() => {
+          try {
+            return JSON.parse(initialData.match_rules);
+          } catch {
+            return {};
+          }
+        })()
+        : initialData?.match_rules;
+    return Number(r?.qualifiers_per_group || (initialData as any)?.qualifiers_per_group || 2);
+  });
+  const [hasThirdPlaceMatch, setHasThirdPlaceMatch] = useState<boolean>(() => {
+    return Boolean(
+      initialData?.has_third_place_match ??
+      (initialData?.match_rules as any)?.has_third_place_match ??
+      false
+    );
+  });
   const [maxTeams, setMaxTeams] = useState<number>(initialData?.max_teams ? Number(initialData.max_teams) : 16);
   const [entryFee, setEntryFee] = useState<string>(() => {
     if (initialData?.entry_fee !== undefined && initialData?.entry_fee !== null) {
@@ -711,6 +783,11 @@ export default function CreateTournamentForm({
       }
       if (initialData.tournament_format) {
         setTournamentFormat(initialData.tournament_format);
+      }
+      if (initialData.has_third_place_match !== undefined) {
+        setHasThirdPlaceMatch(Boolean(initialData.has_third_place_match));
+      } else if ((initialData.match_rules as any)?.has_third_place_match !== undefined) {
+        setHasThirdPlaceMatch(Boolean((initialData.match_rules as any).has_third_place_match));
       }
       if (initialData.max_teams) {
         setMaxTeams(Number(initialData.max_teams));
@@ -1366,8 +1443,12 @@ export default function CreateTournamentForm({
             : tournamentFormat === "GROUPS_KNOCKOUT" || tournamentFormat === "GROUPS"
             ? "GROUPS"
             : "KNOCKOUT",
+        has_third_place_match: Boolean(hasThirdPlaceMatch),
         match_rules: {
           ...compiledMatchRules,
+          num_groups: Number(numGroups) || 2,
+          qualifiers_per_group: Number(qualifiersPerGroup) || 2,
+          has_third_place_match: Boolean(hasThirdPlaceMatch),
           modality_format: format || (sportType === "DOMINO" ? "Duplas" : sportType === "FUTSAL" ? "5x5" : null),
           tournament_format:
             tournamentFormat === "ROUND_ROBIN" || tournamentFormat === "LEAGUE"
@@ -2199,6 +2280,91 @@ export default function CreateTournamentForm({
                   );
                 })}
               </div>
+
+              {/* BLOCO ESPECÍFICO DO FORMATO FASE DE GRUPOS + ELIMINATÓRIAS */}
+              {(tournamentFormat === "GROUPS" || tournamentFormat === "GROUPS_KNOCKOUT") && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-[#0d0d0d] border border-blue-500/30 shadow-lg space-y-4 animate-fadeIn mt-3">
+                  <div className="flex items-center gap-2.5 pb-2 border-b border-zinc-800">
+                    <div className="p-2 rounded-xl bg-blue-600/15 border border-blue-500/30 text-blue-400">
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider font-display">
+                        Configuração da Fase de Grupos
+                      </h4>
+                      <p className="text-[11px] text-zinc-400">
+                        Divisão matemática equilibrada e cruzamento olímpico automático no mata-mata
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        Quantidade de Grupos <span className="text-blue-500">*</span>
+                      </label>
+                      <select
+                        value={numGroups}
+                        onChange={(e) => setNumGroups(Number(e.target.value))}
+                        className="w-full bg-[#18181b] border border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                      >
+                        <option value={2}>2 Grupos (Grupo A e Grupo B)</option>
+                        <option value={3}>3 Grupos (A, B e C)</option>
+                        <option value={4}>4 Grupos (A, B, C e D)</option>
+                        <option value={6}>6 Grupos (A até F)</option>
+                        <option value={8}>8 Grupos (A até H)</option>
+                      </select>
+                      <p className="text-[10px] text-zinc-500">
+                        {maxTeams
+                          ? `Para ${maxTeams} equipes: ~${Math.round(maxTeams / numGroups)} participantes por grupo.`
+                          : "Tamanho ideal: 3 ou 4 equipes por grupo."}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        Classificados por Grupo <span className="text-blue-500">*</span>
+                      </label>
+                      <select
+                        value={qualifiersPerGroup}
+                        onChange={(e) => setQualifiersPerGroup(Number(e.target.value))}
+                        className="w-full bg-[#18181b] border border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                      >
+                        <option value={2}>2 melhores de cada grupo (Cruzamento Olímpico 1º A vs 2º B)</option>
+                        <option value={1}>Apenas o 1º colocado de cada grupo</option>
+                        <option value={3}>3 melhores colocados de cada grupo</option>
+                        <option value={4}>4 melhores colocados de cada grupo</option>
+                      </select>
+                      <p className="text-[10px] text-zinc-500">
+                        Os 2 primeiros se enfrentam em cruzamento olímpico nas eliminatórias.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Opção de Disputa de 3º Lugar para formatos com eliminatórias */}
+              {(tournamentFormat === "KNOCKOUT" ||
+                tournamentFormat === "GROUPS" ||
+                tournamentFormat === "GROUPS_KNOCKOUT") && (
+                <div className="flex items-start gap-3 p-3.5 sm:p-4 rounded-xl bg-[#0d0d0d] border border-blue-500/20 hover:border-blue-500/40 transition-colors mt-3">
+                  <input
+                    type="checkbox"
+                    id="has_third_place_match"
+                    checked={hasThirdPlaceMatch}
+                    onChange={(e) => setHasThirdPlaceMatch(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-zinc-900 cursor-pointer"
+                  />
+                  <label htmlFor="has_third_place_match" className="text-xs cursor-pointer select-none space-y-0.5">
+                    <span className="font-bold text-white block">
+                      Habilitar disputa de 3º lugar?
+                    </span>
+                    <span className="text-[11px] text-zinc-400 block leading-relaxed">
+                      Se ativado, cria automaticamente uma partida extra entre os perdedores das semifinais para definir o 3º colocado do torneio.
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* ======================================================== */}

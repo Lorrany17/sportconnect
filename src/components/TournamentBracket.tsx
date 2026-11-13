@@ -1,29 +1,225 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useContext } from "react";
 import Link from "next/link";
 import { Match, Team } from "@/types";
-import { Trophy, Activity, Pencil, X, Settings, ClipboardCheck, CheckCircle, ExternalLink } from "lucide-react";
+import { Trophy, Activity, Pencil, X, Settings, ClipboardCheck, CheckCircle, Printer } from "lucide-react";
 import { TOURNAMENT_TYPE } from "@/lib/config";
+import { formatPhaseName } from "@/utils/formatMap";
+import { getLiveMatchScore } from "@/utils/liveMatchScore";
+import { organizeBracketRounds, getThirdPlaceMatch, isThirdPlaceMatch } from "@/utils/bracketTree";
+import { supabase } from "@/lib/supabase";
+import { TournamentContext, deduplicateMatches } from "@/context/TournamentContext";
+
 interface TournamentBracketProps {
   matches: Match[];
   teams: Team[];
-  onUpdateMatch: (match: Match) => void;
-  onSwapTeams: (srcMatchId: string, srcSlot: "A" | "B", destMatchId: string, destSlot: "A" | "B") => void;
-  onReplaceTeam: (matchId: string, slot: "A" | "B", newTeamId: string) => void;
-  onDeclareWO: (matchId: string, slotWithError: "A" | "B") => void;
+  onUpdateMatch?: (match: Match) => void;
+  onSwapTeams?: (srcMatchId: string, srcSlot: "A" | "B", destMatchId: string, destSlot: "A" | "B") => void;
+  onReplaceTeam?: (matchId: string, slot: "A" | "B", newTeamId: string) => void;
+  onDeclareWO?: (matchId: string, slotWithError: "A" | "B") => void;
   isAdmin?: boolean;
   isReadOnly?: boolean;
+  tournamentId?: string;
 }
 
 export default function TournamentBracket({
   matches,
   teams,
-  onUpdateMatch,
-  onSwapTeams,
-  onReplaceTeam,
-  onDeclareWO,
+  onUpdateMatch = () => {},
+  onSwapTeams = () => {},
+  onReplaceTeam = () => {},
+  onDeclareWO = () => {},
   isAdmin = false,
   isReadOnly = false,
+  tournamentId,
 }: TournamentBracketProps) {
+  const tournamentCtx = useContext(TournamentContext);
+  const contextTournamentId = tournamentCtx?.currentTournamentId;
+
+  // Mapa de equipes para resolução instantânea e sem lag de nomes de times
+  const teamsMap = useMemo(() => {
+    const map = new Map<string, Team>();
+    (teams || []).forEach((t) => {
+      if (t && t.id) map.set(t.id, t);
+    });
+    return map;
+  }, [teams]);
+
+  // Função utilitária para resolver o nome e objeto do time a partir do ID
+  const resolveTeam = useCallback(
+    (teamId: string | null | undefined, currentTeam: Team | undefined, fallback: string): Team => {
+      if (!teamId || teamId === "bye") {
+        if (teamId === "bye" || currentTeam?.id === "bye") {
+          return { id: "bye", name: "Avanço Direto", players: [], createdAt: "" };
+        }
+        if (currentTeam && currentTeam.name && currentTeam.name.toLowerCase() !== "a definir") {
+          return currentTeam;
+        }
+        return { id: "placeholder", name: fallback, players: [], createdAt: "" };
+      }
+
+      const found = teamsMap.get(teamId) || (teams || []).find((t) => t.id === teamId);
+      if (found) return found;
+
+      if (currentTeam && currentTeam.id === teamId && currentTeam.name && currentTeam.name.toLowerCase() !== "a definir") {
+        return currentTeam;
+      }
+
+      return { id: teamId, name: `Equipe #${teamId.slice(0, 6)}`, players: [], createdAt: "" };
+    },
+    [teamsMap, teams]
+  );
+
+  // Enriquece a partida garantindo que teamA e teamB reflitam imediatamente os times corretos
+  const enrichMatch = useCallback(
+    (m: Match): Match => {
+      const team1Id = m.team_a_id || m.team1_id || m.teamA?.id;
+      const team2Id = m.team_b_id || m.team2_id || m.teamB?.id;
+      return {
+        ...m,
+        teamA: resolveTeam(team1Id, m.teamA, "A definir"),
+        teamB: resolveTeam(team2Id, m.teamB, "A definir"),
+        team_a_id: team1Id,
+        team_b_id: team2Id,
+        team1_id: team1Id,
+        team2_id: team2Id,
+      };
+    },
+    [resolveTeam]
+  );
+
+  // Estado local de partidas para reatividade em tempo real sem depender de recarga de página
+  const [localMatches, setLocalMatches] = useState<Match[]>(() =>
+    (matches || []).map(enrichMatch)
+  );
+
+  useEffect(() => {
+    setLocalMatches((matches || []).map(enrichMatch));
+  }, [matches, enrichMatch]);
+
+  // Subscrição Supabase Real-time: escuta UPDATE na tabela matches filtrando por tournament_id
+  useEffect(() => {
+    const effectiveId =
+      tournamentId ||
+      contextTournamentId ||
+      (matches && matches[0] && ((matches[0] as any).tournament_id || (matches[0] as any).tournamentId)) ||
+      (teams && teams[0] && ((teams[0] as any).tournament_id || (teams[0] as any).tournamentId));
+
+    if (!effectiveId) return;
+
+    const channel = supabase
+      .channel(`tournament-bracket-live-${effectiveId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "matches",
+          filter: `tournament_id=eq.${effectiveId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (!updated || !updated.id) return;
+
+          setLocalMatches((prevMatches) => {
+            const index = prevMatches.findIndex((m) => {
+              const matchUuid = (m as any).uuid || (m as any).db_id;
+              return (
+                m.id === updated.id ||
+                matchUuid === updated.id
+              );
+            });
+
+            if (index === -1) {
+              return prevMatches;
+            }
+
+            const m = prevMatches[index];
+            const newTeamAId = updated.team_a_id ?? updated.team1_id ?? m.team_a_id ?? m.team1_id;
+            const newTeamBId = updated.team_b_id ?? updated.team2_id ?? m.team_b_id ?? m.team2_id;
+
+            const incomingSets =
+              updated.detailed_score?.sets ||
+              updated.detailed_score?.historicoSets ||
+              updated.detailed_score?.rounds ||
+              (typeof updated.detailed_score === "string"
+                ? (() => {
+                    try {
+                      const parsed = JSON.parse(updated.detailed_score);
+                      return parsed?.sets || parsed?.historicoSets || parsed?.rounds || (Array.isArray(parsed) ? parsed : null);
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null) ||
+              updated.details?.sets ||
+              (typeof updated.details === "string"
+                ? (() => {
+                    try {
+                      return JSON.parse(updated.details)?.sets;
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null) ||
+              updated.sets_history ||
+              updated.set_history ||
+              updated.historicoSets ||
+              m.sets_history;
+
+            const newStatus = updated.status ? String(updated.status).toUpperCase().trim() : m.status;
+            const newScoreA = updated.score_a !== undefined && updated.score_a !== null ? Number(updated.score_a) : (updated.scoreA !== undefined ? Number(updated.scoreA) : m.score_a);
+            const newScoreB = updated.score_b !== undefined && updated.score_b !== null ? Number(updated.score_b) : (updated.scoreB !== undefined ? Number(updated.scoreB) : m.score_b);
+            const newSetsA = updated.sets_a !== undefined && updated.sets_a !== null ? Number(updated.sets_a) : (updated.setsA !== undefined ? Number(updated.setsA) : m.sets_a);
+            const newSetsB = updated.sets_b !== undefined && updated.sets_b !== null ? Number(updated.sets_b) : (updated.setsB !== undefined ? Number(updated.setsB) : m.sets_b);
+
+            const incomingDetailedScore =
+              updated.detailed_score !== undefined
+                ? updated.detailed_score
+                : (m.detailed_score !== undefined ? m.detailed_score : m.detailedScore);
+
+            const mergedMatch = {
+              ...m,
+              ...updated,
+              id: m.id,
+              uuid: updated.id || (m as any).uuid,
+              db_id: updated.id || (m as any).db_id,
+              scoreA: newScoreA,
+              scoreB: newScoreB,
+              score_a: newScoreA,
+              score_b: newScoreB,
+              setsA: newSetsA,
+              setsB: newSetsB,
+              sets_a: newSetsA,
+              sets_b: newSetsB,
+              status: newStatus,
+              winnerId: updated.winner_id ?? updated.winnerId ?? m.winnerId,
+              winner_id: updated.winner_id ?? updated.winnerId ?? m.winner_id,
+              details: updated.details ?? m.details,
+              detailed_score: incomingDetailedScore,
+              detailedScore: incomingDetailedScore,
+              sets_history: incomingSets,
+              set_history: incomingSets,
+              history: incomingSets,
+              historicoSets: Array.isArray(incomingSets) ? incomingSets : m.historicoSets,
+              team_a_id: newTeamAId,
+              team_b_id: newTeamBId,
+              team1_id: newTeamAId,
+              team2_id: newTeamBId,
+            };
+
+            const copy = [...prevMatches];
+            copy[index] = enrichMatch(mergedMatch);
+            return deduplicateMatches(copy);
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tournamentId, contextTournamentId, matches, teams, enrichMatch]);
+
   const [editMode, setEditMode] = useState<boolean>(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
 
@@ -39,10 +235,10 @@ export default function TournamentBracket({
   const [editWinnerId, setEditWinnerId] = useState<string>("");
 
   const getMatchesByPhase = (phaseName: string) => {
-    return matches.filter((m) => m.phase.toLowerCase() === phaseName.toLowerCase());
+    return localMatches.filter((m) => m.phase.toLowerCase() === phaseName.toLowerCase());
   };
   const getLoserName = (matchId: string, fallback: string) => {
-    const match = matches.find((m) => m.id === matchId);
+    const match = localMatches.find((m) => m.id === matchId);
     if (!match || match.status !== "COMPLETED" || !match.winnerId) {
       return fallback;
     }
@@ -97,59 +293,266 @@ export default function TournamentBracket({
       status: editStatus,
       scoreA: editScoreA,
       scoreB: editScoreB,
+      score_a: editScoreA,
+      score_b: editScoreB,
       winnerId: editStatus === "COMPLETED" ? editWinnerId || undefined : undefined,
+      winner_id: editStatus === "COMPLETED" ? editWinnerId || undefined : undefined,
     };
 
+    setLocalMatches((prev) =>
+      prev.map((m) => (m.id === updatedMatch.id ? updatedMatch : m))
+    );
     onUpdateMatch(updatedMatch);
     setEditingMatch(null);
   };
 
-  const hasMatches = matches.length > 0;
+  const hasMatches = localMatches.length > 0;
 
-  const phaseCounts: Record<string, number> = {};
-  matches.forEach((m) => {
-    phaseCounts[m.phase] = (phaseCounts[m.phase] || 0) + 1;
-  });
-  const winnersPhases = Object.keys(phaseCounts).sort((a, b) => phaseCounts[b] - phaseCounts[a]);
-  const hasQF = matches.some((m) => m.phase.toLowerCase() === "quartas de final");
+  const roundGroups = useMemo(() => organizeBracketRounds(localMatches), [localMatches]);
+  const thirdPlaceMatch = useMemo(() => getThirdPlaceMatch(localMatches), [localMatches]);
+  const hasQF = roundGroups.some((g) => g.key === "quarter_finals");
+
+  const renderMatchCard = (m: Match, isThirdPlace = false) => {
+    const statusUpper = String(m.status || "").toUpperCase().trim();
+    const isCompleted =
+      statusUpper === "COMPLETED" ||
+      statusUpper === "FINISHED" ||
+      statusUpper === "FINALIZADO" ||
+      statusUpper === "ENCERRADA";
+    const isLive =
+      statusUpper === "LIVE" ||
+      statusUpper === "IN_PROGRESS" ||
+      statusUpper === "PLAYING" ||
+      statusUpper === "EM_ANDAMENTO";
+    const isScheduled = !isCompleted && !isLive;
+    const liveScore = getLiveMatchScore(m);
+    const isSetsSport = liveScore.isSetsSport;
+
+    // Prioridade estrita para as colunas raízes sincronizadas do Supabase
+    const matchSetsA = m.sets_a !== undefined && m.sets_a !== null
+      ? Number(m.sets_a)
+      : (m.setsA !== undefined && m.setsA !== null
+        ? Number(m.setsA)
+        : liveScore.setsA);
+    const matchScoreA = m.score_a !== undefined && m.score_a !== null
+      ? Number(m.score_a)
+      : (m.scoreA !== undefined && m.scoreA !== null
+        ? Number(m.scoreA)
+        : (isLive ? liveScore.activePointsA : liveScore.rawScoreA));
+
+    const matchSetsB = m.sets_b !== undefined && m.sets_b !== null
+      ? Number(m.sets_b)
+      : (m.setsB !== undefined && m.setsB !== null
+        ? Number(m.setsB)
+        : liveScore.setsB);
+    const matchScoreB = m.score_b !== undefined && m.score_b !== null
+      ? Number(m.score_b)
+      : (m.scoreB !== undefined && m.scoreB !== null
+        ? Number(m.scoreB)
+        : (isLive ? liveScore.activePointsB : liveScore.rawScoreB));
+
+    return (
+      <div
+        key={(m as any).uuid || (m as any).db_id || m.id}
+        className={`relative rounded-xl p-3.5 border transition-all duration-300 shadow-sm print:bg-white print:text-black print:border-neutral-400 print:shadow-none print:break-inside-avoid ${
+          isThirdPlace
+            ? "bg-[#faf8f5] dark:bg-[#18181b] border-amber-500/40 text-stone-800 dark:text-zinc-200 ring-1 ring-amber-500/10"
+            : isLive
+            ? "bg-[#fcfcfa] dark:bg-[#1c1c1c] border-[#d8ccb4] dark:border-neutral-800 text-stone-800 dark:text-white"
+            : isCompleted
+            ? "bg-white dark:bg-[#1c1c1c] border-[#d8ccb4]/80 dark:border-neutral-800 text-stone-800/90 dark:text-neutral-350"
+            : "bg-white/90 dark:bg-[#1c1c1c] border-[#d8ccb4]/60 dark:border-neutral-800 text-stone-800/70 dark:text-neutral-400"
+        }`}
+      >
+        {/* Live Indicator or Edit Pencil */}
+        {editMode ? (
+          <button
+            onClick={() => startEditing(m)}
+            className="absolute -top-2.5 -right-2 p-1.5 rounded bg-brand-electric hover:bg-brand-electric-hover text-white text-xs border border-brand-electric/50 shadow-md cursor-pointer transition-all active:scale-90 animate-fadeIn print:hidden"
+            title="Editar Geral do Confronto"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        ) : isLive ? (
+          <span className="print:hidden absolute -top-2.5 -right-2 px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200 dark:bg-brand-neon-orange/20 dark:text-brand-neon dark:border-brand-neon-orange/40 text-[8px] font-black tracking-widest uppercase animate-pulse">
+            AO VIVO
+          </span>
+        ) : null}
+
+        {/* Table tag */}
+        <div className="text-[8px] font-black text-stone-500 dark:text-brand-text-muted print:text-black uppercase tracking-wider mb-2 flex justify-between items-center">
+          <span>{isThirdPlace ? "Disputa de 3º Lugar • " : ""}Mesa {m.tableNumber || 1}</span>
+          {isLive ? (
+            <span className="text-amber-500 dark:text-amber-400 font-black print:hidden flex items-center gap-1 animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+              AO VIVO
+            </span>
+          ) : isCompleted ? (
+            <span className="text-brand-electric-light print:hidden font-bold">FIM</span>
+          ) : (
+            <span className="text-stone-400 dark:text-neutral-500 print:hidden font-medium">PROGRAMADA</span>
+          )}
+        </div>
+
+        {/* Team A Card row */}
+        <div
+          draggable={editMode && m.teamA.id !== "bye"}
+          onDragStart={(e) => handleDragStart(e, m.id, "A")}
+          onDragOver={(e) => editMode && m.teamA.id !== "bye" && e.preventDefault()}
+          onDrop={(e) => editMode && m.teamA.id !== "bye" && handleDrop(e, m.id, "A")}
+          onClick={() => editMode && m.teamA.id !== "bye" && setActiveDropdownSlot({ matchId: m.id, slot: "A" })}
+          className={`flex items-center justify-between text-xs py-1.5 px-2 rounded-lg transition-all ${editMode && m.teamA.id !== "bye"
+              ? "cursor-grab active:cursor-grabbing hover:bg-brand-electric/10 border border-dashed border-transparent hover:border-brand-electric/30"
+              : ""
+            } ${isCompleted && m.winnerId === m.teamA.id
+              ? "bg-brand-electric/15 text-stone-800 dark:text-white font-bold"
+              : isCompleted
+                ? "text-stone-500 dark:text-neutral-500"
+                : "text-stone-800 dark:text-white"
+            }`}
+        >
+          {m.teamA.user_id && m.teamA.id !== "bye" && !editMode ? (
+            <Link
+              href={`/atleta/${m.teamA.user_id}`}
+              onClick={(e) => e.stopPropagation()}
+              title={`Ver perfil do atleta (${m.teamA.name})`}
+              className="truncate max-w-[120px] hover:text-[#00a2ff] hover:underline transition-colors font-semibold"
+            >
+              {m.teamA.name}
+            </Link>
+          ) : (
+            <span className={`truncate max-w-[120px] ${m.teamA.id === "bye" ? "italic text-neutral-400 dark:text-neutral-500 font-normal" : ""}`} title={m.teamA.id === "bye" ? "Avanço Direto" : m.teamA.name}>
+              {m.teamA.id === "bye" ? "Avanço Direto" : m.teamA.name}
+            </span>
+          )}
+          <span className="font-display font-black text-sm flex items-center gap-0.5">
+            {isScheduled ? (
+              <span className="font-mono text-[10px] font-bold text-stone-400 dark:text-neutral-500 print:text-black">[&nbsp;&nbsp;]</span>
+            ) : isLive && isSetsSport ? (
+              <span className="inline-flex items-center gap-1 font-mono">
+                <span>{matchSetsA}</span>
+                <span className="text-[11px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.2 rounded border border-[#00a2ff]/30">
+                  ({matchScoreA})
+                </span>
+              </span>
+            ) : isSetsSport ? (
+              <>
+                {matchSetsA}
+                <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest ml-0.5">S</span>
+              </>
+            ) : (
+              matchScoreA
+            )}
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div className="h-[1px] bg-[#d8ccb4] dark:bg-brand-border/40 my-1" />
+
+        {/* Team B Card row */}
+        <div
+          draggable={editMode && m.teamB.id !== "bye"}
+          onDragStart={(e) => handleDragStart(e, m.id, "B")}
+          onDragOver={(e) => editMode && m.teamB.id !== "bye" && e.preventDefault()}
+          onDrop={(e) => editMode && m.teamB.id !== "bye" && handleDrop(e, m.id, "B")}
+          onClick={() => editMode && m.teamB.id !== "bye" && setActiveDropdownSlot({ matchId: m.id, slot: "B" })}
+          className={`flex items-center justify-between text-xs py-1.5 px-2 rounded-lg transition-all ${editMode && m.teamB.id !== "bye"
+              ? "cursor-grab active:cursor-grabbing hover:bg-brand-neon-orange/10 border border-dashed border-transparent hover:border-brand-neon-orange/30"
+              : ""
+            } ${isCompleted && m.winnerId === m.teamB.id
+              ? "bg-brand-electric/15 text-stone-800 dark:text-white font-bold"
+              : isCompleted
+                ? "text-stone-500 dark:text-neutral-500"
+                : "text-stone-800 dark:text-white"
+            }`}
+        >
+          {m.teamB.user_id && m.teamB.id !== "bye" && !editMode ? (
+            <Link
+              href={`/atleta/${m.teamB.user_id}`}
+              onClick={(e) => e.stopPropagation()}
+              title={`Ver perfil do atleta (${m.teamB.name})`}
+              className="truncate max-w-[120px] hover:text-[#00a2ff] hover:underline transition-colors font-semibold"
+            >
+              {m.teamB.name}
+            </Link>
+          ) : (
+            <span className={`truncate max-w-[120px] ${m.teamB.id === "bye" ? "italic text-neutral-400 dark:text-neutral-500 font-normal" : ""}`} title={m.teamB.id === "bye" ? "Avanço Direto" : m.teamB.name}>
+              {m.teamB.id === "bye" ? "Avanço Direto" : m.teamB.name}
+            </span>
+          )}
+          <span className="font-display font-black text-sm flex items-center gap-0.5">
+            {isScheduled ? (
+              <span className="font-mono text-[10px] font-bold text-stone-400 dark:text-neutral-500 print:text-black">[&nbsp;&nbsp;]</span>
+            ) : isLive && isSetsSport ? (
+              <span className="inline-flex items-center gap-1 font-mono">
+                <span>{matchSetsB}</span>
+                <span className="text-[11px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.2 rounded border border-[#00a2ff]/30">
+                  ({matchScoreB})
+                </span>
+              </span>
+            ) : isSetsSport ? (
+              <>
+                {matchSetsB}
+                <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest ml-0.5">S</span>
+              </>
+            ) : (
+              matchScoreB
+            )}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn print:w-full print:bg-white print:text-black print:space-y-4">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-brand-border/40 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-brand-border/40 print:border-neutral-300 pb-6 print:pb-3">
         <div>
-          <h1 className="font-display text-3xl font-black tracking-tight uppercase">
-            Chaveamento e <span className="text-gradient-neon">Tempo Real</span>
+          <h1 className="font-display text-3xl font-black tracking-tight uppercase print:text-black">
+            Chaveamento e <span className="text-gradient-neon print:text-black">Tempo Real</span>
           </h1>
-          <p className="text-stone-500 dark:text-brand-text-muted text-sm mt-1">
+          <p className="text-stone-500 dark:text-brand-text-muted print:text-neutral-700 text-sm mt-1">
             {TOURNAMENT_TYPE === "DOUBLE_ELIMINATION"
                ? "Acompanhe o andamento das chaves de Vencedores e Repescagem em tempo real."
                : "Acompanhe o andamento das chaves de Vencedores em tempo real."}
           </p>
         </div>
 
-        {/* Toggle Edit Mode Button */}
-        {hasMatches && isAdmin && !isReadOnly && (
+        <div className="flex flex-wrap items-center gap-2.5 print:hidden">
           <button
-            onClick={() => setEditMode(!editMode)}
-            className={`inline-flex items-center gap-2 px-4 py-2 w-fit self-start md:self-auto rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border ${editMode
-                ? "bg-amber-600/10 border-amber-500/30 text-amber-800 shadow-md shadow-amber-500/5 dark:bg-brand-neon/15 dark:border-brand-neon dark:text-brand-neon dark:shadow-lg dark:shadow-brand-neon/10"
-                : "bg-stone-100 hover:bg-stone-200/60 border-stone-200 text-stone-700 dark:bg-neutral-900 dark:border-brand-border dark:hover:border-neutral-700 dark:text-brand-text-muted"
-              }`}
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] hover:border-[#00a2ff]/40 text-zinc-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Imprimir ou baixar árvore do chaveamento em PDF"
           >
-            <Settings className={`h-3.5 w-3.5 ${editMode ? "animate-spin" : ""}`} />
-            Modo Edição
+            <Printer className="h-3.5 w-3.5 text-[#00a2ff]" />
+            <span>🖨️ Imprimir / Baixar Chaveamento</span>
           </button>
-        )}
+
+          {/* Toggle Edit Mode Button */}
+          {hasMatches && isAdmin && !isReadOnly && (
+            <button
+              onClick={() => setEditMode(!editMode)}
+              className={`inline-flex items-center gap-2 px-4 py-2 w-fit self-start md:self-auto rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border ${editMode
+                  ? "bg-amber-600/10 border-amber-500/30 text-amber-800 shadow-md shadow-amber-500/5 dark:bg-brand-neon/15 dark:border-brand-neon dark:text-brand-neon dark:shadow-lg dark:shadow-brand-neon/10"
+                  : "bg-stone-100 hover:bg-stone-200/60 border-stone-200 text-stone-700 dark:bg-neutral-900 dark:border-brand-border dark:hover:border-neutral-700 dark:text-brand-text-muted"
+                }`}
+            >
+              <Settings className={`h-3.5 w-3.5 ${editMode ? "animate-spin" : ""}`} />
+              Modo Edição
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Featured Live Matches Carousel */}
       {(() => {
-        const liveMatches = matches.filter((m) => m.status === "LIVE");
+        const liveMatches = localMatches.filter((m) => m.status === "LIVE");
         if (liveMatches.length === 0) return null;
 
         return (
-          <div className="space-y-3">
+          <div className="space-y-3 print:hidden">
             <style>{`
               .no-scrollbar::-webkit-scrollbar {
                 display: none;
@@ -245,10 +648,10 @@ export default function TournamentBracket({
       })()}
 
       {/* Main Bracket (Vencedores) */}
-      <div className="glass-panel rounded-2xl p-6 border border-brand-border/60 overflow-x-auto">
-        <h2 className="text-sm font-black flex items-center gap-2 mb-6 border-b border-brand-border/40 pb-3">
-          <Trophy className="h-4 w-4 text-brand-neon animate-pulse-slow" />
-          <span className="text-gradient-neon uppercase tracking-wider">Chave Principal (Vencedores)</span>
+      <div className="glass-panel rounded-2xl p-6 border border-brand-border/60 overflow-x-auto print:w-full print:bg-white print:text-black print:border-neutral-300 print:shadow-none print:overflow-visible">
+        <h2 className="text-sm font-black flex items-center gap-2 mb-6 border-b border-brand-border/40 print:border-neutral-300 pb-3">
+          <Trophy className="h-4 w-4 text-brand-neon print:text-black animate-pulse-slow" />
+          <span className="text-gradient-neon print:text-black uppercase tracking-wider">Chave Principal (Vencedores)</span>
         </h2>
 
         {!hasMatches ? (
@@ -258,184 +661,96 @@ export default function TournamentBracket({
             <p className="text-xs text-neutral-600 mt-1">Inscreva as duplas e clique em &quot;Gerar Chaveamento&quot; na Gestão de Duplas.</p>
           </div>
         ) : (
-          <div className="flex gap-8 md:gap-16 min-w-[700px] justify-between py-4 select-none min-h-[460px] items-stretch">
-            {winnersPhases.map((phase) => {
-              const phaseMatches = getMatchesByPhase(phase);
+          <div className="flex flex-row items-stretch gap-8 md:gap-14 min-w-[700px] print:min-w-0 print:w-full print:gap-4 overflow-x-auto py-4 select-none min-h-[480px] print:min-h-0">
+            {roundGroups.map((group, groupIdx) => {
+              const isFirstRound = groupIdx === 0;
+              const isLastRound = groupIdx === roundGroups.length - 1;
+              const roundMatches = group.matches;
+
               return (
-                <div key={phase} className="flex-1 flex flex-col justify-around gap-4">
+                <div
+                  key={group.key}
+                  className={`flex-1 flex flex-col gap-4 min-w-[280px] max-w-[320px] shrink-0 print:min-w-0 print:max-w-none print:shrink ${
+                    isLastRound ? "justify-center" : "justify-around"
+                  }`}
+                >
                   {/* Phase Title */}
-                  <div className="text-center border-b border-brand-border/40 pb-2 mb-2">
-                    <span className="font-display text-[10px] font-black uppercase tracking-wider text-brand-electric-light">
-                      {phase}
+                  <div className="text-center border-b border-brand-border/40 print:border-neutral-300 pb-2 mb-2">
+                    <span
+                      className={`font-display text-xs font-black uppercase tracking-wider block print:text-black ${
+                        isLastRound ? "text-amber-400" : "text-brand-electric-light"
+                      }`}
+                    >
+                      {group.title}
+                    </span>
+                    <span className="text-[10px] text-zinc-500 font-medium">
+                      {roundMatches.length}{" "}
+                      {roundMatches.length === 1 ? "confronto" : "confrontos"}
                     </span>
                   </div>
 
-                  {/* Matches list for this phase */}
-                  <div className="flex flex-col justify-around h-full gap-8 relative">
-                    {phaseMatches.map((m) => {
-                      const isCompleted = m.status === "COMPLETED";
-                      const isLive = m.status === "LIVE";
-                      const isBestOf3Phase =
-                        m.phase.toLowerCase() === "semifinal" ||
-                        m.phase.toLowerCase() === "final";
-                      const hasSets =
-                        (m.setsA !== undefined && m.setsA > 0) ||
-                        (m.setsB !== undefined && m.setsB > 0);
-                      const hasScore =
-                        (m.scoreA !== undefined && m.scoreA > 0) ||
-                        (m.scoreB !== undefined && m.scoreB > 0);
-                      
-                      const showSets = hasSets || (isBestOf3Phase && !hasScore);
+                  {/* Matches list for this phase - vertically centered for final */}
+                  <div
+                    className={`flex flex-col flex-1 h-full relative py-2 ${
+                      isLastRound ? "justify-center my-auto gap-0" : "justify-around gap-8"
+                    }`}
+                  >
+                    {Array.from({ length: Math.ceil(roundMatches.length / 2) }).map((_, pairIdx) => {
+                      const pairMatches = roundMatches.slice(pairIdx * 2, pairIdx * 2 + 2);
+                      const isSingle = pairMatches.length === 1;
 
                       return (
                         <div
-                          key={m.id}
-                          className={`relative rounded-xl p-3.5 border transition-all duration-300 shadow-sm ${isLive
-                              ? "bg-[#fcfcfa] dark:bg-[#1c1c1c] border-[#d8ccb4] dark:border-neutral-800 text-stone-800 dark:text-white"
-                              : isCompleted
-                                ? "bg-white dark:bg-[#1c1c1c] border-[#d8ccb4]/80 dark:border-neutral-800 text-stone-800/90 dark:text-neutral-350"
-                                : "bg-white/90 dark:bg-[#1c1c1c] border-[#d8ccb4]/60 dark:border-neutral-800 text-stone-800/70 dark:text-neutral-400"
-                            }`}
+                          key={pairIdx}
+                          className={`relative flex flex-col flex-1 ${
+                            isSingle ? "justify-center" : "justify-around gap-8"
+                          }`}
                         >
-                          {/* Live Indicator or Edit Pencil */}
-                          {editMode ? (
-                            <button
-                              onClick={() => startEditing(m)}
-                              className="absolute -top-2.5 -right-2 p-1.5 rounded bg-brand-electric hover:bg-brand-electric-hover text-white text-xs border border-brand-electric/50 shadow-md cursor-pointer transition-all active:scale-90 animate-fadeIn"
-                              title="Editar Geral do Confronto"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                          ) : isLive ? (
-                            <span className="absolute -top-2.5 -right-2 px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200 dark:bg-brand-neon-orange/20 dark:text-brand-neon dark:border-brand-neon-orange/40 text-[8px] font-black tracking-widest uppercase animate-pulse">
-                              AO VIVO
-                            </span>
-                          ) : null}
+                          {pairMatches.map((m) => renderMatchCard(m, false))}
 
-                          {/* Table tag */}
-                          <div className="text-[8px] font-black text-stone-500 dark:text-brand-text-muted uppercase tracking-wider mb-2 flex justify-between">
-                            <span>Mesa {m.tableNumber}</span>
-                            {isCompleted && <span className="text-brand-electric-light">FIM</span>}
-                            {!isCompleted && !isLive && <span className="text-stone-400 dark:text-neutral-500">AGENDADA</span>}
-                          </div>
-
-                          {/* Team A Card row */}
-                          <div
-                            draggable={editMode && m.teamA.id !== "bye"}
-                            onDragStart={(e) => handleDragStart(e, m.id, "A")}
-                            onDragOver={(e) => editMode && m.teamA.id !== "bye" && e.preventDefault()}
-                            onDrop={(e) => editMode && m.teamA.id !== "bye" && handleDrop(e, m.id, "A")}
-                            onClick={() => editMode && m.teamA.id !== "bye" && setActiveDropdownSlot({ matchId: m.id, slot: "A" })}
-                            className={`flex items-center justify-between text-xs py-1.5 px-2 rounded-lg transition-all ${editMode && m.teamA.id !== "bye"
-                                ? "cursor-grab active:cursor-grabbing hover:bg-brand-electric/10 border border-dashed border-transparent hover:border-brand-electric/30"
-                                : ""
-                              } ${isCompleted && m.winnerId === m.teamA.id
-                                ? "bg-brand-electric/15 text-stone-800 dark:text-white font-bold"
-                                : isCompleted
-                                  ? "text-stone-500 dark:text-neutral-500"
-                                  : "text-stone-800 dark:text-white"
-                              }`}
-                          >
-                            {m.teamA.user_id && m.teamA.id !== "bye" && !editMode ? (
-                              <Link
-                                href={`/atleta/${m.teamA.user_id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                title={`Ver perfil do atleta (${m.teamA.name})`}
-                                className="truncate max-w-[120px] hover:text-[#00a2ff] hover:underline transition-colors font-semibold"
-                              >
-                                {m.teamA.name}
-                              </Link>
-                            ) : (
-                              <span className={`truncate max-w-[120px] ${m.teamA.id === "bye" ? "italic text-neutral-400 dark:text-neutral-500 font-normal" : ""}`} title={m.teamA.id === "bye" ? "Avanço Direto" : m.teamA.name}>
-                                {m.teamA.id === "bye" ? "Avanço Direto" : m.teamA.name}
-                              </span>
-                            )}
-                            <span className="font-display font-black text-sm flex items-center gap-0.5">
-                              {showSets ? (
-                                <>
-                                  {m.setsA || 0}
-                                  <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest ml-0.5">S</span>
-                                </>
-                              ) : (
-                                m.scoreA
-                              )}
-                            </span>
-                          </div>
-
-                          {/* Divider */}
-                          <div className="h-[1px] bg-[#d8ccb4] dark:bg-brand-border/40 my-1" />
-
-                          {/* Team B Card row */}
-                          <div
-                            draggable={editMode && m.teamB.id !== "bye"}
-                            onDragStart={(e) => handleDragStart(e, m.id, "B")}
-                            onDragOver={(e) => editMode && m.teamB.id !== "bye" && e.preventDefault()}
-                            onDrop={(e) => editMode && m.teamB.id !== "bye" && handleDrop(e, m.id, "B")}
-                            onClick={() => editMode && m.teamB.id !== "bye" && setActiveDropdownSlot({ matchId: m.id, slot: "B" })}
-                            className={`flex items-center justify-between text-xs py-1.5 px-2 rounded-lg transition-all ${editMode && m.teamB.id !== "bye"
-                                ? "cursor-grab active:cursor-grabbing hover:bg-brand-neon-orange/10 border border-dashed border-transparent hover:border-brand-neon-orange/30"
-                                : ""
-                              } ${isCompleted && m.winnerId === m.teamB.id
-                                ? "bg-brand-electric/15 text-stone-800 dark:text-white font-bold"
-                                : isCompleted
-                                  ? "text-stone-500 dark:text-neutral-500"
-                                  : "text-stone-800 dark:text-white"
-                              }`}
-                          >
-                            {m.teamB.user_id && m.teamB.id !== "bye" && !editMode ? (
-                              <Link
-                                href={`/atleta/${m.teamB.user_id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                title={`Ver perfil do atleta (${m.teamB.name})`}
-                                className="truncate max-w-[120px] hover:text-[#00a2ff] hover:underline transition-colors font-semibold"
-                              >
-                                {m.teamB.name}
-                              </Link>
-                            ) : (
-                              <span className={`truncate max-w-[120px] ${m.teamB.id === "bye" ? "italic text-neutral-400 dark:text-neutral-500 font-normal" : ""}`} title={m.teamB.id === "bye" ? "Avanço Direto" : m.teamB.name}>
-                                {m.teamB.id === "bye" ? "Avanço Direto" : m.teamB.name}
-                              </span>
-                            )}
-                            <span className="font-display font-black text-sm flex items-center gap-0.5">
-                              {showSets ? (
-                                <>
-                                  {m.setsB || 0}
-                                  <span className="text-[8px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest ml-0.5">S</span>
-                                </>
-                              ) : (
-                                m.scoreB
-                              )}
-                            </span>
-                          </div>
-
-                          {/* Connector lines inside Winners Bracket */}
-                          {phase.toLowerCase() !== "final" && (
-                            <div className="absolute top-1/2 right-[-16px] md:right-[-32px] w-[16px] md:w-[32px] h-[1.5px] bg-[#c4b59d] dark:bg-brand-border/40 -translate-y-1/2" />
+                          {/* Conector exclusivo no agrupamento (Round Wrapper / Pair) */}
+                          {!isLastRound && !isSingle && (
+                            <div className="hidden sm:block absolute inset-y-0 left-full w-8 md:w-14 pointer-events-none text-[#c4b59d] dark:text-zinc-600">
+                              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                                <path
+                                  d="M 0 25 H 50 V 75 H 0 M 50 50 H 100"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  vectorEffect="non-scaling-stroke"
+                                />
+                              </svg>
+                            </div>
                           )}
-                          {m.sourceMatchAId && m.sourceMatchBId && (
-                            <div className="absolute top-1/2 left-[-16px] md:left-[-32px] w-[16px] md:w-[32px] h-[1.5px] bg-[#c4b59d] dark:bg-brand-border/40 -translate-y-1/2" />
-                          )}
-                          {phase.toLowerCase() !== "final" && m.tableNumber % 2 === 1 && (
-                            <div className="absolute top-1/2 left-[calc(100%+16px)] md:left-[calc(100%+32px)] w-[1.5px] bg-[#c4b59d] dark:bg-brand-border/40" style={{ height: (() => {
-                              const p = phase.toLowerCase();
-                              if (p === "semifinal") return "140px";
-                              if (p === "quartas de final") return "80px";
-                              if (p === "oitavas de final") return "40px";
-                              return "20px";
-                            })() }} />
-                          )}
-                          {phase.toLowerCase() !== "final" && m.tableNumber % 2 === 0 && (
-                            <div className="absolute bottom-1/2 left-[calc(100%+16px)] md:left-[calc(100%+32px)] w-[1.5px] bg-[#c4b59d] dark:bg-brand-border/40" style={{ height: (() => {
-                              const p = phase.toLowerCase();
-                              if (p === "semifinal") return "140px";
-                              if (p === "quartas de final") return "80px";
-                              if (p === "oitavas de final") return "40px";
-                              return "20px";
-                            })() }} />
+
+                          {!isLastRound && isSingle && (
+                            <div className="hidden sm:block absolute inset-y-0 left-full w-8 md:w-14 pointer-events-none text-[#c4b59d] dark:text-zinc-600">
+                              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                                <path
+                                  d="M 0 50 H 100"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  vectorEffect="non-scaling-stroke"
+                                />
+                              </svg>
+                            </div>
                           )}
                         </div>
                       );
                     })}
+
+                    {/* Disputa de 3º Lugar renderizada logo abaixo da Grande Final */}
+                    {isLastRound && thirdPlaceMatch && (
+                      <div className="mt-6 pt-4 border-t border-dashed border-[#d8ccb4]/80 dark:border-zinc-800 space-y-2">
+                        <div className="flex items-center gap-1.5 px-0.5">
+                          <span className="font-display text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            🥉 Disputa de 3º Lugar
+                          </span>
+                        </div>
+                        {renderMatchCard(thirdPlaceMatch, true)}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -602,14 +917,14 @@ export default function TournamentBracket({
       )}
 
       {/* Histórico de Resultados */}
-      <div className="glass-panel rounded-2xl p-6 border border-brand-border/60">
+      <div className="glass-panel rounded-2xl p-6 border border-brand-border/60 print:hidden">
         <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
           <ClipboardCheck className="h-5 w-5 text-brand-neon" />
           <span>📋 Histórico de Resultados</span>
         </h2>
 
         {(() => {
-          const completedMatches = matches
+          const completedMatches = localMatches
             .filter((m) => m.status === "COMPLETED")
             .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
@@ -857,7 +1172,7 @@ export default function TournamentBracket({
             <div className="flex justify-between items-center p-4 border-b border-brand-border/40 bg-neutral-950/40">
               <h4 className="font-display font-black text-stone-800 dark:text-white text-xs uppercase tracking-wider">
                 Editar Slot: Mesa {
-                  matches.find((m) => m.id === activeDropdownSlot.matchId)?.tableNumber ||
+                  localMatches.find((m) => m.id === activeDropdownSlot.matchId)?.tableNumber ||
                   (activeDropdownSlot.matchId.startsWith("r-") ? "Repescagem" : "")
                 } • Dupla {activeDropdownSlot.slot}
               </h4>

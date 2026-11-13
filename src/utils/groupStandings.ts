@@ -29,37 +29,48 @@ export function normalizeGroupLetter(raw?: string | null): string {
   return String(raw)
     .toUpperCase()
     .replace(/^GRUPO\s+/i, "")
+    .replace(/^GROUP\s+/i, "")
     .trim();
 }
 
 export function extractMatchGroupName(
   match: Partial<Match> & Record<string, any>,
-  teamGroupLookup?: Map<string, string>
+  teamGroupLookup?: Map<string, string> | Record<string, string>
 ): string {
   if (match.group_name) {
-    return normalizeGroupLetter(match.group_name);
+    const g = normalizeGroupLetter(match.group_name);
+    if (g) return g;
   }
   if (typeof match.details === "object" && match.details?.group_name) {
-    return normalizeGroupLetter(match.details.group_name);
+    const g = normalizeGroupLetter(match.details.group_name);
+    if (g) return g;
   }
   if (typeof match.details === "string") {
     try {
       const parsed = JSON.parse(match.details);
       if (parsed?.group_name) {
-        return normalizeGroupLetter(parsed.group_name);
+        const g = normalizeGroupLetter(parsed.group_name);
+        if (g) return g;
       }
     } catch {
       // ignore JSON parse error
     }
   }
-  if (typeof match.phase === "string" && match.phase.toLowerCase().includes("grupo")) {
-    return normalizeGroupLetter(match.phase);
+  if (typeof match.phase === "string") {
+    const cleanPh = match.phase.trim();
+    const matchGroup = cleanPh.match(/(?:grupo|group)[_\s-]*([a-z0-9]+)/i);
+    if (matchGroup) return normalizeGroupLetter(matchGroup[1]);
   }
   if (teamGroupLookup) {
     const t1 = match.team1_id || match.team_a_id || match.teamA?.id;
     const t2 = match.team2_id || match.team_b_id || match.teamB?.id;
-    if (t1 && teamGroupLookup.has(t1)) return teamGroupLookup.get(t1)!;
-    if (t2 && teamGroupLookup.has(t2)) return teamGroupLookup.get(t2)!;
+    const lookupGroup = (id?: string | null) => {
+      if (!id) return "";
+      if (teamGroupLookup instanceof Map) return teamGroupLookup.get(id) || "";
+      return (teamGroupLookup as Record<string, string>)[id] || "";
+    };
+    if (t1 && lookupGroup(t1)) return normalizeGroupLetter(lookupGroup(t1));
+    if (t2 && lookupGroup(t2)) return normalizeGroupLetter(lookupGroup(t2));
   }
   return "";
 }

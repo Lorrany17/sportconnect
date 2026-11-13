@@ -10,7 +10,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#0f0f0f] py-6 sm:py-8 px-4 sm:px-6 lg:px-8 flex flex-col">
+      <div className="min-h-screen bg-[#0f0f0f] py-6 sm:py-8 px-4 sm:px-6 lg:px-8 flex flex-col print:bg-white print:text-black print:p-0">
         <OrganizerDashboard
           onBack={() => router.push("/hub")}
         />

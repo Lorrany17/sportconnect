@@ -30,6 +30,7 @@ export interface Tournament {
   end_date?: string;
   rules?: string;
   rulebook_url?: string | null;
+  regulation_url?: string | null;
   cover_url?: string;
   pix_key_type?: "CPF" | "CNPJ" | "CELULAR" | "EMAIL" | "ALEATORIA" | string;
   organizer_pix_key?: string;
@@ -37,6 +38,8 @@ export interface Tournament {
   sponsors?: Sponsor[];
   custom_registration_fields?: CustomRegistrationField[];
   match_rules?: MatchRules | Record<string, any>;
+  phase_exceptions?: PhaseExceptionsMap | Record<string, any> | null;
+  current_stage?: "group_stage" | "knockout" | string | null;
   prize_first?: string | null;
   prize_second?: string | null;
   prize_third?: string | null;
@@ -47,6 +50,7 @@ export interface Tournament {
   skill_level?: "ALL" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string | null;
   require_cpf?: boolean;
   require_phone?: boolean;
+  has_third_place_match?: boolean;
 }
 
 // Tipos para Regras Dinâmicas de Partida por Modalidade (JSONB)
@@ -73,6 +77,34 @@ export interface ScoreMatchRules {
 export type TimeRules = TimeMatchRules;
 export type SetRules = SetMatchRules;
 export type ScoreRules = ScoreMatchRules;
+
+export interface PhaseRuleOverride {
+  bestOf?: number;
+  best_of_sets?: number;
+  pointsPerSet?: number;
+  points_per_set?: number;
+  tieBreakPoints?: number;
+  tie_break_points?: number;
+  requiresTwoPointAdvantage?: boolean;
+  requires_two_point_advantage?: boolean;
+  targetScore?: number;
+  target_score?: number;
+  maxRounds?: number;
+  max_rounds?: number;
+  halvesCount?: number;
+  halves_count?: number;
+  halfDurationMinutes?: number;
+  half_duration_minutes?: number;
+  hasExtraTime?: boolean;
+  has_extra_time?: boolean;
+  extraTimeDuration?: number;
+  extra_time_duration?: number;
+  hasPenalties?: boolean;
+  has_penalties?: boolean;
+}
+
+export type PhaseExceptionsMap = Record<string, PhaseRuleOverride>;
+
 export type MatchRules = TimeMatchRules | SetMatchRules | ScoreMatchRules | Record<string, any>;
 
 export interface TournamentFormData {
@@ -87,10 +119,13 @@ export interface TournamentFormData {
   entry_fee?: number;
   tournament_format?: string;
   match_rules?: MatchRules | Record<string, any>;
+  phase_exceptions?: PhaseExceptionsMap | Record<string, any> | null;
+  current_stage?: "group_stage" | "knockout" | string | null;
   sponsors?: Sponsor[];
   custom_registration_fields?: CustomRegistrationField[];
   rules?: string;
   rulebook_url?: string | null;
+  regulation_url?: string | null;
   cover_url?: string;
   pix_key_type?: string;
   organizer_pix_key?: string;
@@ -104,6 +139,7 @@ export interface TournamentFormData {
   skill_level?: "ALL" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string | null;
   require_cpf?: boolean;
   require_phone?: boolean;
+  has_third_place_match?: boolean;
 }
 
 export interface Sponsor {
@@ -165,6 +201,8 @@ export interface Team {
   mp_payment_id?: string;
   cancellation_status?: 'REQUESTED_BY_ATHLETE' | 'REFUND_REQUESTED' | 'REFUNDED' | string;
   custom_registration_answers?: Record<string, any>;
+  custom_responses?: Record<string, any>;
+  metadata?: Record<string, any>;
   declared_skill_level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string | null;
   group_name?: string | null;
   members?: TeamMember[];
@@ -185,6 +223,9 @@ export interface SetScore {
 
 export interface Match {
   id: string;
+  uuid?: string;
+  db_id?: string;
+  friendlyId?: string;
   phase: "GROUP_STAGE" | "KNOCKOUT" | string; // "GROUP_STAGE" | "KNOCKOUT" | "Quartas de Final" | "Semifinal" | "Final"
   status: "SCHEDULED" | "LIVE" | "COMPLETED" | "IN_PROGRESS" | string;
   teamA: Team;

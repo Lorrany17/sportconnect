@@ -747,3 +747,243 @@ export async function deleteOrphanTeam(teamId: string): Promise<{ success: boole
     return { success: false, error: err?.message || "Exceção ao deletar equipe órfã." };
   }
 }
+
+export interface ManualTeamMemberInput {
+  name: string;
+  email?: string;
+  is_captain: boolean;
+  cpf?: string | null;
+  phone?: string | null;
+}
+
+export interface AddManualTeamParams {
+  tournamentId: string;
+  name: string;
+  managerName: string;
+  player1: string;
+  player2?: string;
+  roster?: string[];
+  contact?: string;
+  captainEmail?: string;
+  category: string;
+  status: string;
+  paymentStatus: string;
+  declaredSkillLevel?: string | null;
+  customResponses: Record<string, any>;
+  members?: ManualTeamMemberInput[];
+}
+
+export interface AddManualTeamResponse {
+  success: boolean;
+  team?: any;
+  members?: any[];
+  error?: string;
+}
+
+/**
+ * Server Action para salvar inscrição manual garantindo que todos os campos não nativos
+ * da tabela `teams` (CPF, Contato, E-mail, Nível Técnico, Jogador 2, perguntas customizadas, etc.)
+ * sejam agrupados e persistidos de forma segura na coluna JSONB (`custom_responses` e `custom_registration_answers`).
+ */
+export async function addManualTeam(params: AddManualTeamParams): Promise<AddManualTeamResponse> {
+  const {
+    tournamentId,
+    name,
+    managerName,
+    player1,
+    player2 = "",
+    roster = [],
+    contact = "",
+    category,
+    status,
+    paymentStatus,
+    declaredSkillLevel = null,
+    customResponses = {},
+    members = [],
+  } = params;
+
+  if (!tournamentId || !name) {
+    return { success: false, error: "Torneio e nome da inscrição são obrigatórios." };
+  }
+
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // Limpa valores vazios e preserva todos os metadados e campos personalizados na estrutura JSONB
+    const sanitizedCustomResponses: Record<string, any> = {};
+    Object.entries(customResponses || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim() !== "") {
+        sanitizedCustomResponses[key] = value;
+      }
+    });
+
+    // Inclui backup estruturado dos membros dentro de custom_registration_answers
+    const jsonbWithBackup: Record<string, any> = {
+      ...sanitizedCustomResponses,
+      ...(members.length > 0 ? { __athlete_members: members } : {}),
+    };
+
+    const captainEmail =
+      params.captainEmail ||
+      members.find((m) => m.is_captain)?.email ||
+      customResponses["E-mail do Capitão"] ||
+      customResponses["E-mail"] ||
+      "";
+
+    const insertPayload: Record<string, any> = {
+      tournament_id: tournamentId,
+      name,
+      manager_name: managerName || player1,
+      player1,
+      player2: player2 || "",
+      roster,
+      contact,
+      ...(captainEmail ? { captain_email: captainEmail } : {}),
+      category,
+      status,
+      payment_status: paymentStatus,
+      declared_skill_level: declaredSkillLevel,
+      custom_responses: sanitizedCustomResponses,
+      custom_registration_answers: jsonbWithBackup,
+    };
+
+    let insertedTeam: any = null;
+    let insertError: any = null;
+    const currentPayload = { ...insertPayload };
+
+    // Tentativa resiliente: caso o banco ainda não tenha alguma coluna opcional (ex: custom_responses),
+    // remove apenas a coluna ausente no cache do PostgREST e preserva os dados em custom_registration_answers.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const res = await supabaseAdmin
+        .from("teams")
+        .insert(currentPayload as any)
+        .select()
+        .single();
+
+      insertedTeam = res.data;
+      insertError = res.error;
+
+      if (!insertError) break;
+
+      const errMsg = String(insertError.message || "");
+      const errDetails = String(insertError.details || "");
+      const combined = `${errMsg} ${errDetails}`;
+
+      // Detecta coluna inexistente reportada pelo PostgREST / PostgreSQL
+      const matchCol =
+        combined.match(/Could not find the '([^']+)' column/i) ||
+        combined.match(/column "([^"]+)" of relation "teams" does not exist/i) ||
+        combined.match(/column teams\.([a-zA-Z0-9_]+) does not exist/i);
+
+      if (matchCol && matchCol[1] && matchCol[1] in currentPayload) {
+        const missingCol = matchCol[1];
+        console.warn(`[addManualTeam] Coluna '${missingCol}' ausente no schema de teams. Removendo do payload e tentando novamente...`);
+        delete currentPayload[missingCol];
+        continue;
+      }
+
+      if ("custom_responses" in currentPayload && combined.toLowerCase().includes("custom_responses")) {
+        delete currentPayload.custom_responses;
+        continue;
+      }
+
+      break;
+    }
+
+    if (insertError || !insertedTeam) {
+      console.error("[addManualTeam] Erro ao inserir equipe:", insertError);
+      return {
+        success: false,
+        error: insertError?.message || "Não foi possível salvar a inscrição no banco de dados.",
+      };
+    }
+
+    // Inserção padronizada dos integrantes em team_members
+    const insertedMembersResult: any[] = [];
+    if (members.length > 0) {
+      const dbMembersPayload: any[] = [];
+
+      for (let idx = 0; idx < members.length; idx++) {
+        const m = members[idx];
+        let matchedUserId: string | null = null;
+        const cleanEmail = (m.email || "").trim().toLowerCase();
+
+        if (cleanEmail) {
+          try {
+            const { data: profileFound } = await supabaseAdmin
+              .from("profiles")
+              .select("id")
+              .eq("email", cleanEmail)
+              .maybeSingle();
+            if (profileFound?.id) {
+              matchedUserId = profileFound.id;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        const memberRecord = {
+          team_id: insertedTeam.id,
+          user_id: matchedUserId,
+          name: m.name,
+          email: cleanEmail,
+          is_captain: Boolean(m.is_captain),
+          ...(m.cpf ? { cpf: m.cpf } : {}),
+          ...(m.phone ? { phone: m.phone } : {}),
+        };
+
+        dbMembersPayload.push(memberRecord);
+        insertedMembersResult.push({
+          id: `${insertedTeam.id}-${idx}`,
+          ...memberRecord,
+        });
+      }
+
+      if (dbMembersPayload.length > 0) {
+        const { error: tmErr } = await supabaseAdmin.from("team_members").insert(dbMembersPayload);
+        if (tmErr) {
+          console.warn("[addManualTeam] Aviso ao inserir em team_members com cpf/phone, tentando payload básico:", tmErr.message);
+          const fallbackMembersPayload = dbMembersPayload.map((item) => ({
+            team_id: item.team_id,
+            user_id: item.user_id,
+            name: item.name,
+            email: item.email,
+            is_captain: item.is_captain,
+          }));
+          await supabaseAdmin.from("team_members").insert(fallbackMembersPayload);
+        }
+      }
+    }
+
+    try {
+      revalidatePath(`/tournaments/${tournamentId}`);
+      revalidatePath(`/dashboard/tournaments/${tournamentId}`);
+    } catch {
+      // ignore revalidation errors in client contexts
+    }
+
+    return {
+      success: true,
+      team: {
+        ...insertedTeam,
+        custom_responses:
+          insertedTeam.custom_responses ||
+          insertedTeam.custom_registration_answers ||
+          sanitizedCustomResponses,
+        custom_registration_answers:
+          insertedTeam.custom_registration_answers ||
+          insertedTeam.custom_responses ||
+          jsonbWithBackup,
+      },
+      members: insertedMembersResult,
+    };
+  } catch (err: any) {
+    console.error("[addManualTeam] Exceção:", err);
+    return {
+      success: false,
+      error: err?.message || "Erro interno ao processar inscrição manual.",
+    };
+  }
+}
+

@@ -12,7 +12,14 @@ import {
 import {
   calculateGroupStandings,
   extractMatchGroupName,
+  normalizeGroupLetter,
 } from "@/utils/groupStandings";
+import {
+  buildRoundRobinPairs,
+  calculateOptimalGroupCount,
+  chunkBalancedGroups,
+  generateGroupRoundRobinMatches,
+} from "@/utils/bracket-logic";
 
 export interface GenerateBracketResponse {
   success: boolean;
@@ -192,51 +199,12 @@ function seedWeight(level?: string | null): number {
 }
 
 /**
- * Gera os confrontos em formato Round-Robin (Tabela de Berger / Método do Círculo)
- * para uma lista de equipes, retornando os pares organizados por rodada.
+ * Server Action auxiliar (assíncrona) para geração de confrontos round-robin de grupo
  */
-function buildRoundRobinPairs(teams: Array<{ id: string; name: string }>) {
-  const rotation: ({ id: string; name: string } | null)[] = [...teams];
-  if (rotation.length % 2 !== 0) {
-    rotation.push(null); // Folga (BYE) na rodada se número ímpar
-  }
-
-  const totalSlots = rotation.length;
-  const totalRounds = totalSlots - 1;
-  const matchesPerRound = totalSlots / 2;
-  const currentRotation = [...rotation];
-
-  const rounds: Array<{
-    round: number;
-    byeTeam: { id: string; name: string } | null;
-    pairs: Array<{ team1: { id: string; name: string }; team2: { id: string; name: string } }>;
-  }> = [];
-
-  for (let round = 1; round <= totalRounds; round++) {
-    const pairs: Array<{ team1: { id: string; name: string }; team2: { id: string; name: string } }> = [];
-    let byeTeam: { id: string; name: string } | null = null;
-
-    for (let i = 0; i < matchesPerRound; i++) {
-      const home = currentRotation[i];
-      const away = currentRotation[totalSlots - 1 - i];
-
-      if (home && away) {
-        const team1 = i === 0 && round % 2 === 0 ? away : home;
-        const team2 = i === 0 && round % 2 === 0 ? home : away;
-        pairs.push({ team1, team2 });
-      } else if (home && !away) {
-        byeTeam = home;
-      } else if (!home && away) {
-        byeTeam = away;
-      }
-    }
-    rounds.push({ round, byeTeam, pairs });
-
-    const last = currentRotation.pop()!;
-    currentRotation.splice(1, 0, last);
-  }
-
-  return rounds;
+export async function generateGroupRoundRobin(
+  groupTeams: Array<{ id: string; name: string }>
+) {
+  return generateGroupRoundRobinMatches(groupTeams);
 }
 
 /**
@@ -476,27 +444,16 @@ export async function generateGroupStage(
       numGroups ||
         tournamentRow?.match_rules?.num_groups ||
         (tournamentRow as any)?.num_groups ||
+        tournamentRow?.match_rules?.group_stage?.num_groups ||
         0
     );
 
     const totalTeams = activeTeamsData.length;
-    let groupCount = configuredGroups;
-    if (!groupCount || groupCount < 2) {
-      if (totalTeams >= 16) {
-        groupCount = 4;
-      } else if (totalTeams >= 12) {
-        groupCount = 4;
-      } else if (totalTeams >= 8) {
-        groupCount = totalTeams % 4 === 0 && totalTeams >= 12 ? 4 : 2;
-      } else {
-        groupCount = 2;
-      }
-    }
-    // Garante ao menos 2 equipes por grupo
-    groupCount = Math.min(groupCount, Math.floor(totalTeams / 2));
-    groupCount = Math.max(2, groupCount);
+    // Divisão dinâmica e balanceada (tamanho ideal 3 a 4 equipes por grupo)
+    // 8 equipes -> 2 grupos de 4; 6 equipes -> 2 grupos de 3; etc.
+    const groupCount = calculateOptimalGroupCount(totalTeams, configuredGroups);
 
-    // 3. Embaralha (Fisher-Yates) e aplica distribuição de cabeças de chave (Serpentina) se houver declared_skill_level
+    // 3. Embaralha (Fisher-Yates) e divide em chunks equilibrados
     const shuffled = [...activeTeamsData];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -517,17 +474,27 @@ export async function generateGroupStage(
       groupsMap.set(letter, []);
     }
 
-    // Distribuição em serpentina (A, B, C, D, D, C, B, A...) para equilibrar os grupos
+    // Distribuição equilibrada em serpentina (se houver sementes de habilidade) ou round-robin
     shuffled.forEach((team, idx) => {
-      const cycle = Math.floor(idx / groupCount);
-      const posInCycle = idx % groupCount;
-      const groupIdx = cycle % 2 === 0 ? posInCycle : groupCount - 1 - posInCycle;
+      let groupIdx: number;
+      if (hasSkillSeeds) {
+        const cycle = Math.floor(idx / groupCount);
+        const posInCycle = idx % groupCount;
+        groupIdx = cycle % 2 === 0 ? posInCycle : groupCount - 1 - posInCycle;
+      } else {
+        groupIdx = idx % groupCount;
+      }
       const letter = String.fromCharCode(65 + groupIdx);
       groupsMap.get(letter)!.push(team);
     });
 
-    // 4. Persiste o group_name em cada equipe na tabela `teams`
+    // 4. Mapeamento de metadados e persistência do group_name nas equipes
+    const groupAssignments: Record<string, string> = {};
     for (const [groupLetter, groupTeams] of groupsMap.entries()) {
+      groupTeams.forEach((t: any) => {
+        groupAssignments[t.id] = groupLetter;
+      });
+
       const ids = groupTeams.map((t: any) => t.id);
       if (ids.length > 0) {
         const { error: grpUpdErr } = await supabase
@@ -541,42 +508,84 @@ export async function generateGroupStage(
       }
     }
 
-    // 5. Para cada grupo, gera as partidas em formato Round-Robin com phase = 'GROUP_STAGE'
+    // Configura os metadados da fase de grupos para que o sistema saiba que os 2 primeiros
+    // de cada grupo se classificam para o cruzamento olímpico
+    const qualifiersCount = Number(
+      tournamentRow?.match_rules?.qualifiers_per_group ||
+        (tournamentRow as any)?.qualifiers_per_group ||
+        2
+    );
+
+    const groupStageMetadata = {
+      format: "GROUPS_KNOCKOUT",
+      num_groups: groupCount,
+      qualifiers_per_group: qualifiersCount,
+      olympic_crossover: true,
+      phase_status: "GROUP_STAGE_IN_PROGRESS",
+      groups: Array.from(groupsMap.entries()).map(([letter, teams]) => ({
+        letter,
+        name: `Grupo ${letter}`,
+        team_count: teams.length,
+        team_ids: teams.map((t: any) => t.id),
+      })),
+      group_assignments: groupAssignments,
+    };
+
+    const updatedMatchRules = {
+      ...(tournamentRow?.match_rules || {}),
+      num_groups: groupCount,
+      qualifiers_per_group: qualifiersCount,
+      group_stage: groupStageMetadata,
+      group_assignments: groupAssignments,
+    };
+
+    const { error: tourUpdErr } = await supabase
+      .from("tournaments")
+      .update({
+        match_rules: updatedMatchRules,
+        status: "IN_PROGRESS",
+      })
+      .eq("id", tournament_id);
+
+    if (tourUpdErr) {
+      console.warn("Aviso ao salvar metadados da fase de grupos em tournaments:", tourUpdErr);
+    }
+
+    // 5. Para cada grupo, gera os confrontos Round-Robin matematicamente estritos (N * (N - 1) / 2)
     const groupMatchesToInsert: any[] = [];
     let globalMatchOrder = 1;
 
     for (const [groupLetter, groupTeams] of groupsMap.entries()) {
-      const schedule = buildRoundRobinPairs(groupTeams);
-      for (const roundObj of schedule) {
-        for (const pair of roundObj.pairs) {
-          groupMatchesToInsert.push({
-            id: crypto.randomUUID(),
-            tournament_id,
-            round: roundObj.round,
-            match_order: globalMatchOrder++,
-            next_match_id: null,
-            team1_id: pair.team1.id,
-            team2_id: pair.team2.id,
-            team_a_id: pair.team1.id,
-            team_b_id: pair.team2.id,
-            status: "SCHEDULED",
+      const pairs = generateGroupRoundRobinMatches(groupTeams);
+      for (const pair of pairs) {
+        groupMatchesToInsert.push({
+          id: crypto.randomUUID(),
+          tournament_id,
+          round: pair.round,
+          match_order: globalMatchOrder++,
+          next_match_id: null,
+          team1_id: pair.team1.id,
+          team2_id: pair.team2.id,
+          team_a_id: pair.team1.id,
+          team_b_id: pair.team2.id,
+          status: "SCHEDULED",
+          phase: "GROUP_STAGE",
+          group_name: groupLetter,
+          winner_id: null,
+          score_a: 0,
+          score_b: 0,
+          sets_a: 0,
+          sets_b: 0,
+          details: {
             phase: "GROUP_STAGE",
             group_name: groupLetter,
-            winner_id: null,
-            score_a: 0,
-            score_b: 0,
-            sets_a: 0,
-            sets_b: 0,
-            details: {
-              group_name: groupLetter,
-              group_round: roundObj.round,
-            },
-          });
-        }
+            group_round: pair.round,
+          },
+        });
       }
     }
 
-    // 6. Insere as partidas da fase de grupos no banco
+    // 6. Insere as partidas da fase de grupos no banco com preservação do group_name
     const { error: insertErr } = await supabase
       .from("matches")
       .insert(groupMatchesToInsert);
@@ -596,6 +605,8 @@ export async function generateGroupStage(
           round: m.round,
           match_order: m.match_order,
           phase: "GROUP_STAGE",
+          group_name: m.group_name,
+          details: m.details,
           status: m.status,
           team1_id: m.team1_id,
           team2_id: m.team2_id,
@@ -612,6 +623,7 @@ export async function generateGroupStage(
             id: m.id,
             tournament_id: m.tournament_id,
             phase: "GROUP_STAGE",
+            group_name: m.group_name,
             status: m.status,
             team_a_id: m.team_a_id,
             team_b_id: m.team_b_id,
@@ -738,8 +750,18 @@ export async function generateKnockoutFromGroups(
 
     // Utiliza calculateGroupStandings para processar as partidas finalizadas e ordenar cada grupo
     const teamGroupLookup = new Map<string, string>();
+
+    const savedAssignments =
+      tournamentRow?.match_rules?.group_assignments ||
+      tournamentRow?.match_rules?.group_stage?.group_assignments;
+    if (savedAssignments && typeof savedAssignments === "object") {
+      Object.entries(savedAssignments).forEach(([tId, g]) => {
+        if (g) teamGroupLookup.set(tId, String(g).toUpperCase().trim());
+      });
+    }
+
     activeTeams.forEach((t: any) => {
-      if (t.group_name) {
+      if (t.group_name && !teamGroupLookup.has(t.id)) {
         teamGroupLookup.set(t.id, String(t.group_name).toUpperCase().trim());
       }
     });
@@ -880,7 +902,7 @@ export async function generateKnockoutFromGroups(
     for (let r = totalRounds; r >= 1; r--) {
       const numMatchesInRound = bracketSize / Math.pow(2, r);
       const currentRoundList: any[] = [];
-      const roundLabel = getKnockoutRoundLabel(r, totalRounds);
+      const roundLabel = getKnockoutRoundLabel(numMatchesInRound, r);
 
       for (let i = 0; i < numMatchesInRound; i++) {
         const matchId = crypto.randomUUID();
@@ -976,6 +998,38 @@ export async function generateKnockoutFromGroups(
       knockoutMatchesToInsert.push(...(matchesByRound.get(r) || []));
     }
 
+    // Se habilitada a disputa de 3º lugar e houver ao menos semifinais (bracketSize >= 4)
+    const hasThirdPlaceInGroups = Boolean(
+      tournamentRow?.has_third_place_match ||
+      tournamentRow?.match_rules?.has_third_place_match
+    );
+    if (hasThirdPlaceInGroups && bracketSize >= 4) {
+      knockoutMatchesToInsert.push({
+        id: crypto.randomUUID(),
+        tournament_id,
+        round: totalRounds,
+        match_order: 99,
+        table_number: 2,
+        next_match_id: null,
+        team1_id: null,
+        team2_id: null,
+        team_a_id: null,
+        team_b_id: null,
+        status: "SCHEDULED",
+        phase: "third_place",
+        group_name: null,
+        winner_id: null,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        details: {
+          round_label: "Disputa de 3º Lugar",
+          match_title: "Disputa de 3º Lugar",
+        },
+      });
+    }
+
     const { error: insertErr } = await supabase
       .from("matches")
       .insert(knockoutMatchesToInsert);
@@ -1048,6 +1102,499 @@ export async function advanceGroupStageToKnockout(
 }
 
 /**
+ * Server Action: Encerramento da Fase de Grupos e Geração do Mata-Mata (Semifinais)
+ * 1. Calcula as classificações finais do Grupo A e do Grupo B no backend.
+ * 2. Extrai o 1º e 2º colocados de cada grupo.
+ * 3. Cria e insere as partidas na tabela `matches` para a fase `semi_finals` seguindo o cruzamento padrão:
+ *    - Semifinal 1: 1º do Grupo A vs 2º do Grupo B
+ *    - Semifinal 2: 1º do Grupo B vs 2º do Grupo A
+ *    - Grande Final: Vencedor Semifinal 1 vs Vencedor Semifinal 2 (vinculado via next_match_id)
+ * 4. Atualiza os metadados do torneio (current_stage = 'knockout').
+ */
+export async function generateKnockoutStage(
+  tournamentId: string,
+  userAuthToken?: string
+): Promise<GenerateBracketResponse> {
+  if (!tournamentId) {
+    throw new Error("ID do torneio não fornecido.");
+  }
+
+  try {
+    // =========================================================================
+    // BARREIRA DE AUTENTICAÇÃO E VALIDAÇÃO DE SEGURANÇA (BACKEND)
+    // =========================================================================
+    let authToken = userAuthToken;
+    if (!authToken) {
+      try {
+        const cookieStore = await cookies();
+        const allCookies = cookieStore.getAll();
+        const tokenCookie =
+          cookieStore.get("sb-access-token") ||
+          cookieStore.get("supabase-auth-token") ||
+          allCookies.find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+
+        if (tokenCookie?.value) {
+          try {
+            const parsed = JSON.parse(tokenCookie.value);
+            if (Array.isArray(parsed) && parsed[0]) {
+              authToken = parsed[0];
+            } else if (parsed?.access_token) {
+              authToken = parsed.access_token;
+            } else {
+              authToken = tokenCookie.value;
+            }
+          } catch {
+            authToken = tokenCookie.value;
+          }
+        }
+      } catch {}
+    }
+
+    const supabase = await createAuthenticatedSupabase(authToken);
+
+    let authenticatedUser: any = null;
+    if (authToken) {
+      try {
+        const { data: authData } = await supabase.auth.getUser(authToken);
+        authenticatedUser = authData?.user || null;
+      } catch {}
+    }
+
+    if (!authenticatedUser) {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        authenticatedUser = authData?.user || null;
+      } catch {}
+    }
+
+    if (!authenticatedUser && authToken) {
+      try {
+        const supabaseAdmin = getSupabaseAdmin();
+        const { data: adminUserData } = await supabaseAdmin.auth.getUser(authToken);
+        authenticatedUser = adminUserData?.user || null;
+      } catch {}
+    }
+
+    let isLocalAdminCookie = false;
+    try {
+      const cookieStore = await cookies();
+      if (cookieStore.get("sc_admin_auth")?.value === "true") {
+        isLocalAdminCookie = true;
+      }
+    } catch {}
+
+    if (!authenticatedUser && !isLocalAdminCookie) {
+      throw new Error("Ação não autorizada. Sessão expirada ou utilizador não autenticado.");
+    }
+
+    // 1. Carrega dados do torneio
+    const { data: tournamentRow, error: tourneyErr } = await supabase
+      .from("tournaments")
+      .select("*")
+      .eq("id", tournamentId)
+      .maybeSingle();
+
+    if (tourneyErr || !tournamentRow) {
+      throw new Error(`Torneio não encontrado: ${tourneyErr?.message || ""}`);
+    }
+
+    // Validação estrita: confirma se o utilizador autenticado é o dono do torneio ou admin autorizado
+    const isOwner = authenticatedUser && tournamentRow.owner_id && tournamentRow.owner_id === authenticatedUser.id;
+    const isSuperAdmin =
+      isLocalAdminCookie ||
+      authenticatedUser?.email === "admin@sportconnect.com" ||
+      authenticatedUser?.email === "santoslorrany250@gmail.com" ||
+      authenticatedUser?.user_metadata?.role === "admin" ||
+      authenticatedUser?.id === "organizer-admin-session";
+
+    let hasStaffAdminRole = false;
+    if (!isOwner && !isSuperAdmin && authenticatedUser) {
+      try {
+        const { data: staffList } = await supabase
+          .from("tournament_staff")
+          .select("role, user_id, email")
+          .eq("tournament_id", tournamentId);
+
+        const userEmail = authenticatedUser.email?.toLowerCase().trim();
+        const staff = (staffList || []).find(
+          (s: any) =>
+            (s.user_id && s.user_id === authenticatedUser.id) ||
+            (s.email && s.email.toLowerCase().trim() === userEmail)
+        );
+
+        if (staff && (staff.role === "ADMIN" || staff.role === "OWNER")) {
+          hasStaffAdminRole = true;
+        }
+      } catch (staffErr) {
+        console.warn("Aviso ao checar staff:", staffErr);
+      }
+    }
+
+    if (!isOwner && !isSuperAdmin && !hasStaffAdminRole) {
+      throw new Error("Ação não autorizada. Apenas o organizador do torneio tem permissão para encerrar a fase de grupos e gerar o mata-mata.");
+    }
+
+    // 2. Carrega equipes participantes
+    const { data: teamsData, error: teamsErr } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("tournament_id", tournamentId);
+
+    if (teamsErr || !teamsData || teamsData.length === 0) {
+      return { success: false, error: "Nenhuma equipe encontrada para este torneio." };
+    }
+
+    // 3. Carrega partidas existentes
+    const { data: allMatches, error: matchesErr } = await supabase
+      .from("matches")
+      .select("*")
+      .eq("tournament_id", tournamentId);
+
+    if (matchesErr || !allMatches) {
+      return { success: false, error: "Erro ao consultar partidas existentes." };
+    }
+
+    // Verifica se já existem partidas eliminatórias cadastradas
+    const existingKnockout = allMatches.filter((m: any) => {
+      const ph = String(m.phase || "").toUpperCase();
+      return (
+        ph === "KNOCKOUT" ||
+        ph.includes("SEMI") ||
+        ph.includes("FINAL") ||
+        Boolean(m.next_match_id)
+      );
+    });
+
+    if (existingKnockout.length > 0) {
+      return {
+        success: false,
+        error: "O chaveamento eliminatório (Mata-Mata) já foi gerado para este torneio.",
+      };
+    }
+
+    // Filtra partidas da fase de grupos
+    const groupMatches = allMatches.filter((m: any) => {
+      const ph = String(m.phase || "").toUpperCase();
+      return (
+        ph === "GROUP_STAGE" ||
+        ph.includes("GRUPO") ||
+        (!m.next_match_id && ph !== "KNOCKOUT" && !ph.includes("SEMI") && !ph.includes("FINAL"))
+      );
+    });
+
+    if (groupMatches.length === 0) {
+      return {
+        success: false,
+        error: "Nenhuma partida da fase de grupos encontrada para este torneio.",
+      };
+    }
+
+    // Verifica se todos os jogos de grupo estão encerrados
+    const pendingMatches = groupMatches.filter(
+      (m: any) => m.status !== "COMPLETED" && m.status !== "FINISHED"
+    );
+
+    if (pendingMatches.length > 0) {
+      return {
+        success: false,
+        error: `Ainda existem ${pendingMatches.length} partida(s) em andamento na Fase de Grupos. Encerre todos os jogos antes de gerar o Mata-Mata.`,
+      };
+    }
+
+    // 4. Mapeamento de grupos para cada equipe
+    const teamGroupLookup = new Map<string, string>();
+    const savedAssignments =
+      tournamentRow?.match_rules?.group_assignments ||
+      tournamentRow?.match_rules?.group_stage?.group_assignments;
+    if (savedAssignments && typeof savedAssignments === "object") {
+      Object.entries(savedAssignments).forEach(([tId, g]) => {
+        if (g) teamGroupLookup.set(tId, normalizeGroupLetter(String(g)));
+      });
+    }
+
+    teamsData.forEach((t: any) => {
+      if (t.group_name && !teamGroupLookup.has(t.id)) {
+        teamGroupLookup.set(t.id, normalizeGroupLetter(t.group_name));
+      }
+    });
+
+    groupMatches.forEach((m: any) => {
+      const gLetter = extractMatchGroupName(m, teamGroupLookup);
+      if (gLetter) {
+        const t1 = m.team1_id || m.team_a_id;
+        const t2 = m.team2_id || m.team_b_id;
+        if (t1 && !teamGroupLookup.has(t1)) teamGroupLookup.set(t1, gLetter);
+        if (t2 && !teamGroupLookup.has(t2)) teamGroupLookup.set(t2, gLetter);
+      }
+    });
+
+    // Agrupa equipes
+    const teamsByGroup = new Map<string, any[]>();
+    teamsData.forEach((t: any) => {
+      const g = teamGroupLookup.get(t.id) || "A";
+      if (!teamsByGroup.has(g)) teamsByGroup.set(g, []);
+      teamsByGroup.get(g)!.push(t);
+    });
+
+    const sortedGroupLetters = Array.from(teamsByGroup.keys()).sort((a, b) =>
+      a.localeCompare(b)
+    );
+
+    // Se o torneio possuir mais de 2 grupos (ex: 4 grupos A, B, C, D),
+    // delega para generateKnockoutFromGroups que gera o cruzamento olímpico completo
+    if (sortedGroupLetters.length > 2) {
+      return await generateKnockoutFromGroups(tournamentId, 2, userAuthToken);
+    }
+
+    // Torneio com 2 grupos (Grupo A e Grupo B)
+    const gA = sortedGroupLetters[0] || "A";
+    const gB = sortedGroupLetters[1] || "B";
+
+    const standingsA = calculateGroupStandings(
+      teamsByGroup.get(gA) || [],
+      groupMatches,
+      gA,
+      tournamentRow
+    );
+
+    const standingsB = calculateGroupStandings(
+      teamsByGroup.get(gB) || [],
+      groupMatches,
+      gB,
+      tournamentRow
+    );
+
+    const firstA = standingsA[0] || null;
+    const secondA = standingsA[1] || null;
+    const firstB = standingsB[0] || null;
+    const secondB = standingsB[1] || null;
+
+    if (!firstA || !firstB) {
+      return {
+        success: false,
+        error: "Não foi possível identificar os líderes dos grupos para compor as Semifinais.",
+      };
+    }
+
+    // 5. Gera IDs e registros das partidas:
+    // Semifinal 1: 1º Grupo A vs 2º Grupo B
+    // Semifinal 2: 1º Grupo B vs 2º Grupo A
+    // Final: Vencedor Semifinal 1 vs Vencedor Semifinal 2
+    const semi1Id = crypto.randomUUID();
+    const semi2Id = crypto.randomUUID();
+    const finalId = crypto.randomUUID();
+
+    const team1Semi1 = firstA.teamId || null;
+    const team2Semi1 = secondB?.teamId || null;
+    const team1Semi2 = firstB.teamId || null;
+    const team2Semi2 = secondA?.teamId || null;
+
+    const matchesToInsert: any[] = [
+      {
+        id: semi1Id,
+        tournament_id: tournamentId,
+        round: 1,
+        match_order: 1,
+        table_number: 1,
+        next_match_id: finalId,
+        team1_id: team1Semi1,
+        team2_id: team2Semi1,
+        team_a_id: team1Semi1,
+        team_b_id: team2Semi1,
+        status: "SCHEDULED",
+        phase: "semi_finals",
+        group_name: null,
+        winner_id: null,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        details: {
+          round_label: "Semifinal",
+          match_title: `Semifinal 1 (1º Grupo ${gA} vs 2º Grupo ${gB})`,
+        },
+      },
+      {
+        id: semi2Id,
+        tournament_id: tournamentId,
+        round: 1,
+        match_order: 2,
+        table_number: 2,
+        next_match_id: finalId,
+        team1_id: team1Semi2,
+        team2_id: team2Semi2,
+        team_a_id: team1Semi2,
+        team_b_id: team2Semi2,
+        status: "SCHEDULED",
+        phase: "semi_finals",
+        group_name: null,
+        winner_id: null,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        details: {
+          round_label: "Semifinal",
+          match_title: `Semifinal 2 (1º Grupo ${gB} vs 2º Grupo ${gA})`,
+        },
+      },
+      {
+        id: finalId,
+        tournament_id: tournamentId,
+        round: 2,
+        match_order: 3,
+        table_number: 1,
+        next_match_id: null,
+        team1_id: null,
+        team2_id: null,
+        team_a_id: null,
+        team_b_id: null,
+        status: "SCHEDULED",
+        phase: "final",
+        group_name: null,
+        winner_id: null,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        details: {
+          round_label: "Grande Final",
+          match_title: "Grande Final (Vencedor Semi 1 vs Vencedor Semi 2)",
+        },
+      },
+    ];
+
+    // Se habilitada a disputa de 3º lugar, adiciona a partida com phase = 'third_place'
+    const hasThirdPlace = Boolean(
+      tournamentRow?.has_third_place_match ||
+      tournamentRow?.match_rules?.has_third_place_match
+    );
+
+    if (hasThirdPlace) {
+      const thirdPlaceId = crypto.randomUUID();
+      matchesToInsert.push({
+        id: thirdPlaceId,
+        tournament_id: tournamentId,
+        round: 2,
+        match_order: 4,
+        table_number: 2,
+        next_match_id: null,
+        team1_id: null,
+        team2_id: null,
+        team_a_id: null,
+        team_b_id: null,
+        status: "SCHEDULED",
+        phase: "third_place",
+        group_name: null,
+        winner_id: null,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        details: {
+          round_label: "Disputa de 3º Lugar",
+          match_title: "Disputa de 3º Lugar (Perdedor Semi 1 vs Perdedor Semi 2)",
+        },
+      });
+    }
+
+    // Tratamento de BYE caso algum grupo não possua 2º colocado
+    if (team1Semi1 && !team2Semi1) {
+      matchesToInsert[0].status = "COMPLETED";
+      matchesToInsert[0].winner_id = team1Semi1;
+      matchesToInsert[2].team1_id = team1Semi1;
+      matchesToInsert[2].team_a_id = team1Semi1;
+    }
+    if (team1Semi2 && !team2Semi2) {
+      matchesToInsert[1].status = "COMPLETED";
+      matchesToInsert[1].winner_id = team1Semi2;
+      matchesToInsert[2].team2_id = team1Semi2;
+      matchesToInsert[2].team_b_id = team1Semi2;
+    }
+
+    const { error: insertErr } = await supabase
+      .from("matches")
+      .insert(matchesToInsert);
+
+    if (insertErr) {
+      // Fallback para colunas legadas caso a tabela matches use formato anterior
+      console.warn("Tentando insert legado para matches de mata-mata:", insertErr.message);
+      const legacyMatches = matchesToInsert.map((m) => ({
+        id: m.id,
+        tournament_id: m.tournament_id,
+        phase: m.phase,
+        status: m.status,
+        team_a_id: m.team_a_id,
+        team_b_id: m.team_b_id,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        round: m.round,
+        next_match_id: m.next_match_id,
+      }));
+      const { error: legacyErr } = await supabase.from("matches").insert(legacyMatches);
+      if (legacyErr) {
+        return { success: false, error: `Erro ao criar partidas do mata-mata: ${legacyErr.message}` };
+      }
+    }
+
+    // 6. Atualiza metadados do torneio: current_stage = 'knockout'
+    const updatedMatchRules = {
+      ...(tournamentRow.match_rules || {}),
+      current_stage: "knockout",
+      phase_status: "KNOCKOUT_IN_PROGRESS",
+      group_stage: {
+        ...((tournamentRow.match_rules as any)?.group_stage || {}),
+        status: "COMPLETED",
+        closed_at: new Date().toISOString(),
+      },
+      crossover: {
+        semi_1: { team1: firstA.teamName, team2: secondB?.teamName || "BYE" },
+        semi_2: { team1: firstB.teamName, team2: secondA?.teamName || "BYE" },
+      },
+    };
+
+    const updateBase = {
+      status: "IN_PROGRESS",
+      match_rules: updatedMatchRules,
+    };
+
+    const { error: updateStageErr } = await supabase
+      .from("tournaments")
+      .update({
+        ...updateBase,
+        current_stage: "knockout",
+      })
+      .eq("id", tournamentId);
+
+    if (updateStageErr && updateStageErr.message?.includes("current_stage")) {
+      await supabase
+        .from("tournaments")
+        .update(updateBase)
+        .eq("id", tournamentId);
+    }
+
+    revalidatePath(`/torneio/${tournamentId}`);
+    revalidatePath(`/torneio/${tournamentId}/chaveamento`);
+    revalidatePath(`/dashboard/${tournamentId}`);
+    revalidatePath("/");
+
+    return {
+      success: true,
+      message: `Fase de Grupos encerrada com sucesso! Semifinais geradas: ${firstA.teamName} vs ${secondB?.teamName || "BYE"} e ${firstB.teamName} vs ${secondA?.teamName || "BYE"}.`,
+      matchesCount: matchesToInsert.length,
+    };
+  } catch (err: any) {
+    console.error("Exceção ao gerar fase eliminatória:", err);
+    return {
+      success: false,
+      error: err.message || "Erro inesperado ao gerar a fase eliminatória.",
+    };
+  }
+}
+
+/**
  * Server Action que gera as partidas do torneio de acordo com seu formato (`KNOCKOUT`, `LEAGUE`, `GROUPS`).
  */
 export async function generateBracket(
@@ -1111,27 +1658,32 @@ export async function generateBracket(
       .eq("id", tournament_id)
       .maybeSingle();
 
-    // 2.2 Verificação estrita de formato do torneio:
-    // Apenas despacha para Grupos ou Liga se tournament_format for explicitamente configurado para tal.
-    const explicitFormat = String(
+    // 2.2 Verificação de formato do torneio (GROUPS, LEAGUE, KNOCKOUT):
+    const rawFormat = String(
       tournamentRow?.tournament_format ||
         tournamentRow?.match_rules?.tournament_format ||
+        tournamentRow?.format ||
         ""
     ).toUpperCase().trim();
 
-    if (
-      explicitFormat === "GROUPS" ||
-      explicitFormat === "GROUPS_KNOCKOUT" ||
-      explicitFormat === "FASE_DE_GRUPOS"
-    ) {
+    const isGroupsFormat =
+      rawFormat === "GROUPS" ||
+      rawFormat === "GROUPS_KNOCKOUT" ||
+      rawFormat === "FASE_DE_GRUPOS" ||
+      rawFormat.includes("GRUPO");
+
+    const isLeagueFormat =
+      rawFormat === "LEAGUE" ||
+      rawFormat === "ROUND_ROBIN" ||
+      rawFormat === "PONTOS_CORRIDOS" ||
+      rawFormat.includes("LIGA") ||
+      rawFormat.includes("CORRIDO");
+
+    if (isGroupsFormat) {
       return await generateGroupStage(tournament_id, undefined, userAuthToken);
     }
 
-    if (
-      explicitFormat === "LEAGUE" ||
-      explicitFormat === "ROUND_ROBIN" ||
-      explicitFormat === "PONTOS_CORRIDOS"
-    ) {
+    if (isLeagueFormat) {
       return await generateLeagueMatches(tournament_id, userAuthToken);
     }
 
@@ -1395,8 +1947,8 @@ export async function startTournamentAction(
 
 export interface CompleteMatchParams {
   matchId: string;
-  scoreA: number;
-  scoreB: number;
+  scoreA?: number;
+  scoreB?: number;
   setsA?: number;
   setsB?: number;
   winnerId?: string;
@@ -1423,7 +1975,7 @@ export interface CompleteMatchResponse {
 export async function completeMatchAction(
   params: CompleteMatchParams
 ): Promise<CompleteMatchResponse> {
-  const { matchId, scoreA, scoreB, setsA = 0, setsB = 0, userAuthToken, sportType } = params;
+  const { matchId, scoreA = 0, scoreB = 0, setsA = 0, setsB = 0, userAuthToken, sportType } = params;
 
   if (!matchId) {
     return { success: false, error: "ID da partida não fornecido." };
@@ -1493,7 +2045,11 @@ export async function completeMatchAction(
         sets: params.setHistory || [],
         rounds: params.detailedScore?.rounds || [],
       },
-      detailed_score: params.detailedScore || { rounds: [] },
+      detailed_score: {
+        sets: params.setHistory || [],
+        historicoSets: params.setHistory || [],
+        rounds: params.detailedScore?.rounds || [],
+      },
       penalties_a: params.penaltiesA || 0,
       penalties_b: params.penaltiesB || 0,
     };
@@ -1540,13 +2096,369 @@ export async function completeMatchAction(
 
     let advancedSlot: "team1_id" | "team2_id" | null = null;
 
-    if (match.next_match_id && finalWinnerId) {
-      const matchOrder = match.match_order || 1;
-      const isEvenSlot = matchOrder % 2 !== 0;
-      advancedSlot = isEvenSlot ? "team1_id" : "team2_id";
-      const legacySlot = isEvenSlot ? "team_a_id" : "team_b_id";
+    const finalLoserId =
+      finalWinnerId && team1_id && team2_id
+        ? finalWinnerId === team1_id
+          ? team2_id
+          : team1_id
+        : null;
 
-      const { error: nextErr } = await supabase
+    let detailsObj: any = match.details;
+    if (typeof detailsObj === "string") {
+      try {
+        detailsObj = JSON.parse(detailsObj);
+      } catch (_) {
+        detailsObj = {};
+      }
+    }
+
+    const phaseStr = String(match.phase || "").toLowerCase().trim();
+    const roundLabel = String(detailsObj?.round_label || match.details?.round_label || "").toLowerCase().trim();
+    const matchTitle = String(detailsObj?.match_title || match.details?.match_title || "").toLowerCase().trim();
+
+    // 1. Busca todas as partidas do torneio para localizar a Grande Final, o 3º Lugar e identificar a posição da Semifinal
+    let tourneyMatches: any[] = [];
+    if (match.tournament_id) {
+      const { data: tm, error: matchesFetchErr } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", match.tournament_id);
+
+      if (matchesFetchErr) {
+        console.error("[finishMatch] Erro ao buscar partidas do torneio:", matchesFetchErr);
+      } else if (tm) {
+        tourneyMatches = tm;
+      }
+    }
+
+    // 2. Busca pela Grande Final (Case-Insensitive e IDs)
+    let finalMatch: any = null;
+
+    // A) Busca direta por ID se a semifinal apontar para next_match_id
+    if (match.next_match_id) {
+      finalMatch = tourneyMatches.find((m: any) => m.id === match.next_match_id);
+      if (!finalMatch) {
+        const { data: directFinal, error: directErr } = await supabase
+          .from("matches")
+          .select("*")
+          .eq("id", match.next_match_id)
+          .maybeSingle();
+        if (directFinal && !directErr) {
+          finalMatch = directFinal;
+        }
+      }
+    }
+
+    // B) Busca case-insensitive via Supabase ilike('phase', '%final%')
+    if (!finalMatch && match.tournament_id) {
+      const { data: finalCandidates } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", match.tournament_id)
+        .ilike("phase", "%final%");
+
+      if (finalCandidates && finalCandidates.length > 0) {
+        finalMatch = finalCandidates.find((m: any) => {
+          const ph = String(m.phase || "").toLowerCase().trim();
+          let d: any = m.details;
+          if (typeof d === "string") {
+            try { d = JSON.parse(d); } catch (_) { d = {}; }
+          }
+          const rl = String(d?.round_label || "").toLowerCase().trim();
+          const mt = String(d?.match_title || "").toLowerCase().trim();
+          const full = `${ph} ${rl} ${mt}`;
+          return (
+            !full.includes("semi") &&
+            !full.includes("quarta") &&
+            !full.includes("oitava") &&
+            !full.includes("third") &&
+            !full.includes("terceiro") &&
+            !full.includes("3")
+          );
+        }) || finalCandidates[0];
+      }
+    }
+
+    // C) Busca em tourneyMatches pelos metadados / round_label / match_title
+    if (!finalMatch && tourneyMatches.length > 0) {
+      finalMatch = tourneyMatches.find((m: any) => {
+        const ph = String(m.phase || "").toLowerCase().trim();
+        let d: any = m.details;
+        if (typeof d === "string") {
+          try { d = JSON.parse(d); } catch (_) { d = {}; }
+        }
+        const rl = String(d?.round_label || "").toLowerCase().trim();
+        const mt = String(d?.match_title || "").toLowerCase().trim();
+        const full = `${ph} ${rl} ${mt}`;
+        return (
+          (full.includes("final") || m.id === match.next_match_id) &&
+          !full.includes("semi") &&
+          !full.includes("quarta") &&
+          !full.includes("oitava") &&
+          !full.includes("third") &&
+          !full.includes("terceiro") &&
+          !full.includes("3")
+        );
+      });
+    }
+
+    // D) Fallback para a partida com maior rodada eliminatória (Grande Final é o topo da árvore)
+    if (!finalMatch && tourneyMatches.length > 0) {
+      const knockoutMatches = tourneyMatches.filter((m: any) => {
+        const ph = String(m.phase || "").toUpperCase();
+        return ph !== "GROUP_STAGE" && !ph.includes("GRUPO") && !ph.includes("LEAGUE");
+      });
+      if (knockoutMatches.length > 0) {
+        const maxRound = Math.max(...knockoutMatches.map((m: any) => Number(m.round || m.round_number || 1)));
+        finalMatch = knockoutMatches.find((m: any) => Number(m.round || m.round_number || 1) === maxRound);
+      }
+    }
+
+    const isSemifinal =
+      phaseStr.includes("semi") ||
+      roundLabel.includes("semi") ||
+      matchTitle.includes("semi") ||
+      (finalMatch && match.id !== finalMatch.id && (match.next_match_id === finalMatch.id || match.round === 1));
+
+    if (isSemifinal && match.tournament_id) {
+      // 1. Identificação Estrita da Origem (Semifinal 1 vs Semifinal 2)
+      // Filtra as semifinais do torneio ordenando estritamente por ordem, criação e id
+      const allSemis = (tourneyMatches || [])
+        .filter((m: any) => {
+          if (finalMatch && m.id === finalMatch.id) return false;
+          const ph = String(m.phase || "").toLowerCase().trim();
+          let d: any = m.details;
+          if (typeof d === "string") {
+            try { d = JSON.parse(d); } catch (_) { d = {}; }
+          }
+          const rl = String(d?.round_label || "").toLowerCase().trim();
+          const mt = String(d?.match_title || "").toLowerCase().trim();
+          return (
+            ph.includes("semi") ||
+            rl.includes("semi") ||
+            mt.includes("semi") ||
+            (finalMatch && m.next_match_id === finalMatch.id)
+          );
+        })
+        .sort((a: any, b: any) => {
+          const ordA = Number(a.match_order ?? a.details?.match_number ?? a.match_number ?? 0);
+          const ordB = Number(b.match_order ?? b.details?.match_number ?? b.match_number ?? 0);
+          if (ordA && ordB && ordA !== ordB) return ordA - ordB;
+
+          if (a.created_at && b.created_at) {
+            const tA = new Date(a.created_at).getTime();
+            const tB = new Date(b.created_at).getTime();
+            if (tA !== tB) return tA - tB;
+          }
+          return String(a.id).localeCompare(String(b.id));
+        });
+
+      const semiIndex = allSemis.findIndex((m: any) => m.id === match.id);
+
+      let detectedSemi: 1 | 2 | null = null;
+      const explicitOrder = Number(
+        match.details?.match_number ??
+        detailsObj?.match_number ??
+        match.match_order ??
+        match.match_number ??
+        detailsObj?.match_order ??
+        0
+      );
+
+      if (explicitOrder === 1) detectedSemi = 1;
+      else if (explicitOrder === 2) detectedSemi = 2;
+
+      if (!detectedSemi) {
+        if (
+          matchTitle.includes("semifinal 1") ||
+          matchTitle.includes("semi 1") ||
+          matchTitle.includes("semi-final 1") ||
+          matchTitle.includes("1º grupo") ||
+          matchTitle.includes("1º a")
+        ) {
+          detectedSemi = 1;
+        } else if (
+          matchTitle.includes("semifinal 2") ||
+          matchTitle.includes("semi 2") ||
+          matchTitle.includes("semi-final 2") ||
+          matchTitle.includes("1º b") ||
+          matchTitle.includes("2º grupo")
+        ) {
+          detectedSemi = 2;
+        }
+      }
+
+      if (!detectedSemi && semiIndex !== -1) {
+        if (semiIndex === 0) detectedSemi = 1;
+        else if (semiIndex === 1) detectedSemi = 2;
+      }
+
+      // Validação estrita de segurança: se a origem não puder ser identificada, aborta com erro
+      if (!detectedSemi) {
+        throw new Error(
+          `[finishMatch] Não foi possível determinar com precisão se a partida ${match.id} é a Semifinal 1 ou Semifinal 2. Abortando atualização para não corromper os slots da Grande Final.`
+        );
+      }
+
+      const isSemi1 = detectedSemi === 1;
+      const isSemi2 = detectedSemi === 2;
+
+      const semiLabel = isSemi1
+        ? "Semifinal 1 (Patch estrito apenas em team_a_id)"
+        : "Semifinal 2 (Patch estrito apenas em team_b_id)";
+
+      console.log(`[finishMatch] Identificação Estrita da Origem: ${semiLabel}`, {
+        matchId: match.id,
+        explicitOrder,
+        semiIndex,
+        isSemi1,
+        isSemi2,
+        matchTitle,
+        winnerId: finalWinnerId,
+        loserId: finalLoserId,
+      });
+
+      // Logs de Rastreamento (Console)
+      console.log("Vencedor ID:", finalWinnerId);
+      console.log("Partida Final Encontrada:", finalMatch);
+
+      if (!finalMatch) {
+        throw new Error("Partida da Grande Final não encontrada no banco.");
+      }
+
+      // 2. Atualização de Slot Único (Patch Condicional):
+      // Se Semifinal 1: envia apenas team_a_id (e team1_id). O banco NÃO deve tocar em team_b_id.
+      // Se Semifinal 2: envia apenas team_b_id (e team2_id). O banco NÃO deve tocar em team_a_id.
+      advancedSlot = isSemi1 ? "team1_id" : "team2_id";
+      const finalUpdatePayload: Record<string, any> = isSemi1
+        ? { team_a_id: finalWinnerId, team1_id: finalWinnerId }
+        : { team_b_id: finalWinnerId, team2_id: finalWinnerId };
+
+      console.log(`[finishMatch] Executando PATCH condicional de slot único na Grande Final:`, {
+        finalMatchId: finalMatch.id,
+        origem: semiLabel,
+        payload: finalUpdatePayload,
+      });
+
+      let { error: updateError } = await supabase
+        .from("matches")
+        .update(finalUpdatePayload)
+        .eq("id", finalMatch.id);
+
+      if (updateError && (updateError.message?.includes("column") || updateError.message?.includes("does not exist"))) {
+        const singleSlotPayload = isSemi1
+          ? { team_a_id: finalWinnerId }
+          : { team_b_id: finalWinnerId };
+        console.warn("[finishMatch] Fallback para payload estrito de slot único:", singleSlotPayload);
+        const fbRes = await supabase
+          .from("matches")
+          .update(singleSlotPayload)
+          .eq("id", finalMatch.id);
+        updateError = fbRes.error;
+      }
+
+      if (updateError) {
+        console.error("[finishMatch] Erro ao atualizar Grande Final no Supabase:", updateError);
+        throw updateError;
+      }
+
+      console.log(`[finishMatch] Slot único atualizado com sucesso na Grande Final (${finalMatch.id})!`);
+
+      // B) Para o Perdedor: se has_third_place_match for true, buscar third_place
+      const { data: tourneyRow } = await supabase
+        .from("tournaments")
+        .select("has_third_place_match, match_rules")
+        .eq("id", match.tournament_id)
+        .maybeSingle();
+
+      const hasThirdPlace = Boolean(
+        tourneyRow?.has_third_place_match ||
+        tourneyRow?.match_rules?.has_third_place_match
+      );
+
+      if (hasThirdPlace && finalLoserId) {
+        let thirdMatch: any = (tourneyMatches || []).find((m: any) => {
+          const ph = String(m.phase || "").toLowerCase().trim();
+          let d: any = m.details;
+          if (typeof d === "string") {
+            try { d = JSON.parse(d); } catch (_) { d = {}; }
+          }
+          const rl = String(d?.round_label || "").toLowerCase().trim();
+          const mt = String(d?.match_title || "").toLowerCase().trim();
+          const full = `${ph} ${rl} ${mt}`;
+          return (
+            ph === "third_place" ||
+            ph === "terceiro_lugar" ||
+            full.includes("third") ||
+            full.includes("terceiro") ||
+            full.includes("3º") ||
+            full.includes("3o")
+          );
+        });
+
+        if (!thirdMatch) {
+          const { data: thirdCandidates } = await supabase
+            .from("matches")
+            .select("*")
+            .eq("tournament_id", match.tournament_id)
+            .ilike("phase", "%third%");
+          if (thirdCandidates && thirdCandidates.length > 0) {
+            thirdMatch = thirdCandidates[0];
+          }
+        }
+
+        if (thirdMatch) {
+          const thirdUpdatePayload: Record<string, any> = isSemi1
+            ? { team_a_id: finalLoserId, team1_id: finalLoserId }
+            : { team_b_id: finalLoserId, team2_id: finalLoserId };
+
+          console.log(`[finishMatch] Executando PATCH condicional de slot único na Disputa de 3º Lugar:`, {
+            thirdMatchId: thirdMatch.id,
+            origem: semiLabel,
+            payload: thirdUpdatePayload,
+          });
+
+          let { error: thirdUpdateErr } = await supabase
+            .from("matches")
+            .update(thirdUpdatePayload)
+            .eq("id", thirdMatch.id);
+
+          if (thirdUpdateErr && (thirdUpdateErr.message?.includes("column") || thirdUpdateErr.message?.includes("does not exist"))) {
+            const singleSlotThird = isSemi1
+              ? { team_a_id: finalLoserId }
+              : { team_b_id: finalLoserId };
+            const fbThird = await supabase
+              .from("matches")
+              .update(singleSlotThird)
+              .eq("id", thirdMatch.id);
+            thirdUpdateErr = fbThird.error;
+          }
+
+          if (thirdUpdateErr) {
+            console.error(`[finishMatch] Erro ao atualizar 3º Lugar (${thirdMatch.id}):`, thirdUpdateErr);
+            throw thirdUpdateErr;
+          }
+
+          console.log(`[finishMatch] Disputa de 3º Lugar atualizada com sucesso no Supabase!`);
+        } else {
+          console.warn(`[finishMatch] Disputa de 3º Lugar habilitada, mas confronto não encontrado em tourneyMatches.`);
+        }
+      }
+    } else if (match.next_match_id && finalWinnerId) {
+      const matchOrder = Number(match.match_order || 1);
+      const isSlot1 = (matchOrder - 1) % 2 === 0;
+      advancedSlot = isSlot1 ? "team1_id" : "team2_id";
+      const legacySlot = isSlot1 ? "team_a_id" : "team_b_id";
+
+      console.log("Vencedor ID:", finalWinnerId);
+      console.log(`[finishMatch] Avançando vencedor para next_match_id (${match.next_match_id}):`, {
+        matchId: match.id,
+        matchOrder,
+        slot: advancedSlot,
+        winnerId: finalWinnerId,
+      });
+
+      let { error: updateError } = await supabase
         .from("matches")
         .update({
           [advancedSlot]: finalWinnerId,
@@ -1554,12 +2466,33 @@ export async function completeMatchAction(
         })
         .eq("id", match.next_match_id);
 
-      if (nextErr) {
-        console.warn("Aviso ao tentar atualizar próxima fase com novas colunas:", nextErr);
-        await supabase
+      if (updateError && (updateError.message?.includes("column") || updateError.message?.includes("does not exist"))) {
+        const fbRes = await supabase
           .from("matches")
           .update({ [legacySlot]: finalWinnerId })
           .eq("id", match.next_match_id);
+        updateError = fbRes.error;
+      }
+
+      if (updateError) {
+        console.error("[finishMatch] Erro ao atualizar next_match_id:", updateError);
+        throw updateError;
+      }
+    }
+
+    // Quebra de Cache Obrigatória (Next.js)
+    if (match.tournament_id) {
+      const tId = match.tournament_id;
+      try {
+        revalidatePath(`/dashboard/${tId}/bracket`, "page");
+        revalidatePath(`/dashboard/${tId}`, "page");
+        revalidatePath(`/dashboard/torneios/${tId}`, "page");
+        revalidatePath(`/torneio/${tId}`, "page");
+        revalidatePath(`/torneio/${tId}/chaveamento`, "page");
+        revalidatePath(`/torneio/${tId}/sumula`, "page");
+        console.log(`[finishMatch] Cache revalidado com sucesso para o torneio ${tId}`);
+      } catch (revalErr) {
+        console.warn("[finishMatch] Aviso na revalidação de cache:", revalErr);
       }
     }
 
@@ -1571,12 +2504,25 @@ export async function completeMatchAction(
       advancedToSlot: advancedSlot,
     };
   } catch (err: any) {
-    console.error("Exceção ao finalizar partida:", err);
-    return {
-      success: false,
-      error: err.message || "Erro inesperado ao oficializar partida.",
-    };
+    console.error("[finishMatch] Exceção crítica ao finalizar partida:", err);
+    throw err;
   }
+}
+
+/**
+ * Server Action auxiliar que encerra uma partida e aciona a progressão automática de fase.
+ */
+export async function finishMatch(
+  paramsOrMatchId: CompleteMatchParams | string,
+  winnerId?: string
+): Promise<CompleteMatchResponse> {
+  if (typeof paramsOrMatchId === "string") {
+    return completeMatchAction({
+      matchId: paramsOrMatchId,
+      winnerId: winnerId,
+    });
+  }
+  return completeMatchAction(paramsOrMatchId);
 }
 
 export async function getTournamentMatches(tournament_id: string) {
@@ -2001,3 +2947,201 @@ export async function swapTeams(
     return { success: false, error: err.message || "Erro ao trocar equipes." };
   }
 }
+
+export interface UpdateMatchScoreParams {
+  matchId: string;
+  tournamentId?: string;
+  scoreA: number;
+  scoreB: number;
+  setsA?: number;
+  setsB?: number;
+  status?: string;
+  penaltiesA?: number;
+  penaltiesB?: number;
+  details?: any;
+  detailedScore?: any;
+  setHistory?: any;
+  userAuthToken?: string;
+}
+
+/**
+ * Server Action para sincronização atômica de pontos e sets em tempo real,
+ * garantindo a injeção obrigatória das colunas raízes (score_a, score_b, sets_a, sets_b, status).
+ */
+export async function updateMatchScoreAction(
+  params: UpdateMatchScoreParams
+): Promise<{ success: boolean; error?: string }> {
+  const {
+    matchId,
+    tournamentId,
+    scoreA = 0,
+    scoreB = 0,
+    setsA = 0,
+    setsB = 0,
+    status = "LIVE",
+    penaltiesA = 0,
+    penaltiesB = 0,
+    details,
+    detailedScore,
+    setHistory,
+    userAuthToken,
+  } = params;
+
+  if (!matchId) {
+    return { success: false, error: "ID da partida não informado." };
+  }
+
+  try {
+    const supabase = await createAuthenticatedSupabase(userAuthToken);
+
+    const updatePayload: Record<string, any> = {
+      score_a: Number(scoreA),
+      score_b: Number(scoreB),
+      sets_a: Number(setsA),
+      sets_b: Number(setsB),
+      status: status || "LIVE",
+      penalties_a: Number(penaltiesA),
+      penalties_b: Number(penaltiesB),
+    };
+
+    if (details !== undefined) updatePayload.details = details;
+    if (detailedScore !== undefined) {
+      updatePayload.detailed_score = detailedScore;
+    } else if (setHistory !== undefined) {
+      updatePayload.detailed_score = { sets: setHistory, historicoSets: setHistory };
+      if (!updatePayload.details) {
+        updatePayload.details = { sets: setHistory };
+      }
+    }
+
+    let query = supabase.from("matches").update(updatePayload).eq("id", matchId);
+    if (tournamentId) {
+      query = query.eq("tournament_id", tournamentId);
+    }
+    const { error: updateErr } = await query;
+
+    if (updateErr) {
+      console.warn("[updateMatchScoreAction] Erro no update estendido, tentando fallback para colunas raízes:", updateErr.message);
+      let fallbackQuery = supabase
+        .from("matches")
+        .update({
+          score_a: Number(scoreA),
+          score_b: Number(scoreB),
+          sets_a: Number(setsA),
+          sets_b: Number(setsB),
+          status: status || "LIVE",
+        })
+        .eq("id", matchId);
+
+      if (tournamentId) {
+        fallbackQuery = fallbackQuery.eq("tournament_id", tournamentId);
+      }
+      const { error: fallbackErr } = await fallbackQuery;
+
+      if (fallbackErr) {
+        return { success: false, error: fallbackErr.message };
+      }
+    }
+
+    if (tournamentId) {
+      try {
+        revalidatePath(`/torneio/${tournamentId}`);
+        revalidatePath(`/torneio/${tournamentId}/chaveamento`);
+        revalidatePath(`/dashboard/torneios/${tournamentId}`);
+      } catch {}
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[updateMatchScoreAction] Exceção:", err);
+    return { success: false, error: err.message || "Erro ao atualizar placar." };
+  }
+}
+
+export interface ResetMatchParams {
+  matchId: string;
+  tournamentId?: string;
+  userAuthToken?: string;
+}
+
+/**
+ * Server Action para limpeza profunda e reset total da súmula de uma partida:
+ * Reverte o status para SCHEDULED, aniquila todos os pontos, sets, histórico e dados detalhados.
+ */
+export async function resetMatchAction(
+  params: ResetMatchParams
+): Promise<{ success: boolean; error?: string }> {
+  const { matchId, tournamentId, userAuthToken } = params;
+
+  if (!matchId) {
+    return { success: false, error: "ID da partida não informado." };
+  }
+
+  try {
+    const supabase = await createAuthenticatedSupabase(userAuthToken);
+
+    const resetPayload: Record<string, any> = {
+      status: "SCHEDULED",
+      score_a: 0,
+      score_b: 0,
+      sets_a: 0,
+      sets_b: 0,
+      winner_id: null,
+      penalties_a: 0,
+      penalties_b: 0,
+      detailed_score: null,
+      details: null,
+    };
+
+    let query = supabase.from("matches").update(resetPayload).eq("id", matchId);
+    if (tournamentId) {
+      query = query.eq("tournament_id", tournamentId);
+    }
+    const { error: resetErr } = await query;
+
+    if (resetErr) {
+      console.warn(
+        "[resetMatchAction] Erro no reset completo, aplicando fallback com colunas nativas:",
+        resetErr.message
+      );
+      let fallbackQuery = supabase
+        .from("matches")
+        .update({
+          status: "SCHEDULED",
+          score_a: 0,
+          score_b: 0,
+          sets_a: 0,
+          sets_b: 0,
+          winner_id: null,
+          detailed_score: null,
+        })
+        .eq("id", matchId);
+
+      if (tournamentId) {
+        fallbackQuery = fallbackQuery.eq("tournament_id", tournamentId);
+      }
+      const { error: fallbackErr } = await fallbackQuery;
+
+      if (fallbackErr) {
+        return { success: false, error: fallbackErr.message };
+      }
+    }
+
+    if (tournamentId) {
+      try {
+        revalidatePath(`/torneio/${tournamentId}`);
+        revalidatePath(`/torneio/${tournamentId}/chaveamento`);
+        revalidatePath(`/dashboard/torneios/${tournamentId}`);
+      } catch {}
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[resetMatchAction] Exceção:", err);
+    return { success: false, error: err.message || "Erro ao resetar partida." };
+  }
+}
+
+export const reopenMatchAction = resetMatchAction;
+
+

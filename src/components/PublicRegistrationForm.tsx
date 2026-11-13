@@ -25,6 +25,7 @@ import { useTournament } from "@/context/TournamentContext";
 import PixCheckoutForm from "@/components/PixCheckoutForm";
 import { updateRegistration, deleteOrphanTeam } from "@/app/actions/registration";
 import { notifyNewRegistration } from "@/app/actions/notifications";
+import { extractModalityFormat } from "@/components/CreateTournamentForm";
 
 export interface PublicRegistrationFormProps {
   tournament: Tournament;
@@ -49,22 +50,32 @@ export default function PublicRegistrationForm({
   const { setTeams } = useTournament();
 
   const sportType: SportType = tournament.sport_type || "DOMINO";
-  const format = ((tournament.match_rules as any)?.modality_format || tournament.format || "").toLowerCase();
+  const modalityFormat = extractModalityFormat(tournament);
+  const format = modalityFormat.toLowerCase();
   const entryFee = tournament.entry_fee ? Number(tournament.entry_fee) : 0;
 
-  // Lógica de adaptação do esporte
+  // Lógica de adaptação estrita do formato do esporte
   const isPingPongSolo =
-    sportType === "PING_PONG" &&
-    (format.includes("solo") || format.includes("1v1") || !format.includes("duplas"));
+    format.includes("solo") ||
+    format.includes("1v1") ||
+    format.includes("1x1") ||
+    format.includes("individual") ||
+    Number((tournament as any)?.team_size) === 1;
 
   const isDuplasSport =
-    sportType === "DOMINO" ||
-    (sportType === "PING_PONG" && format.includes("duplas")) ||
-    (sportType === "VOLEI" && format.includes("duplas"));
+    !isPingPongSolo &&
+    (format.includes("dupla") ||
+      format.includes("2v2") ||
+      format.includes("2x2") ||
+      sportType === "DOMINO" ||
+      Number((tournament as any)?.team_size) === 2);
 
   const isTeamSport =
-    sportType === "FUTSAL" ||
-    (sportType === "VOLEI" && !format.includes("duplas"));
+    !isPingPongSolo &&
+    !isDuplasSport &&
+    (sportType === "FUTSAL" ||
+      sportType === "VOLEI" ||
+      Number((tournament as any)?.team_size) > 2);
 
   // Restrições de Inscrição da Competição
   const getAgeRestrictionText = () => {
@@ -500,6 +511,31 @@ export default function PublicRegistrationForm({
           : []),
       ];
 
+      const skillLevelLabelMap: Record<string, string> = {
+        BEGINNER: "Iniciante",
+        INTERMEDIATE: "Intermediário",
+        ADVANCED: "Avançado",
+      };
+      const resolvedSkillRaw = isAllSkillLevels ? declaredSkillLevel : (tournament.skill_level || "");
+      const resolvedSkillDisplay =
+        skillLevelLabelMap[String(resolvedSkillRaw || "").toUpperCase()] ||
+        (resolvedSkillRaw && String(resolvedSkillRaw).toUpperCase() !== "ALL" && String(resolvedSkillRaw).toUpperCase() !== "LIVRE"
+          ? String(resolvedSkillRaw)
+          : "");
+
+      const enrichedCustomAnswers: Record<string, any> = {
+        ...(contact.trim() ? { "Contato (WhatsApp)": contact.trim() } : {}),
+        ...(user.email ? { "E-mail": user.email } : {}),
+        ...(captainCpf.trim() ? { [!isDuplasSport && !isTeamSport ? "CPF" : "CPF do Capitão"]: captainCpf.trim() } : {}),
+        ...(isDuplasSport && partnerName.trim() ? { "Jogador 2 (Parceiro)": partnerName.trim() } : {}),
+        ...(isDuplasSport && partnerEmail.trim() ? { "E-mail do Jogador 2": partnerEmail.trim().toLowerCase() } : {}),
+        ...(isDuplasSport && partnerCpf.trim() ? { "CPF do Jogador 2": partnerCpf.trim() } : {}),
+        ...(isDuplasSport && partnerPhone.trim() ? { "Telefone do Jogador 2": partnerPhone.trim() } : {}),
+        ...(resolvedSkillDisplay ? { "Nível Técnico": resolvedSkillDisplay } : {}),
+        ...formattedCustomAnswers,
+        __athlete_members: rosterDetails,
+      };
+
       const payload: any = {
         name: finalName,
         manager_name: p1,
@@ -515,8 +551,13 @@ export default function PublicRegistrationForm({
         payment_proof_url: uploadedReceiptPath || null,
         status: entryFee > 0 ? "PENDING" : "CONFIRMED",
         amount_paid: entryFee > 0 ? entryFee : 0,
-        category: "Geral",
-        custom_registration_answers: formattedCustomAnswers,
+        category:
+          String(tournament.gender_category || "").toUpperCase() === "MASCULINO"
+            ? "Masculino"
+            : String(tournament.gender_category || "").toUpperCase() === "FEMININO"
+            ? "Feminino"
+            : "Misto",
+        custom_registration_answers: enrichedCustomAnswers,
         declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
       };
 

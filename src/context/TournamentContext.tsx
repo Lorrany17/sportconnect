@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Team, Match, Round, TournamentEvent, Tournament, SportType } from "@/types";
 import { supabase } from "@/lib/supabase";
-import { completeMatchAction } from "@/app/actions/bracket";
+import { completeMatchAction, finishMatch, updateMatchScoreAction, resetMatchAction } from "@/app/actions/bracket";
 import { deleteTournament } from "@/app/actions/tournament";
 
 const MATCH_ID_MAP: Record<string, string> = {
@@ -100,6 +100,49 @@ export const getFriendlyIdFromUuid = (uuid: string): string => {
   }
   return REVERSE_MATCH_ID_MAP[uuid] || uuid;
 };
+
+/**
+ * Remove objetos com ID duplicado da lista de partidas garantindo unicidade absoluta de chaves no React.
+ */
+export function deduplicateMatches(matchesList: Match[]): Match[] {
+  if (!Array.isArray(matchesList) || matchesList.length === 0) return [];
+  const seen = new Set<string>();
+  const unique: Match[] = [];
+  for (const m of matchesList) {
+    if (!m) continue;
+    const key = String(m.id || (m as any).uuid || (m as any).db_id || "").trim();
+    if (!key) {
+      unique.push({ ...m });
+      continue;
+    }
+    if (seen.has(key)) {
+      // Mescla com o objeto já existente garantindo que detailed_score e histórico não sejam descartados
+      const idx = unique.findIndex(
+        (u) =>
+          u.id === key ||
+          (u as any).uuid === key ||
+          (u as any).db_id === key
+      );
+      if (idx !== -1) {
+        const existing = unique[idx];
+        unique[idx] = {
+          ...existing,
+          ...m,
+          detailed_score: m.detailed_score ?? existing.detailed_score,
+          detailedScore: (m as any).detailedScore ?? (existing as any).detailedScore ?? m.detailed_score ?? existing.detailed_score,
+          details: m.details ?? existing.details,
+          historicoSets: (Array.isArray(m.historicoSets) && m.historicoSets.length > 0)
+            ? m.historicoSets
+            : existing.historicoSets,
+        };
+      }
+      continue;
+    }
+    seen.add(key);
+    unique.push({ ...m });
+  }
+  return unique;
+}
 
 const getPlaceholderTeam = (matchFriendlyId: string, slot: "A" | "B"): Team => {
   let label = `A definir ${slot}`;
@@ -217,32 +260,42 @@ const mapTeamFromDb = (dbTeam: any): Team => ({
 });
 
 const extractSetsFromDbMatch = (dbMatch: any): any[] => {
+  if (!dbMatch) return [];
+  const statusUpper = String(dbMatch.status || "").toUpperCase();
+  if (statusUpper === "SCHEDULED" || statusUpper === "AGENDADA" || statusUpper === "PROGRAMADA") {
+    return [];
+  }
   const candidates: any[] = [
+    dbMatch.detailed_score?.sets,
+    dbMatch.detailed_score?.historicoSets,
+    dbMatch.detailed_score?.rounds,
+    dbMatch.details?.sets,
+    dbMatch.details?.historicoSets,
+    dbMatch.details?.rounds,
+    dbMatch.historicoSets,
+    dbMatch.historico_sets,
     dbMatch.sets_history,
     dbMatch.set_history,
     dbMatch.history,
-    dbMatch.details?.sets,
-    dbMatch.details?.set_history,
-    dbMatch.details?.sets_history,
-    dbMatch.detailed_score?.sets,
-    dbMatch.historicoSets,
-    dbMatch.historico_sets,
   ];
-
-  if (typeof dbMatch.details === "string") {
-    try {
-      const pd = JSON.parse(dbMatch.details);
-      if (Array.isArray(pd)) candidates.push(pd);
-      if (Array.isArray(pd?.sets)) candidates.push(pd.sets);
-      if (Array.isArray(pd?.set_history)) candidates.push(pd.set_history);
-    } catch {}
-  }
 
   if (typeof dbMatch.detailed_score === "string") {
     try {
       const pds = JSON.parse(dbMatch.detailed_score);
       if (Array.isArray(pds)) candidates.push(pds);
       if (Array.isArray(pds?.sets)) candidates.push(pds.sets);
+      if (Array.isArray(pds?.historicoSets)) candidates.push(pds.historicoSets);
+      if (Array.isArray(pds?.rounds)) candidates.push(pds.rounds);
+    } catch {}
+  }
+
+  if (typeof dbMatch.details === "string") {
+    try {
+      const pd = JSON.parse(dbMatch.details);
+      if (Array.isArray(pd)) candidates.push(pd);
+      if (Array.isArray(pd?.sets)) candidates.push(pd.sets);
+      if (Array.isArray(pd?.historicoSets)) candidates.push(pd.historicoSets);
+      if (Array.isArray(pd?.rounds)) candidates.push(pd.rounds);
     } catch {}
   }
 
@@ -286,15 +339,20 @@ const mapMatchFromDb = (dbMatch: any, allTeams: Team[], dbMatches: any[]): Match
     : allTeams.find((t) => t.id === dbMatch.team_b_id) || (isFirstRoundMatch && dbMatch.team_b_id === null ? BYE_TEAM : getPlaceholderTeam(friendlyId, "B"));
 
   const phase = dbMatch.phase || getPhaseNameFromPrefix(prefix);
-  const scoreA = dbMatch.score_a || 0;
-  const scoreB = dbMatch.score_b || 0;
   const status = dbMatch.status as Match["status"];
+  const isScheduled =
+    status === "SCHEDULED" ||
+    (status as string) === "AGENDADA" ||
+    (status as string) === "PROGRAMADA";
+
+  const scoreA = isScheduled ? 0 : (dbMatch.score_a || 0);
+  const scoreB = isScheduled ? 0 : (dbMatch.score_b || 0);
+  const setsA = isScheduled ? 0 : (dbMatch.sets_a || 0);
+  const setsB = isScheduled ? 0 : (dbMatch.sets_b || 0);
 
   // Prioriza o winner_id persistido no banco; caso ausente, aplica lógica estrita por sets ou score
-  let winnerId: string | undefined = dbMatch.winner_id || undefined;
+  let winnerId: string | undefined = isScheduled ? undefined : (dbMatch.winner_id || undefined);
   if (status === "COMPLETED" && !winnerId) {
-    const setsA = dbMatch.sets_a || 0;
-    const setsB = dbMatch.sets_b || 0;
     const isSetsSport = setsA > 0 || setsB > 0;
     if (isSetsSport && setsA !== setsB) {
       winnerId = setsA > setsB ? teamA.id : teamB.id;
@@ -309,37 +367,46 @@ const mapMatchFromDb = (dbMatch: any, allTeams: Team[], dbMatches: any[]): Match
     }
   }
 
+  const cleanSets = isScheduled ? [] : extractSetsFromDbMatch(dbMatch);
+
   return {
     id: friendlyId,
+    uuid: dbMatch.id,
+    db_id: dbMatch.id,
     phase,
     status,
     teamA,
     teamB,
     scoreA,
     scoreB,
-    setsA: dbMatch.sets_a || 0,
-    setsB: dbMatch.sets_b || 0,
-    setsVencidosTimeA: dbMatch.sets_a || 0,
-    setsVencidosTimeB: dbMatch.sets_b || 0,
+    setsA,
+    setsB,
+    setsVencidosTimeA: setsA,
+    setsVencidosTimeB: setsB,
     tableNumber,
-    historicoSets: extractSetsFromDbMatch(dbMatch),
-    sets_history: extractSetsFromDbMatch(dbMatch),
-    set_history: extractSetsFromDbMatch(dbMatch),
-    history: extractSetsFromDbMatch(dbMatch),
-    detailedScore:
-      dbMatch.detailed_score ||
-      (dbMatch.details?.rounds ? { rounds: dbMatch.details.rounds } : { rounds: [] }),
-    penaltiesA: dbMatch.penalties_a ?? 0,
-    penaltiesB: dbMatch.penalties_b ?? 0,
-    penalties_a: dbMatch.penalties_a ?? 0,
-    penalties_b: dbMatch.penalties_b ?? 0,
+    historicoSets: cleanSets,
+    sets_history: cleanSets,
+    set_history: cleanSets,
+    history: cleanSets,
+    detailedScore: isScheduled && cleanSets.length === 0
+      ? { rounds: [], sets: [] }
+      : dbMatch.detailed_score ||
+        (dbMatch.details?.rounds ? { rounds: dbMatch.details.rounds, sets: cleanSets } : { rounds: [], sets: cleanSets }),
+    detailed_score: isScheduled && cleanSets.length === 0
+      ? null
+      : dbMatch.detailed_score ||
+        (cleanSets.length > 0 ? { rounds: dbMatch.details?.rounds || [], sets: cleanSets, historicoSets: cleanSets } : null),
+    penaltiesA: isScheduled ? 0 : (dbMatch.penalties_a ?? 0),
+    penaltiesB: isScheduled ? 0 : (dbMatch.penalties_b ?? 0),
+    penalties_a: isScheduled ? 0 : (dbMatch.penalties_a ?? 0),
+    penalties_b: isScheduled ? 0 : (dbMatch.penalties_b ?? 0),
     score_a: scoreA,
     score_b: scoreB,
-    sets_a: dbMatch.sets_a || 0,
-    sets_b: dbMatch.sets_b || 0,
+    sets_a: setsA,
+    sets_b: setsB,
+    winnerId,
     team_a_id: dbMatch.team_a_id || dbMatch.team1_id,
     team_b_id: dbMatch.team_b_id || dbMatch.team2_id,
-    winnerId,
     round: dbMatch.round,
     match_order: dbMatch.match_order,
     next_match_id: dbMatch.next_match_id,
@@ -418,7 +485,7 @@ const MOCK_TEAMS_8: Team[] = [
   },
 ];
 
-interface TournamentContextType {
+export interface TournamentContextType {
   tournaments: Tournament[];
   setTournaments: React.Dispatch<React.SetStateAction<Tournament[]>>;
   currentTournamentId: string | null;
@@ -427,6 +494,10 @@ interface TournamentContextType {
   currentSportType: SportType;
   setCurrentSportType: (sport: SportType) => void;
   isReadOnly: boolean;
+  isOnline: boolean;
+  pendingSyncCount: number;
+  syncStatus: "IDLE" | "OFFLINE" | "SYNCING" | "SYNCED";
+  syncOfflineQueue: () => Promise<void>;
   handleCreateTournament: (name: string, sportType?: SportType) => Promise<void>;
   handleFinishTournament: (id: string) => Promise<void>;
   handleDeleteTournament: (id: string) => Promise<void>;
@@ -456,14 +527,15 @@ interface TournamentContextType {
   handleSubtractPoint: (matchId: string, teamId: string) => void;
   handleAddRound: (matchId: string, round: Round, limit?: number) => void;
   handleStartMatch: (matchId: string) => void;
-  handleFinishMatch: (matchId: string, winnerId: string) => void;
+  handleFinishMatch: (matchId: string, winnerId: string) => Promise<void> | void;
+  handleResetMatch: (matchId: string) => Promise<void> | void;
   handleUpdateMatch: (updatedMatch: Match) => void;
   handleSwapTeams: (srcMatchId: string, srcSlot: "A" | "B", destMatchId: string, destSlot: "A" | "B") => void;
   handleReplaceTeam: (matchId: string, slot: "A" | "B", newTeamId: string) => void;
   handleDeclareWO: (matchId: string, slotWithError: "A" | "B") => void;
 }
 
-const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
+export const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
 
 export function TournamentProvider({ children }: { children: React.ReactNode }) {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -474,6 +546,22 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [events, setEvents] = useState<TournamentEvent[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isAuthLoaded, setIsAuthLoaded] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
+  const [syncStatus, setSyncStatus] = useState<"IDLE" | "OFFLINE" | "SYNCING" | "SYNCED">("IDLE");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    setIsOnline(navigator.onLine);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   const currentTournament = tournaments.find((t) => t.id === currentTournamentId);
   const isReadOnly = currentTournament?.status === "FINALIZADO";
@@ -573,7 +661,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
       const { data: dbMatches, error: matchesError } = await supabase
         .from("matches")
-        .select("*")
+        .select("*, detailed_score, details")
         .eq("tournament_id", tournamentId);
       if (matchesError) throw matchesError;
 
@@ -636,6 +724,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           mappedMatches.forEach((m) => {
             const local = localMap[m.id];
             if (local) {
+              if (m.status === "SCHEDULED") {
+                // Não re-injeta histórico antigo ou parciais de cache em partida agendada/resetada
+                return;
+              }
               const localSets = local.sets_history || local.historicoSets || local.set_history;
               if (localSets && (!m.sets_history || (Array.isArray(m.sets_history) && m.sets_history.length === 0))) {
                 m.sets_history = localSets;
@@ -654,7 +746,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         }
       }
 
-      setMatches(mappedMatches);
+      setMatches(deduplicateMatches(mappedMatches));
     } catch (err) {
       console.error("Erro ao carregar dados do Supabase:", err);
     } finally {
@@ -762,13 +854,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         const dbId = getUuidForMatchId(match.id);
         const teamAId = match.teamA.id.startsWith("placeholder-") || match.teamA.id === "bye" ? null : match.teamA.id;
         const teamBId = match.teamB.id.startsWith("placeholder-") || match.teamB.id === "bye" ? null : match.teamB.id;
+        const cleanSets = match.historicoSets || match.sets_history || [];
         return {
           id: dbId,
           phase: match.phase,
           team_a_id: teamAId,
           team_b_id: teamBId,
-          team1_id: teamAId,
-          team2_id: teamBId,
           score_a: match.scoreA,
           score_b: match.scoreB,
           sets_a: match.setsA || match.setsVencidosTimeA || 0,
@@ -776,14 +867,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           status: match.status,
           winner_id: match.winnerId || null,
           tournament_id: currentTournamentId,
-          set_history: match.historicoSets || [],
-          sets_history: match.historicoSets || [],
-          history: match.historicoSets || [],
           details: {
-            sets: match.historicoSets || [],
+            sets: cleanSets,
+            historicoSets: cleanSets,
             rounds: match.detailedScore?.rounds || [],
           },
-          detailed_score: match.detailedScore || { rounds: [] },
+          detailed_score: {
+            sets: cleanSets,
+            historicoSets: cleanSets,
+            rounds: match.detailedScore?.rounds || [],
+          },
           penalties_a: match.penaltiesA || 0,
           penalties_b: match.penaltiesB || 0,
         };
@@ -794,21 +887,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         if (
           error.message?.includes("column") ||
           error.message?.includes("winner_id") ||
-          error.message?.includes("team1_id") ||
-          error.message?.includes("set_history") ||
-          error.message?.includes("sets_history") ||
-          error.message?.includes("history") ||
           error.message?.includes("details") ||
           error.message?.includes("detailed_score")
         ) {
           const legacyMatches = dbMatches.map((m) => {
             const {
-              team1_id,
-              team2_id,
               winner_id,
-              set_history,
-              sets_history,
-              history,
               details,
               detailed_score,
               penalties_a,
@@ -847,6 +931,20 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       localStorage.setItem("sc_events", JSON.stringify(updated));
       return updated;
     });
+  };
+
+  const syncOfflineQueue = async () => {
+    setSyncStatus("SYNCING");
+    try {
+      if (currentTournamentId) {
+        await loadTeamsAndMatches(currentTournamentId);
+      }
+      setPendingSyncCount(0);
+      setSyncStatus("SYNCED");
+      setTimeout(() => setSyncStatus("IDLE"), 3000);
+    } catch {
+      setSyncStatus("OFFLINE");
+    }
   };
 
   // Auth Functions
@@ -1270,6 +1368,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
                 historicoSets: newHistorico,
                 sets_history: newHistorico,
                 set_history: newHistorico,
+                detailedScore: {
+                  sets: newHistorico,
+                  rounds: m.detailedScore?.rounds || [],
+                },
               };
             }
             return { ...m, scoreA: teamAScore, scoreB: teamBScore };
@@ -1304,6 +1406,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
                 historicoSets: newHistorico,
                 sets_history: newHistorico,
                 set_history: newHistorico,
+                detailedScore: {
+                  sets: newHistorico,
+                  rounds: m.detailedScore?.rounds || [],
+                },
               };
             }
             return { ...m, scoreA: teamAScore, scoreB: teamBScore };
@@ -1421,6 +1527,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
               historicoSets: newHistorico,
               sets_history: newHistorico,
               set_history: newHistorico,
+              detailedScore: {
+                sets: newHistorico,
+                rounds: m.detailedScore?.rounds || [],
+              },
             };
           }
 
@@ -1491,6 +1601,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
               historicoSets: newHistorico,
               sets_history: newHistorico,
               set_history: newHistorico,
+              detailedScore: {
+                sets: newHistorico,
+                rounds: m.detailedScore?.rounds || [],
+              },
             };
           }
 
@@ -1781,6 +1895,89 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }).catch((err) => {
       console.warn("Aviso ao rodar completeMatchAction:", err);
     });
+  };
+
+  // Reset / Reabrir Súmula de Partida
+  const handleResetMatch = async (matchId: string) => {
+    const targetMatch = matches.find((m) => m.id === matchId);
+    if (!targetMatch) return;
+
+    const dbMatchUuid =
+      (targetMatch as any).uuid ||
+      (targetMatch as any).db_id ||
+      getUuidForMatchId(matchId);
+
+    addEvent(
+      `Mesa/Quadra ${targetMatch.tableNumber} (${targetMatch.phase}): Súmula zerada e status revertido para AGENDADA.`,
+      "INFO",
+      matchId
+    );
+
+    const updatedMatches = matches.map((m) => {
+      if (m.id === matchId) {
+        return {
+          ...m,
+          status: "SCHEDULED" as const,
+          scoreA: 0,
+          scoreB: 0,
+          score_a: 0,
+          score_b: 0,
+          setsA: 0,
+          setsB: 0,
+          sets_a: 0,
+          sets_b: 0,
+          setsVencidosTimeA: 0,
+          setsVencidosTimeB: 0,
+          finalScoreA: undefined,
+          finalScoreB: undefined,
+          finalSetsA: undefined,
+          finalSetsB: undefined,
+          penaltiesA: 0,
+          penaltiesB: 0,
+          penalties_a: 0,
+          penalties_b: 0,
+          winnerId: undefined,
+          winner_id: null,
+          completedAt: undefined,
+          historicoSets: [],
+          sets_history: [],
+          set_history: [],
+          history: [],
+          details: { sets: [], rounds: [] },
+          detailedScore: { rounds: [] },
+          detailed_score: null,
+        };
+      }
+      return m;
+    });
+
+    const clean = deduplicateMatches(updatedMatches);
+    setMatches(clean);
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("sc_matches", JSON.stringify(clean));
+      } catch (e) {
+        console.error("Erro ao salvar sc_matches após reset:", e);
+      }
+    }
+
+    try {
+      console.log("[handleResetMatch] Disparando resetMatchAction para:", dbMatchUuid);
+      const res = await resetMatchAction({
+        matchId: dbMatchUuid,
+        tournamentId: currentTournamentId || undefined,
+      });
+      if (res && res.success === false) {
+        console.warn("[handleResetMatch] Aviso do backend:", res.error);
+      }
+    } catch (err: any) {
+      console.error("[handleResetMatch] Erro ao chamar resetMatchAction:", err);
+    }
+
+    if (currentTournamentId) {
+      await loadTeamsAndMatches(currentTournamentId);
+    }
   };
 
   // Update a Match from Bracket Edit mode
@@ -2143,12 +2340,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         currentSportType,
         setCurrentSportType,
         isReadOnly,
+        isOnline,
+        pendingSyncCount,
+        syncStatus,
+        syncOfflineQueue,
         handleCreateTournament,
         handleFinishTournament,
         handleDeleteTournament,
         teams,
         setTeams,
-        matches,
+        matches: deduplicateMatches(matches),
         events,
         isAdmin,
         isAuthLoaded,
@@ -2165,6 +2366,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         handleAddRound,
         handleStartMatch,
         handleFinishMatch,
+        handleResetMatch,
         handleUpdateMatch,
         handleSwapTeams,
         handleReplaceTeam,
