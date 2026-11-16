@@ -49,7 +49,7 @@ import { generateBracket, generateKnockoutFromGroups, forceCompleteTournamentAct
 import { deleteTournament } from "@/app/actions/tournament";
 import { useTournamentPermissions } from "@/hooks/useTournamentPermissions";
 import NotificationBell from "@/components/NotificationBell";
-import { translateTournamentFormat } from "@/utils/formatMap";
+import { translateTournamentFormat, formatTournamentDate } from "@/utils/formatMap";
 
 export type DashboardView = "overview" | "teams" | "bracket" | "referee";
 
@@ -824,45 +824,14 @@ export default function OrganizerDashboard({
   const formatCurrency = (val: number) =>
     val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  // Data Formatada do Torneio
+  // Data Formatada do Torneio (suporte a múltiplos dias)
   const formattedDate = useMemo(() => {
-    if (!currentTour?.start_date) {
-      return "Data a definir";
-    }
-
-    try {
-      let d: Date;
-      if (typeof currentTour.start_date === "string" && currentTour.start_date.includes("-")) {
-        const datePart = currentTour.start_date.split("T")[0];
-        const parts = datePart.split("-").map(Number);
-        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-          d = new Date(parts[0], parts[1] - 1, parts[2]);
-        } else {
-          d = new Date(currentTour.start_date);
-        }
-      } else {
-        d = new Date(currentTour.start_date);
-      }
-
-      if (isNaN(d.getTime())) {
-        return "Data a definir";
-      }
-
-      const formatted = d.toLocaleDateString("pt-BR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-
-      if (currentTour.start_time && currentTour.start_time.trim()) {
-        return `${formatted} às ${currentTour.start_time.trim()}`;
-      }
-
-      return formatted;
-    } catch {
-      return "Data a definir";
-    }
-  }, [currentTour?.start_date, currentTour?.start_time]);
+    return formatTournamentDate(
+      currentTour?.start_date,
+      currentTour?.end_date,
+      currentTour?.start_time
+    );
+  }, [currentTour?.start_date, currentTour?.end_date, currentTour?.start_time]);
 
   // Formato da Competição (dinâmico da base de dados com tradução amigável)
   const competitionFormat = useMemo(() => {

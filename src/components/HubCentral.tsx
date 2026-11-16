@@ -38,7 +38,7 @@ import { useAuth } from "@/context/AuthProvider";
 import { useTournament } from "@/context/TournamentContext";
 import { supabase } from "@/lib/supabase";
 import { Tournament, SportType } from "@/types";
-import { translateTournamentFormat } from "@/utils/formatMap";
+import { translateTournamentFormat, formatTournamentDate } from "@/utils/formatMap";
 import CreateTournamentModal from "@/components/CreateTournamentModal";
 import PixCheckoutForm from "@/components/PixCheckoutForm";
 import PublicHeader from "@/components/PublicHeader";
@@ -985,7 +985,9 @@ export default function HubCentral() {
                         {/* Rodapé do Mini Card */}
                         <div className="pt-3 mt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs font-bold text-zinc-400 group-hover:text-white transition-colors">
                           <span className="text-[11px] text-zinc-500">
-                            {formatDate(reg.tournament?.start_date || reg.created_at)}
+                            {reg.tournament?.start_date
+                              ? formatTournamentDate(reg.tournament.start_date, reg.tournament.end_date, reg.tournament.start_time)
+                              : formatDate(reg.created_at)}
                           </span>
                           <span className="flex items-center gap-1 text-[#00a2ff] text-[11px]">
                             <span>Ver Página</span>
@@ -1207,7 +1209,7 @@ export default function HubCentral() {
                             <div className="flex items-center gap-3 text-[11px] text-zinc-400 mt-1">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-zinc-500 shrink-0" />
-                                <span>{formatDate(tourn.start_date, tourn.start_time)}</span>
+                                <span>{formatTournamentDate(tourn.start_date, tourn.end_date, tourn.start_time)}</span>
                               </span>
                               {tourn.location && (
                                 <span className="flex items-center gap-1 truncate max-w-[130px]">
@@ -1390,7 +1392,7 @@ export default function HubCentral() {
                             <div className="flex items-center gap-3 text-[11px] text-zinc-400 mt-1">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3 text-zinc-500 shrink-0" />
-                                <span>{formatDate(tourn.start_date, tourn.start_time)}</span>
+                                <span>{formatTournamentDate(tourn.start_date, tourn.end_date, tourn.start_time)}</span>
                               </span>
                               {tourn.location && (
                                 <span className="flex items-center gap-1 truncate max-w-[130px]">

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MapPin, Calendar, Users, Trophy, ArrowRight, Layers, PlayCircle, CheckCircle } from "lucide-react";
 import { Tournament, SportType } from "@/types";
 import { DEFAULT_COVERS, SPORT_SELECT_OPTIONS } from "@/components/CreateTournamentForm";
-import { translateTournamentFormat } from "@/utils/formatMap";
+import { translateTournamentFormat, formatTournamentDate } from "@/utils/formatMap";
 
 export interface TournamentCardProps {
   tournament: Tournament;
@@ -164,7 +164,7 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
             {/* Data */}
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-[#00a2ff] shrink-0" />
-              <span>{formatDate(tournament.start_date, tournament.start_time)}</span>
+              <span>{formatTournamentDate(tournament.start_date, tournament.end_date, tournament.start_time)}</span>
             </div>
 
             {/* Formato */}

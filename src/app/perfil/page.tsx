@@ -40,6 +40,7 @@ import PublicHeader from "@/components/PublicHeader";
 import { useAuth } from "@/context/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { Profile, Team, SportType } from "@/types";
+import { formatTournamentDate } from "@/utils/formatMap";
 
 // Avatares em Emoji (esportivos e animais nativos)
 export const EMOJI_AVATARS = [
@@ -1606,10 +1607,10 @@ export default function PerfilPage() {
                         <div className="space-y-3">
                           {completedTeams.map((team) => {
                             const placement = getPlacementInfo(team);
-                            const dateStr =
-                              team.tournamentEndDate || team.tournamentStartDate || team.createdAt;
-                            const formattedDate = dateStr
-                              ? new Date(dateStr).toLocaleDateString("pt-BR")
+                            const formattedDate = team.tournamentStartDate
+                              ? formatTournamentDate(team.tournamentStartDate, team.tournamentEndDate)
+                              : team.createdAt
+                              ? new Date(team.createdAt).toLocaleDateString("pt-BR")
                               : "Data não informada";
 
                             return (

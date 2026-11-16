@@ -497,5 +497,89 @@ export function getMatchRules(
   };
 }
 
+const PT_BR_SHORT_MONTHS = [
+  "jan.",
+  "fev.",
+  "mar.",
+  "abr.",
+  "mai.",
+  "jun.",
+  "jul.",
+  "ago.",
+  "set.",
+  "out.",
+  "nov.",
+  "dez.",
+];
+
+function parseDateParts(rawDate?: string | null): { day: number; month: number; year: number } | null {
+  if (!rawDate) return null;
+  const trimmed = String(rawDate).trim();
+  if (!trimmed) return null;
+
+  // Prioriza formato ISO YYYY-MM-DD para evitar deslocamento de fuso horário
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    if (year && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+      return { day, month, year };
+    }
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return {
+    day: parsed.getUTCDate(),
+    month: parsed.getUTCMonth(),
+    year: parsed.getUTCFullYear(),
+  };
+}
+
+/**
+ * Formata datas de torneios com suporte a eventos de 1 dia ou múltiplos dias:
+ * - Mesmo dia ou sem end_date: "25 de nov. de 2026"
+ * - Mesmo mês e ano: "25 a 26 de nov. de 2026"
+ * - Meses diferentes (mesmo ano): "30 de nov. a 02 de dez. de 2026"
+ * - Anos diferentes: "30 de dez. de 2026 a 02 de jan. de 2027"
+ */
+export function formatTournamentDate(
+  startDate?: string | null,
+  endDate?: string | null,
+  startTime?: string | null
+): string {
+  const start = parseDateParts(startDate);
+  if (!start) return "Data a definir";
+
+  const end = parseDateParts(endDate);
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const sMonth = PT_BR_SHORT_MONTHS[start.month] || "";
+
+  let formatted = "";
+
+  if (
+    !end ||
+    (start.year === end.year && start.month === end.month && start.day === end.day)
+  ) {
+    formatted = `${pad2(start.day)} de ${sMonth} de ${start.year}`;
+  } else if (start.year === end.year && start.month === end.month) {
+    formatted = `${pad2(start.day)} a ${pad2(end.day)} de ${sMonth} de ${start.year}`;
+  } else if (start.year === end.year) {
+    const eMonth = PT_BR_SHORT_MONTHS[end.month] || "";
+    formatted = `${pad2(start.day)} de ${sMonth} a ${pad2(end.day)} de ${eMonth} de ${start.year}`;
+  } else {
+    const eMonth = PT_BR_SHORT_MONTHS[end.month] || "";
+    formatted = `${pad2(start.day)} de ${sMonth} de ${start.year} a ${pad2(end.day)} de ${eMonth} de ${end.year}`;
+  }
+
+  if (startTime && startTime.trim()) {
+    return `${formatted} às ${startTime.trim()}`;
+  }
+
+  return formatted;
+}
+
+
 
 

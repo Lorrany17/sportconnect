@@ -43,7 +43,7 @@ import PublicRegistrationForm from "@/components/PublicRegistrationForm";
 import PublicHeader from "@/components/PublicHeader";
 import PixCheckoutForm from "@/components/PixCheckoutForm";
 import { cancelRegistration } from "@/app/actions/registration";
-import { translateTournamentFormat } from "@/utils/formatMap";
+import { translateTournamentFormat, formatTournamentDate } from "@/utils/formatMap";
 
 export default function DetalhesTorneioPage() {
   const params = useParams();
@@ -925,7 +925,7 @@ export default function DetalhesTorneioPage() {
                   )}
                   <span className="flex items-center gap-2">
                     <Calendar className={isGenerating ? "h-6 w-6 text-[#00a2ff] shrink-0" : "h-4 w-4 text-[#00a2ff]"} />
-                    <span>{formatDate(tournament.start_date, tournament.start_time)}</span>
+                    <span>{formatTournamentDate(tournament.start_date, tournament.end_date, tournament.start_time)}</span>
                   </span>
                 </div>
               </div>

@@ -233,6 +233,7 @@ export default function CreateTournamentForm({
 
   // Estados locais do formulário - Etapa 2: Local e Data
   const [startDate, setStartDate] = useState(initialData?.start_date ? initialData.start_date.split("T")[0] : "");
+  const [endDate, setEndDate] = useState(initialData?.end_date ? initialData.end_date.split("T")[0] : "");
   const [startTime, setStartTime] = useState(initialData?.start_time || "");
   const [noTimeSet, setNoTimeSet] = useState<boolean>(isEditing ? !initialData?.start_time : false);
   const [address, setAddress] = useState(initialData?.location || "");
@@ -336,6 +337,46 @@ export default function CreateTournamentForm({
   const [hasPenalties, setHasPenalties] = useState<boolean>(() => {
     const r = typeof initialData?.match_rules === "string" ? JSON.parse(initialData.match_rules) : initialData?.match_rules;
     return r?.has_penalties ?? true;
+  });
+
+  // Regras Dinâmicas por Fase (phase_exceptions)
+  type PhaseKey = "group_stage" | "round_of_16" | "quarter_finals" | "semi_finals" | "final" | "third_place";
+  interface PhaseExceptionItem {
+    id: string;
+    phase: PhaseKey;
+    bestOf: number;
+    pointsPerSet: number;
+    tieBreakPoints: number;
+    halfDurationMinutes: number;
+    targetScore: number;
+  }
+
+  const PHASE_EXCEPTION_OPTIONS: { value: PhaseKey; label: string }[] = [
+    { value: "round_of_16", label: "Oitavas de Final" },
+    { value: "quarter_finals", label: "Quartas de Final" },
+    { value: "semi_finals", label: "Semifinal" },
+    { value: "final", label: "Grande Final" },
+    { value: "third_place", label: "Disputa de 3º Lugar" },
+    { value: "group_stage", label: "Fase de Grupos" },
+  ];
+
+  const [phaseExceptions, setPhaseExceptions] = useState<PhaseExceptionItem[]>(() => {
+    const mr =
+      typeof initialData?.match_rules === "string"
+        ? JSON.parse(initialData.match_rules)
+        : initialData?.match_rules;
+    const rawMap = initialData?.phase_exceptions || mr?.phase_exceptions || {};
+    if (!rawMap || typeof rawMap !== "object") return [];
+
+    return Object.entries(rawMap).map(([phaseKey, val]: [string, any], idx) => ({
+      id: `phase-ex-${idx}-${phaseKey}`,
+      phase: (phaseKey as PhaseKey) || "final",
+      bestOf: Number(val?.bestOf ?? val?.best_of_sets ?? 5),
+      pointsPerSet: Number(val?.pointsPerSet ?? val?.points_per_set ?? (initialData?.sport_type === "VOLEI" ? 25 : 11)),
+      tieBreakPoints: Number(val?.tieBreakPoints ?? val?.tie_break_points ?? 15),
+      halfDurationMinutes: Number(val?.halfDurationMinutes ?? val?.half_duration_minutes ?? 25),
+      targetScore: Number(val?.targetScore ?? val?.target_score ?? 200),
+    }));
   });
 
   // Cenário B: Ping Pong, Vôlei ou Tênis (Regras de Sets)
@@ -472,6 +513,7 @@ export default function CreateTournamentForm({
           if (fd.format !== undefined) setFormat(fd.format);
           if (fd.genderCategory !== undefined) setGenderCategory(fd.genderCategory);
           if (fd.startDate !== undefined) setStartDate(fd.startDate);
+          if (fd.endDate !== undefined) setEndDate(fd.endDate);
           if (fd.startTime !== undefined) setStartTime(fd.startTime);
           if (fd.noTimeSet !== undefined) setNoTimeSet(Boolean(fd.noTimeSet));
           if (fd.address !== undefined) {
@@ -552,6 +594,7 @@ export default function CreateTournamentForm({
           format,
           genderCategory,
           startDate,
+          endDate,
           startTime,
           noTimeSet,
           address,
@@ -772,6 +815,9 @@ export default function CreateTournamentForm({
       }
       if (initialData.start_date) {
         setStartDate(initialData.start_date.split("T")[0]);
+      }
+      if (initialData.end_date) {
+        setEndDate(initialData.end_date.split("T")[0]);
       }
       if (initialData.start_time !== undefined) {
         setStartTime(initialData.start_time || "");
@@ -1275,12 +1321,20 @@ export default function CreateTournamentForm({
       return;
     }
 
+    if (startDate && endDate && endDate < startDate) {
+      setErrorMessage("A data de término não pode ser anterior à data de início.");
+      setCurrentStep(2);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const parsedEntryFee = parseFloat(entryFee) || 0;
       const isPaid = parsedEntryFee > 0;
       const formattedStartDate = startDate ? new Date(startDate).toISOString() : null;
+      const effectiveEndDate = endDate || startDate;
+      const formattedEndDate = effectiveEndDate ? new Date(effectiveEndDate).toISOString() : null;
       const finalStartTime = noTimeSet || !startTime.trim() ? null : startTime.trim();
       const ownerId =
         user?.id && user.id !== "organizer-admin-session" ? user.id : null;
@@ -1426,6 +1480,37 @@ export default function CreateTournamentForm({
         return;
       }
 
+      // Compilação dinâmica das exceções/regras por fase (multi-fase)
+      const compiledPhaseExceptions: Record<string, any> = {};
+      phaseExceptions.forEach((ex) => {
+        if (sportType === "FUTSAL" || (sportType as string) === "FUTEBOL") {
+          compiledPhaseExceptions[ex.phase] = {
+            halfDurationMinutes: Number(ex.halfDurationMinutes) || halfDurationMinutes,
+            half_duration_minutes: Number(ex.halfDurationMinutes) || halfDurationMinutes,
+          };
+        } else if (
+          sportType === "PING_PONG" ||
+          sportType === "VOLEI" ||
+          (sportType as string) === "TENIS"
+        ) {
+          compiledPhaseExceptions[ex.phase] = {
+            bestOf: Number(ex.bestOf) || bestOfSets,
+            best_of_sets: Number(ex.bestOf) || bestOfSets,
+            pointsPerSet: Number(ex.pointsPerSet) || pointsPerSet,
+            points_per_set: Number(ex.pointsPerSet) || pointsPerSet,
+            tieBreakPoints: Number(ex.tieBreakPoints) || tieBreakPoints,
+            tie_break_points: Number(ex.tieBreakPoints) || tieBreakPoints,
+          };
+        } else {
+          compiledPhaseExceptions[ex.phase] = {
+            bestOf: Number(ex.bestOf) || 3,
+            best_of_sets: Number(ex.bestOf) || 3,
+            targetScore: Number(ex.targetScore) || targetScore,
+            target_score: Number(ex.targetScore) || targetScore,
+          };
+        }
+      });
+
       // Montagem da base do payload
       const payload: any = {
         name: name.trim(),
@@ -1444,8 +1529,10 @@ export default function CreateTournamentForm({
             ? "GROUPS"
             : "KNOCKOUT",
         has_third_place_match: Boolean(hasThirdPlaceMatch),
+        phase_exceptions: compiledPhaseExceptions,
         match_rules: {
           ...compiledMatchRules,
+          phase_exceptions: compiledPhaseExceptions,
           num_groups: Number(numGroups) || 2,
           qualifiers_per_group: Number(qualifiersPerGroup) || 2,
           has_third_place_match: Boolean(hasThirdPlaceMatch),
@@ -1460,6 +1547,7 @@ export default function CreateTournamentForm({
         // tournament_format normalized above
         // match_rules enriched above
         start_date: formattedStartDate,
+        end_date: formattedEndDate,
         start_time: finalStartTime,
         location: address.trim() || null,
         max_teams: maxTeams,
@@ -2043,6 +2131,48 @@ export default function CreateTournamentForm({
                 </div>
               </div>
             </div>
+
+            {/* Formato da Modalidade (Individual, Duplas, etc. - movido para Etapa 1) */}
+            {isFormatVisible && (
+              <div className="space-y-1.5 animate-fadeIn">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                  Formato da Modalidade <span className="text-blue-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={format}
+                    onChange={(e) => {
+                      const newFormat = e.target.value;
+                      setFormat(newFormat);
+                      const isStillTeam = !["solo", "1v1", "duplas", "2v2", "individual"].some((keyword) =>
+                        newFormat.toLowerCase().includes(keyword)
+                      );
+                      if (!isStillTeam) {
+                        setMinPlayers("");
+                        setMaxPlayers("");
+                      }
+                    }}
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10"
+                  >
+                    {sportType === "VOLEI" &&
+                      VOLEI_FORMAT_OPTIONS.map((fmt) => (
+                        <option key={fmt} value={fmt} className="bg-[#1a1a1a] text-white">
+                          {fmt}
+                        </option>
+                      ))}
+                    {sportType === "PING_PONG" &&
+                      PING_PONG_FORMAT_OPTIONS.map((fmt) => (
+                        <option key={fmt} value={fmt} className="bg-[#1a1a1a] text-white">
+                          {fmt}
+                        </option>
+                      ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-zinc-400">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2102,8 +2232,8 @@ export default function CreateTournamentForm({
               </div>
             </div>
 
-            {/* Grid: Data de Início e Horário com Checkbox de Horário Opcional */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Grid: Data de Início, Data de Término e Horário com Checkbox de Horário Opcional */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Data de Início */}
               <div className="space-y-1.5">
                 <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
@@ -2113,7 +2243,40 @@ export default function CreateTournamentForm({
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const nextStart = e.target.value;
+                      setStartDate(nextStart);
+                      if (endDate && nextStart && endDate < nextStart) {
+                        setEndDate(nextStart);
+                      }
+                    }}
+                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all [color-scheme:dark]"
+                  />
+                </div>
+              </div>
+
+              {/* Data de Término */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                    Data de Término
+                  </label>
+                  <span className="text-[10px] text-zinc-500">Opcional</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="date"
+                    min={startDate || undefined}
+                    value={endDate}
+                    onChange={(e) => {
+                      const nextEnd = e.target.value;
+                      setEndDate(nextEnd);
+                      if (startDate && nextEnd && nextEnd < startDate) {
+                        setErrorMessage("A data de término não pode ser anterior à data de início.");
+                      } else if (errorMessage.includes("data de término")) {
+                        setErrorMessage("");
+                      }
+                    }}
                     className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all [color-scheme:dark]"
                   />
                 </div>
@@ -2167,48 +2330,6 @@ export default function CreateTournamentForm({
         {/* ======================================================== */}
         {currentStep === 3 && (
           <div className="space-y-5 animate-fadeIn">
-            {/* Formato da Modalidade (se Vôlei ou Ping Pong) */}
-            {isFormatVisible && (
-              <div className="space-y-1.5 animate-fadeIn">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
-                  Formato da Modalidade <span className="text-blue-500">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={format}
-                    onChange={(e) => {
-                      const newFormat = e.target.value;
-                      setFormat(newFormat);
-                      const isStillTeam = !["solo", "1v1", "duplas", "2v2", "individual"].some((keyword) =>
-                        newFormat.toLowerCase().includes(keyword)
-                      );
-                      if (!isStillTeam) {
-                        setMinPlayers("");
-                        setMaxPlayers("");
-                      }
-                    }}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10"
-                  >
-                    {sportType === "VOLEI" &&
-                      VOLEI_FORMAT_OPTIONS.map((fmt) => (
-                        <option key={fmt} value={fmt} className="bg-[#1a1a1a] text-white">
-                          {fmt}
-                        </option>
-                      ))}
-                    {sportType === "PING_PONG" &&
-                      PING_PONG_FORMAT_OPTIONS.map((fmt) => (
-                        <option key={fmt} value={fmt} className="bg-[#1a1a1a] text-white">
-                          {fmt}
-                        </option>
-                      ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-zinc-400">
-                    <ChevronDown className="h-4 w-4" />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* NOVO CAMPO OBRIGATÓRIO: Formato do Torneio (tournament_format) */}
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
@@ -2670,6 +2791,249 @@ export default function CreateTournamentForm({
                   </div>
                 </div>
               )}
+
+              {/* Exceções / Regras Dinâmicas por Fase (Oitavas, Quartas, Semifinal, Final, etc.) */}
+              <div className="pt-4 mt-3 border-t border-[#27272a] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Regras Dinâmicas por Fase (Exceções)</span>
+                    </h4>
+                    <p className="text-[11px] text-zinc-400">
+                      Defina regras específicas para fases avançadas (ex: Semifinal ou Final em Melhor de 5).
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={phaseExceptions.length >= PHASE_EXCEPTION_OPTIONS.length}
+                    onClick={() => {
+                      const usedPhases = new Set(phaseExceptions.map((p) => p.phase));
+                      const preferredOrder: PhaseKey[] = [
+                        "final",
+                        "semi_finals",
+                        "quarter_finals",
+                        "round_of_16",
+                        "third_place",
+                        "group_stage",
+                      ];
+                      const nextPhase =
+                        preferredOrder.find((p) => !usedPhases.has(p)) || "final";
+                      setPhaseExceptions((prev) => [
+                        ...prev,
+                        {
+                          id: `phase-ex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                          phase: nextPhase,
+                          bestOf: 5,
+                          pointsPerSet: pointsPerSet || (sportType === "VOLEI" ? 25 : 11),
+                          tieBreakPoints: tieBreakPoints || 15,
+                          halfDurationMinutes: halfDurationMinutes || 25,
+                          targetScore: targetScore || 200,
+                        },
+                      ]);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 self-start sm:self-auto"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Adicionar exceção/regra por fase</span>
+                  </button>
+                </div>
+
+                {phaseExceptions.length > 0 && (
+                  <div className="space-y-3">
+                    {phaseExceptions.map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/30 space-y-3 animate-fadeIn"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex-1 max-w-xs space-y-1">
+                            <label className="text-[11px] font-black uppercase tracking-wider text-amber-300 block">
+                              Fase do Torneio
+                            </label>
+                            <select
+                              value={item.phase}
+                              onChange={(e) => {
+                                const newPhase = e.target.value as PhaseKey;
+                                setPhaseExceptions((prev) =>
+                                  prev.map((row) =>
+                                    row.id === item.id ? { ...row, phase: newPhase } : row
+                                  )
+                                );
+                              }}
+                              className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm font-bold text-white outline-none cursor-pointer"
+                            >
+                              {PHASE_EXCEPTION_OPTIONS.map((opt) => (
+                                <option
+                                  key={opt.value}
+                                  value={opt.value}
+                                  disabled={
+                                    opt.value !== item.phase &&
+                                    phaseExceptions.some((other) => other.phase === opt.value)
+                                  }
+                                  className="bg-[#1a1a1a] text-white"
+                                >
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPhaseExceptions((prev) =>
+                                prev.filter((row) => row.id !== item.id)
+                              )
+                            }
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold transition-all cursor-pointer self-end sm:self-center"
+                            title="Remover regra desta fase"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Remover</span>
+                          </button>
+                        </div>
+
+                        {sportType === "FUTSAL" || (sportType as string) === "FUTEBOL" ? (
+                          <div className="space-y-1 max-w-xs">
+                            <label className="text-xs font-bold text-zinc-300 block">
+                              Duração de cada tempo nesta fase (min)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="60"
+                              value={item.halfDurationMinutes}
+                              onChange={(e) => {
+                                const val = Math.max(1, parseInt(e.target.value) || 1);
+                                setPhaseExceptions((prev) =>
+                                  prev.map((row) =>
+                                    row.id === item.id ? { ...row, halfDurationMinutes: val } : row
+                                  )
+                                );
+                              }}
+                              className="w-full px-3.5 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                            />
+                          </div>
+                        ) : sportType === "PING_PONG" || sportType === "VOLEI" || (sportType as string) === "TENIS" ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-xs font-bold text-zinc-300 block">
+                                Melhor de (Sets)
+                              </label>
+                              <select
+                                value={item.bestOf}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setPhaseExceptions((prev) =>
+                                    prev.map((row) =>
+                                      row.id === item.id ? { ...row, bestOf: val } : row
+                                    )
+                                  );
+                                }}
+                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none cursor-pointer"
+                              >
+                                <option value={1}>1 Set Único</option>
+                                <option value={3}>Melhor de 3 Sets</option>
+                                <option value={5}>Melhor de 5 Sets</option>
+                                <option value={7}>Melhor de 7 Sets</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-xs font-bold text-zinc-300 block">
+                                Pontos por Set
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="50"
+                                value={item.pointsPerSet}
+                                onChange={(e) => {
+                                  const val = Math.max(1, parseInt(e.target.value) || 1);
+                                  setPhaseExceptions((prev) =>
+                                    prev.map((row) =>
+                                      row.id === item.id ? { ...row, pointsPerSet: val } : row
+                                    )
+                                  );
+                                }}
+                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-xs font-bold text-zinc-300 block">
+                                Set Decisivo (Tie-break)
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="50"
+                                value={item.tieBreakPoints}
+                                onChange={(e) => {
+                                  const val = Math.max(1, parseInt(e.target.value) || 1);
+                                  setPhaseExceptions((prev) =>
+                                    prev.map((row) =>
+                                      row.id === item.id ? { ...row, tieBreakPoints: val } : row
+                                    )
+                                  );
+                                }}
+                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-xs font-bold text-zinc-300 block">
+                                Formato da Fase (Dominó)
+                              </label>
+                              <select
+                                value={item.bestOf}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setPhaseExceptions((prev) =>
+                                    prev.map((row) =>
+                                      row.id === item.id ? { ...row, bestOf: val } : row
+                                    )
+                                  );
+                                }}
+                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none cursor-pointer"
+                              >
+                                <option value={1}>Set Único</option>
+                                <option value={3}>Melhor de 3</option>
+                                <option value={5}>Melhor de 5</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-xs font-bold text-zinc-300 block">
+                                Pontuação Alvo nesta Fase
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="1000"
+                                value={item.targetScore}
+                                onChange={(e) => {
+                                  const val = Math.max(1, parseInt(e.target.value) || 1);
+                                  setPhaseExceptions((prev) =>
+                                    prev.map((row) =>
+                                      row.id === item.id ? { ...row, targetScore: val } : row
+                                    )
+                                  );
+                                }}
+                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Grid: Contador de Vagas e Valor da Inscrição */}
