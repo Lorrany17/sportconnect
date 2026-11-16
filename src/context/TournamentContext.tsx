@@ -564,7 +564,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const currentTournament = tournaments.find((t) => t.id === currentTournamentId);
-  const isReadOnly = currentTournament?.status === "FINALIZADO";
+  const isReadOnly =
+    currentTournament?.status === "FINALIZADO" ||
+    currentTournament?.status === "COMPLETED" ||
+    currentTournament?.status === "FINISHED";
 
   // Sincroniza a modalidade esportiva quando o torneio atual mudar
   useEffect(() => {
@@ -1763,7 +1766,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   };
 
   // Complete Match and Propagate Winner
-  const handleFinishMatch = (matchId: string, winnerId: string) => {
+  const handleFinishMatch = async (matchId: string, winnerId: string) => {
     const targetMatch = matches.find((m) => m.id === matchId);
     if (!targetMatch) return;
 
@@ -1872,29 +1875,43 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     });
 
     const sportLabel = currentSportType === "FUTSAL" ? "Futsal" : currentSportType === "PING_PONG" ? "Ping Pong" : currentSportType === "VOLEI" ? "Vôlei" : "Dominó";
-    if (matchId === "f-1" || targetMatch.phase.toLowerCase() === "final") {
+    const phaseLower = String(targetMatch.phase || "").toLowerCase().trim();
+    const isFinalPhase =
+      matchId === "f-1" ||
+      (phaseLower.includes("final") &&
+        !phaseLower.includes("semi") &&
+        !phaseLower.includes("third") &&
+        !phaseLower.includes("terceiro"));
+
+    if (isFinalPhase) {
       addEvent(`🏆 PARABÉNS! "${winnerTeam.name}" é a grande CAMPEÃ do torneio de ${sportLabel} SportConnect! 🏆`, "MATCH_COMPLETED");
     }
 
     saveMatches(updatedMatches);
 
-    // Dispara a Server Action para persistência estrita no banco e avanço em next_match_id
-    const dbMatchUuid = getUuidForMatchId(matchId);
-    completeMatchAction({
-      matchId: dbMatchUuid,
-      scoreA: tScoreA,
-      scoreB: tScoreB,
-      setsA: tSetsA,
-      setsB: tSetsB,
-      winnerId: finalWinnerId,
-      sportType: currentSportType,
-      setHistory: targetMatch.historicoSets || [],
-      detailedScore: targetMatch.detailedScore || { rounds: [] },
-      penaltiesA: targetMatch.penaltiesA || 0,
-      penaltiesB: targetMatch.penaltiesB || 0,
-    }).catch((err) => {
+    // Dispara a Server Action de forma aguardada para persistência estrita na tabela matches
+    const dbMatchUuid =
+      (targetMatch as any).uuid ||
+      (targetMatch as any).db_id ||
+      getUuidForMatchId(matchId);
+
+    try {
+      await completeMatchAction({
+        matchId: dbMatchUuid,
+        scoreA: tScoreA,
+        scoreB: tScoreB,
+        setsA: tSetsA,
+        setsB: tSetsB,
+        winnerId: finalWinnerId,
+        sportType: currentSportType,
+        setHistory: targetMatch.historicoSets || [],
+        detailedScore: targetMatch.detailedScore || { rounds: [] },
+        penaltiesA: targetMatch.penaltiesA || 0,
+        penaltiesB: targetMatch.penaltiesB || 0,
+      });
+    } catch (err) {
       console.warn("Aviso ao rodar completeMatchAction:", err);
-    });
+    }
   };
 
   // Reset / Reabrir Súmula de Partida

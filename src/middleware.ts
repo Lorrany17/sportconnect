@@ -57,6 +57,32 @@ export async function middleware(request: NextRequest) {
         } = await supabase.auth.getUser(sbToken);
 
         if (user && !error) {
+          // Verifica se há fator MFA verificado pendente de aal2
+          const hasVerifiedMfa = Array.isArray((user as any).factors) &&
+            (user as any).factors.some((f: any) => f.status === "verified");
+
+          let tokenAal = "aal1";
+          try {
+            const payloadBase64 = sbToken.split(".")[1];
+            if (payloadBase64) {
+              const decoded = JSON.parse(
+                Buffer.from(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
+              );
+              if (decoded?.aal) {
+                tokenAal = String(decoded.aal);
+              }
+            }
+          } catch {}
+
+          const twoFaCookie = request.cookies.get("sc_2fa_verified")?.value;
+
+          if ((hasVerifiedMfa && tokenAal !== "aal2") || twoFaCookie === "false") {
+            const otpUrl = new URL("/login", request.url);
+            otpUrl.searchParams.set("redirect", request.nextUrl.pathname);
+            otpUrl.searchParams.set("mfa", "required");
+            return NextResponse.redirect(otpUrl);
+          }
+
           return NextResponse.next();
         }
       } catch (err) {

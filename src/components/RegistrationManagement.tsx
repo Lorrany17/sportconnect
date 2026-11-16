@@ -91,7 +91,7 @@ export default function RegistrationManagement({
   const { currentSportType, currentTournamentId, currentTournament, setTeams } = useTournament();
   const effectiveTournamentId =
     tournamentId || propTournament?.id || currentTournamentId || propTeams[0]?.tournamentId;
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const permissions = useTournamentPermissions(effectiveTournamentId || undefined);
 
   // Estado sincronizado do torneio para garantir leitura fiel de modality_format, categorias e campos personalizados
@@ -111,6 +111,29 @@ export default function RegistrationManagement({
     canManageFinancesProp !== undefined
       ? canManageFinancesProp
       : permissions.canManageFinances;
+
+  const effectiveStatus = String(
+    tournamentStatus || activeTournament?.status || ""
+  )
+    .toUpperCase()
+    .trim();
+  const isTournamentCompleted = [
+    "COMPLETED",
+    "FINALIZADO",
+    "FINISHED",
+    "CONCLUIDO",
+  ].includes(effectiveStatus);
+
+  const isOrganizerOrAdmin = Boolean(
+    isAdmin ||
+      permissions.isOwner ||
+      permissions.isAdmin ||
+      canManageFinancesProp ||
+      (user?.id && activeTournament?.owner_id && user.id === activeTournament.owner_id)
+  );
+
+  // Regra exclusiva de remoção: organizador/admin pode remover em qualquer status EXCETO quando COMPLETED
+  const canRemove = isOrganizerOrAdmin && !isTournamentCompleted;
 
   // Estado local das equipes para atualizações instantâneas de status
   const [localTeams, setLocalTeams] = useState<Team[]>(propTeams);
@@ -2780,7 +2803,7 @@ export default function RegistrationManagement({
                       )}
 
                       {/* Botão Vermelho: Excluir / Libertar Vaga para Pendentes e Aguardando Pix */}
-                      {(isPending || isWaitingPix) && !isReadOnly && (
+                      {(isPending || isWaitingPix) && canRemove && (
                         <button
                           type="button"
                           disabled={isDeletingTeamId === team.id}
@@ -2799,6 +2822,23 @@ export default function RegistrationManagement({
                               <span>Excluir / Libertar Vaga</span>
                             </>
                           )}
+                        </button>
+                      )}
+
+                      {/* Botão Vermelho Direto no Card: Remover Inscrição (Confirmadas / Canceladas) */}
+                      {!(isPending || isWaitingPix) && canRemove && (
+                        <button
+                          type="button"
+                          disabled={isDeletingTeamId === team.id}
+                          onClick={() => {
+                            setSelectedTeamDetails(team);
+                            setShowDeleteConfirmModal(true);
+                          }}
+                          className="w-full py-2 px-3 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                          title="Remover / Excluir inscrição desta equipe do torneio"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                          <span>Remover Inscrição</span>
                         </button>
                       )}
                     </>
@@ -3079,14 +3119,32 @@ export default function RegistrationManagement({
                           })}
 
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTeamDetails(team)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-500 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white font-bold text-xs transition-all cursor-pointer"
-                            >
-                              <Eye className="h-3.5 w-3.5 text-zinc-400" />
-                              <span>Detalhes</span>
-                            </button>
+                            <div className="inline-flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTeamDetails(team)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-500 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white font-bold text-xs transition-all cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5 text-zinc-400" />
+                                <span>Detalhes</span>
+                              </button>
+
+                              {canRemove && (
+                                <button
+                                  type="button"
+                                  disabled={isDeletingTeamId === team.id}
+                                  onClick={() => {
+                                    setSelectedTeamDetails(team);
+                                    setShowDeleteConfirmModal(true);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-500/30 hover:border-red-500/60 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+                                  title="Remover / Excluir inscrição"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span>Remover</span>
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -3989,8 +4047,7 @@ export default function RegistrationManagement({
                 selectedTeamDetails.payment_status === "WAITING_PIX" ||
                 selectedTeamDetails.payment_status === "WAITING_APPROVAL" ||
                 !selectedTeamDetails.payment_status) &&
-                hasFinancialAccess &&
-                !isReadOnly && (
+                canRemove && (
                   <button
                     type="button"
                     disabled={isDeletingTeamId === selectedTeamDetails.id}
@@ -4058,7 +4115,7 @@ export default function RegistrationManagement({
                 )
               ) : null}
 
-              {!isReadOnly && hasFinancialAccess && onDeleteTeam && (
+              {canRemove && (
                 <button
                   type="button"
                   disabled={isDeletingTeamId === selectedTeamDetails.id}

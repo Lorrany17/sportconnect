@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { MercadoPagoConfig, PaymentRefund as Refund } from "mercadopago";
 import { notifyRegistrationCancelled, notifyTournamentRulesChanged } from "@/app/actions/notifications";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAuthenticatedUser, requireTournamentAccess } from "@/lib/serverAuth";
 
 export interface CancelRegistrationParams {
   teamId: string;
@@ -726,6 +727,7 @@ export async function deleteOrphanTeam(teamId: string): Promise<{ success: boole
   }
 
   try {
+    await requireAuthenticatedUser();
     const supabaseAdmin = getSupabaseAdmin();
     console.warn(`[ROLLBACK ADMIN] Iniciando exclusão forçada da equipe órfã ${teamId}...`);
 
@@ -807,7 +809,24 @@ export async function addManualTeam(params: AddManualTeamParams): Promise<AddMan
   }
 
   try {
+    const authUser = await requireAuthenticatedUser();
+    await requireTournamentAccess(authUser, tournamentId, ["ADMIN"]);
     const supabaseAdmin = getSupabaseAdmin();
+
+    const { data: tourCheck } = await supabaseAdmin
+      .from("tournaments")
+      .select("status")
+      .eq("id", tournamentId)
+      .maybeSingle();
+
+    if (
+      tourCheck &&
+      ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+        String(tourCheck.status || "").toUpperCase().trim()
+      )
+    ) {
+      throw new Error("Ações não permitidas em torneios finalizados.");
+    }
 
     // Limpa valores vazios e preserva todos os metadados e campos personalizados na estrutura JSONB
     const sanitizedCustomResponses: Record<string, any> = {};

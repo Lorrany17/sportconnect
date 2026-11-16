@@ -21,7 +21,7 @@ import { supabase } from "@/lib/supabase";
 import NotificationBell from "@/components/NotificationBell";
 
 interface PublicHeaderProps {
-  activePage?: "explorar" | "torneio" | "chaveamento";
+  activePage?: "hub" | "explorar" | "torneio" | "chaveamento";
 }
 
 export default function PublicHeader({ activePage }: PublicHeaderProps) {
@@ -83,7 +83,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
   };
 
   const isExplorarActive = pathname === "/explorar" || activePage === "explorar";
-  const isHubActive = pathname === "/hub";
+  const isHubActive = pathname === "/hub" || pathname === "/HubCentral" || activePage === "hub";
   const isEmoji = Boolean(
     avatarUrl && !avatarUrl.startsWith("http") && !avatarUrl.startsWith("data:")
   );
@@ -91,37 +91,28 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
   return (
     <header className="w-full border-b border-[#27272a] bg-[#141416]/95 backdrop-blur-md sticky top-0 z-40 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-        {/* Lado Esquerdo: Logotipo SportConnect */}
+        {/* Lado Esquerdo: Logotipo + Tipografia SportConnect */}
         <div className="flex items-center gap-3 shrink-0">
           <Link
             href={user ? "/hub" : "/explorar"}
-            className="flex items-center gap-2 group transition-transform active:scale-95"
+            className="flex items-center gap-2.5 group transition-transform active:scale-95"
           >
             <Image
               src="/logo.png"
               alt="SportConnect Logo"
-              width={140}
-              height={36}
+              width={40}
+              height={40}
               priority
-              className="h-8 w-auto object-contain group-hover:opacity-90 transition-opacity"
+              className="h-9 w-auto object-contain group-hover:opacity-90 transition-opacity"
             />
+            <span className="font-display font-black text-lg sm:text-xl tracking-tight text-white">
+              Sport<span className="text-[#00a2ff]">Connect</span>
+            </span>
           </Link>
         </div>
 
-        {/* Centro: Navegação Simples (Apenas Links de Texto) */}
+        {/* Centro: Navegação Ordenada (1º Hub Central, 2º Explorar Torneios) */}
         <nav className="hidden md:flex items-center gap-2">
-          <Link
-            href="/explorar"
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              isExplorarActive
-                ? "bg-[#1e1e1e] text-white border border-[#27272a] shadow-sm"
-                : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
-            }`}
-          >
-            <Compass className="h-4 w-4 text-[#00a2ff]" />
-            <span>Explorar Torneios</span>
-          </Link>
-
           {user && (
             <Link
               href="/hub"
@@ -135,6 +126,18 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
               <span>Hub Central</span>
             </Link>
           )}
+
+          <Link
+            href="/explorar"
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              isExplorarActive
+                ? "bg-[#1e1e1e] text-white border border-[#27272a] shadow-sm"
+                : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
+            }`}
+          >
+            <Compass className="h-4 w-4 text-[#00a2ff]" />
+            <span>Explorar Torneios</span>
+          </Link>
         </nav>
 
         {/* Lado Direito: Ações de Usuário / Menu Drop-down */}
@@ -262,6 +265,21 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
       {/* Menu Gaveta Mobile */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[#27272a] bg-[#141416] p-4 space-y-2 animate-fadeIn">
+          {user && (
+            <Link
+              href="/hub"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                isHubActive
+                  ? "bg-[#1e1e1e] text-white border border-[#27272a]"
+                  : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
+              }`}
+            >
+              <Sparkles className="h-4 w-4 text-[#00a2ff]" />
+              <span>Hub Central</span>
+            </Link>
+          )}
+
           <Link
             href="/explorar"
             onClick={() => setMobileMenuOpen(false)}
@@ -277,19 +295,6 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
 
           {user && (
             <>
-              <Link
-                href="/hub"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                  isHubActive
-                    ? "bg-[#1e1e1e] text-white border border-[#27272a]"
-                    : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
-                }`}
-              >
-                <Sparkles className="h-4 w-4 text-[#00a2ff]" />
-                <span>Hub Central</span>
-              </Link>
-
               <Link
                 href="/perfil"
                 onClick={() => setMobileMenuOpen(false)}

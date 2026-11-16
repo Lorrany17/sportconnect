@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     // 2. Buscar dados do torneio (valor de inscrição e chave Pix do organizador)
     const { data: tournament, error: tournError } = await supabase
       .from("tournaments")
-      .select("id, name, entry_fee, organizer_pix_key, owner_id")
+      .select("id, name, status, entry_fee, organizer_pix_key, owner_id")
       .eq("id", team.tournament_id)
       .maybeSingle();
 
@@ -46,6 +46,17 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Torneio vinculado à inscrição não foi encontrado." },
         { status: 404 }
+      );
+    }
+
+    if (
+      ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+        String(tournament.status || "").toUpperCase().trim()
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Ações não permitidas em torneios finalizados." },
+        { status: 403 }
       );
     }
 

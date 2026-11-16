@@ -194,6 +194,18 @@ export default function DetalhesTorneioPage() {
           setRefreshKey((prev) => prev + 1);
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tournaments",
+          filter: `id=eq.${id}`,
+        },
+        () => {
+          setRefreshKey((prev) => prev + 1);
+        }
+      )
       .subscribe();
 
     return () => {
@@ -1655,6 +1667,17 @@ export default function DetalhesTorneioPage() {
                           <Trophy className="h-4 w-4 text-amber-300" />
                           <span>CAMPEONATO EM ANDAMENTO</span>
                         </div>
+                      ) : (tournament.status === "COMPLETED" ||
+                        tournament.status === "FINALIZADO" ||
+                        tournament.status === "FINISHED") ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="w-full py-4 px-6 rounded-xl bg-zinc-800/90 border border-zinc-700 text-zinc-400 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center shadow-sm cursor-not-allowed opacity-85"
+                        >
+                          <Trophy className="h-4 w-4 text-amber-400/80" />
+                          <span>Torneio Finalizado</span>
+                        </button>
                       ) : tournament.status === "CLOSED" ? (
                         <div className="w-full py-4 px-6 rounded-xl bg-zinc-800/90 border border-zinc-700 text-zinc-400 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center shadow-sm">
                           <Lock className="h-4 w-4 text-zinc-400" />

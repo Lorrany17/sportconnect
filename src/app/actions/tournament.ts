@@ -1,6 +1,7 @@
 "use server";
 
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAuthenticatedUser, requireTournamentAccess } from "@/lib/serverAuth";
 import { revalidatePath } from "next/cache";
 
 export interface DeleteTournamentResponse {
@@ -19,43 +20,50 @@ export interface DeleteTournamentResponse {
  *    de todos os registros filhos dependentes (team_members, teams, matches, notifications, staff, etc.)
  *    e por fim deleta o torneio pai.
  */
-export async function deleteTournament(tournamentId: string): Promise<DeleteTournamentResponse> {
+export async function deleteTournament(
+  tournamentId: string,
+  forceCascade: boolean = false
+): Promise<DeleteTournamentResponse> {
   if (!tournamentId) {
     return { success: false, error: "ID do torneio não informado." };
   }
 
   try {
+    const authUser = await requireAuthenticatedUser();
+    await requireTournamentAccess(authUser, tournamentId, ["ADMIN"]);
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 1. Valida se existem inscrições ATIVAS (ignora CANCELLED e REJECTED)
-    const { data: teamsData, error: teamsError } = await supabaseAdmin
-      .from("teams")
-      .select("id, status, payment_status, cancellation_status", { count: "exact" })
-      .eq("tournament_id", tournamentId)
-      .neq("status", "CANCELLED")
-      .neq("status", "REJECTED");
+    if (!forceCascade) {
+      // 1. Valida se existem inscrições ATIVAS (ignora CANCELLED e REJECTED)
+      const { data: teamsData, error: teamsError } = await supabaseAdmin
+        .from("teams")
+        .select("id, status, payment_status, cancellation_status", { count: "exact" })
+        .eq("tournament_id", tournamentId)
+        .neq("status", "CANCELLED")
+        .neq("status", "REJECTED");
 
-    if (teamsError) {
-      console.error("[Tournament Action] Erro ao verificar equipes:", teamsError);
-      return { success: false, error: teamsError.message };
-    }
+      if (teamsError) {
+        console.error("[Tournament Action] Erro ao verificar equipes:", teamsError);
+        return { success: false, error: teamsError.message };
+      }
 
-    const activeTeams = (teamsData || []).filter(
-      (t) =>
-        t.status !== "CANCELLED" &&
-        t.status !== "REJECTED" &&
-        t.payment_status !== "CANCELED" &&
-        t.payment_status !== "CANCELLED" &&
-        t.payment_status !== "REJECTED" &&
-        t.cancellation_status !== "REFUNDED"
-    );
+      const activeTeams = (teamsData || []).filter(
+        (t) =>
+          t.status !== "CANCELLED" &&
+          t.status !== "REJECTED" &&
+          t.payment_status !== "CANCELED" &&
+          t.payment_status !== "CANCELLED" &&
+          t.payment_status !== "REJECTED" &&
+          t.cancellation_status !== "REFUNDED"
+      );
 
-    if (activeTeams.length > 0) {
-      return {
-        success: false,
-        error:
-          "Não é possível excluir um torneio com inscrições ativas. Cancele o torneio ou remova as inscrições primeiro.",
-      };
+      if (activeTeams.length > 0) {
+        return {
+          success: false,
+          error:
+            "Não é possível excluir um torneio com inscrições ativas. Cancele o torneio ou remova as inscrições primeiro.",
+        };
+      }
     }
 
     // 2. Cascading Delete Manual: Exclui registros filhos para evitar conflitos de Foreign Key
@@ -161,7 +169,28 @@ export async function inviteTournamentStaff(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser();
+    if (tournamentId) {
+      await requireTournamentAccess(authUser, tournamentId, ["ADMIN"]);
+    }
     const supabaseAdmin = getSupabaseAdmin();
+
+    if (tournamentId) {
+      const { data: existingTour } = await supabaseAdmin
+        .from("tournaments")
+        .select("status")
+        .eq("id", tournamentId)
+        .maybeSingle();
+
+      if (
+        existingTour &&
+        ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+          String(existingTour.status || "").toUpperCase().trim()
+        )
+      ) {
+        throw new Error("Ações não permitidas em torneios finalizados.");
+      }
+    }
 
     // 1. Obter informações básicas do torneio
     const { data: tour, error: tourErr } = await supabaseAdmin
@@ -293,6 +322,7 @@ export async function syncUserStaffAndNotifications(
   const cleanEmail = userEmail.trim().toLowerCase();
 
   try {
+    await requireAuthenticatedUser();
     const supabaseAdmin = getSupabaseAdmin();
 
     // 1. Buscar todos os registros de tournament_staff vinculados ao user_id ou e-mail
@@ -482,7 +512,28 @@ export async function saveTournamentAction(
   tournamentId?: string
 ): Promise<SaveTournamentResponse> {
   try {
+    const authUser = await requireAuthenticatedUser();
+    if (tournamentId) {
+      await requireTournamentAccess(authUser, tournamentId, ["ADMIN"]);
+    }
     const supabaseAdmin = getSupabaseAdmin();
+
+    if (tournamentId) {
+      const { data: existingTour } = await supabaseAdmin
+        .from("tournaments")
+        .select("status")
+        .eq("id", tournamentId)
+        .maybeSingle();
+
+      if (
+        existingTour &&
+        ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+          String(existingTour.status || "").toUpperCase().trim()
+        )
+      ) {
+        throw new Error("Ações não permitidas em torneios finalizados.");
+      }
+    }
 
     const resolvedRegulationUrl =
       payload.regulation_url !== undefined

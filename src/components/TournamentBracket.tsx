@@ -751,6 +751,32 @@ export default function TournamentBracket({
                         {renderMatchCard(thirdPlaceMatch, true)}
                       </div>
                     )}
+
+                    {/* Selo Comemorativo de Campeão */}
+                    {isLastRound && (() => {
+                      const finalM = group.matches[0];
+                      if (!finalM) return null;
+                      const statusUpper = String(finalM.status || "").toUpperCase().trim();
+                      const isCompleted = statusUpper === "COMPLETED" || statusUpper === "FINISHED" || statusUpper === "FINALIZADO";
+                      const winnerId = finalM.winnerId || (finalM as any).winner_id;
+                      if (!isCompleted || !winnerId) return null;
+                      const championTeam = winnerId === finalM.teamA?.id ? finalM.teamA : (winnerId === finalM.teamB?.id ? finalM.teamB : null);
+                      if (!championTeam || !championTeam.name || championTeam.name.includes("Aguardando")) return null;
+
+                      return (
+                        <div className="mt-5 p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-amber-500/20 border-2 border-amber-500/50 shadow-lg shadow-amber-500/10 text-center animate-scaleUp">
+                          <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-1.5 shadow-inner">
+                            <Trophy className="h-5 w-5 text-amber-400 animate-bounce" />
+                          </div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-amber-500 dark:text-amber-400">
+                            CAMPEÃO DA COMPETIÇÃO
+                          </div>
+                          <div className="text-sm font-black text-stone-900 dark:text-white mt-0.5 truncate">
+                            {championTeam.name}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );

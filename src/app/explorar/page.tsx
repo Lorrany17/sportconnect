@@ -39,6 +39,7 @@ export default function ExplorarPage() {
         const { data, error } = await supabase
           .from("tournaments")
           .select("*")
+          .not("status", "in", '("COMPLETED","FINALIZADO","FINISHED","CONCLUIDO","CANCELLED","CANCELADO")')
           .order("start_date", { ascending: false, nullsFirst: false });
 
         if (!isMounted) return;
@@ -113,8 +114,17 @@ export default function ExplorarPage() {
     };
   }, [contextTournaments]);
 
-  // Filtragem dos torneios
+  // Filtragem dos torneios (garantindo exclusão de torneios finalizados/cancelados)
   const filteredTournaments = tournaments.filter((t) => {
+    const statusUpper = String(t.status || "").toUpperCase().trim();
+    if (
+      ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO", "CANCELLED", "CANCELADO"].includes(
+        statusUpper
+      )
+    ) {
+      return false;
+    }
+
     const matchesSport =
       selectedSport === "TODOS" || (t.sport_type || "DOMINO") === selectedSport;
     const matchesSearch =

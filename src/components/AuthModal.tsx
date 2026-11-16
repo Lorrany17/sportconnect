@@ -15,6 +15,9 @@ import {
   LogIn,
   UserPlus,
   Phone,
+  ShieldCheck,
+  KeyRound,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { formatPhoneBR } from "@/app/perfil/page";
@@ -34,7 +37,7 @@ export default function AuthModal({
   onSuccess,
   embedded = false,
 }: AuthModalProps) {
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, verifyEmailOtp, verifyMfaCode, sendEmailOtp, cancelOtp, resetPassword } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"login" | "signup">(defaultTab);
   const [fullName, setFullName] = useState("");
@@ -42,6 +45,14 @@ export default function AuthModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpType, setOtpType] = useState<"email" | "signup">("email");
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -144,7 +155,7 @@ export default function AuthModal({
     try {
       if (activeTab === "signup") {
         // Envia options.data.full_name e phone para alimentar o Trigger da tabela profiles
-        const { data, error } = await signUp(
+        const { data, error, requiresOtp, otpType: nextOtpType } = await signUp(
           email.trim(),
           password,
           fullName.trim(),
@@ -153,25 +164,44 @@ export default function AuthModal({
 
         if (error) {
           setErrorMessage(mapAuthError(error.message));
-        } else {
-          if (data?.session) {
-            setSuccessMessage("Conta criada e autenticada com sucesso! Redirecionando...");
-            setTimeout(() => {
-              onSuccess?.();
-              onClose?.();
-            }, 1200);
-          } else {
-            setSuccessMessage(
-              "Cadastro realizado! Verifique seu e-mail caso seja necessária a confirmação para entrar."
-            );
-          }
+        } else if (requiresOtp) {
+          setOtpType(nextOtpType || "signup");
+          setOtpCode("");
+          setStep("otp");
+          setSuccessMessage("Enviamos um código numérico de verificação para o seu e-mail!");
+        } else if (data?.session) {
+          setSuccessMessage("Conta criada e autenticada com sucesso! Redirecionando...");
+          setTimeout(() => {
+            onSuccess?.();
+            onClose?.();
+          }, 1200);
         }
       } else {
-        // Login com e-mail e senha
-        const { error } = await signIn(email.trim(), password);
+        // Login com e-mail e senha (com suporte a MFA/2FA nativo do Supabase)
+        const {
+          error,
+          requiresOtp,
+          otpType: nextOtpType,
+          requiresMfa,
+          factorId,
+          challengeId,
+        } = await signIn(email.trim(), password);
 
         if (error) {
           setErrorMessage(mapAuthError(error.message));
+        } else if (requiresMfa && factorId && challengeId) {
+          setMfaFactorId(factorId);
+          setMfaChallengeId(challengeId);
+          setOtpCode("");
+          setStep("otp");
+          setSuccessMessage("Digite o código numérico do seu autenticador (2FA).");
+        } else if (requiresOtp) {
+          setMfaFactorId(null);
+          setMfaChallengeId(null);
+          setOtpType(nextOtpType || "email");
+          setOtpCode("");
+          setStep("otp");
+          setSuccessMessage("Credenciais válidas! Digite o código de 8 dígitos enviado para o seu e-mail.");
         } else {
           setSuccessMessage("Login efetuado com sucesso! Bem-vindo de volta.");
           setTimeout(() => {
@@ -186,6 +216,64 @@ export default function AuthModal({
       setErrorMessage(mapAuthError(msg));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const cleanCode = otpCode.replace(/\D/g, "").trim();
+    if (cleanCode.length < 6) {
+      setErrorMessage("Por favor, digite o código numérico completo enviado para o seu e-mail.");
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      const { error } =
+        mfaFactorId && mfaChallengeId
+          ? await verifyMfaCode(mfaFactorId, mfaChallengeId, cleanCode)
+          : await verifyEmailOtp(email.trim(), cleanCode, otpType);
+      if (error) {
+        setErrorMessage(
+          error.message.toLowerCase().includes("expired") || error.message.toLowerCase().includes("invalid")
+            ? "Código inválido ou expirado. Verifique seu e-mail ou solicite um novo código."
+            : mapAuthError(error.message)
+        );
+      } else {
+        setSuccessMessage("Verificação de segurança concluída! Entrando na plataforma...");
+        setTimeout(() => {
+          onSuccess?.();
+          onClose?.();
+        }, 800);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao validar código de verificação.";
+      setErrorMessage(mapAuthError(msg));
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!email.trim() || isResendingOtp) return;
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsResendingOtp(true);
+    try {
+      const { error } = await sendEmailOtp(email.trim());
+      if (error) {
+        setErrorMessage(mapAuthError(error.message));
+      } else {
+        setSuccessMessage("Novo código numérico de verificação enviado para o seu e-mail!");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao reenviar código.";
+      setErrorMessage(mapAuthError(msg));
+    } finally {
+      setIsResendingOtp(false);
     }
   };
 
@@ -216,45 +304,140 @@ export default function AuthModal({
           className="h-9 w-auto object-contain mb-4"
         />
         <h2 className="font-display font-black text-white text-lg tracking-wide uppercase">
-          {activeTab === "login" ? "Acessar Plataforma" : "Criar Nova Conta"}
+          {step === "otp"
+            ? "Verificação de Segurança"
+            : activeTab === "login"
+            ? "Acessar Plataforma"
+            : "Criar Nova Conta"}
         </h2>
         <p className="text-xs text-zinc-400 mt-1">
-          {activeTab === "login"
+          {step === "otp"
+            ? `Digite o código de verificação enviado para ${email}`
+            : activeTab === "login"
             ? "Entre com suas credenciais do SportConnect para gerenciar torneios"
             : "Cadastre-se para organizar campeonatos e acompanhar súmulas"}
         </p>
       </div>
 
-      {/* Seletor de Abas (Tabs: Entrar / Criar Conta) */}
-      <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#0f0f0f] border border-[#27272a] rounded-xl mb-6">
-        <button
-          type="button"
-          onClick={() => handleTabChange("login")}
-          className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === "login"
-              ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/25"
-              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
-          }`}
-        >
-          <LogIn className="h-3.5 w-3.5" />
-          <span>Entrar</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange("signup")}
-          className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === "signup"
-              ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/25"
-              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
-          }`}
-        >
-          <UserPlus className="h-3.5 w-3.5" />
-          <span>Criar Conta</span>
-        </button>
-      </div>
+      {step === "otp" ? (
+        <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fadeIn">
+          <div className="p-4 rounded-2xl bg-[#00a2ff]/10 border border-[#00a2ff]/25 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#00a2ff]/20 text-[#00a2ff] shrink-0">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Autenticação em duas etapas ativada. Verifique sua caixa de entrada (ou spam) e insira o código numérico abaixo.
+            </p>
+          </div>
 
-      {/* Formulário */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+              <KeyRound className="h-3.5 w-3.5 text-[#00a2ff]" />
+              <span>Código de Verificação (8 dígitos)</span>
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={8}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder="00000000"
+              className="w-full px-4 py-3.5 bg-[#0f0f0f] border border-[#27272a] focus:border-[#00a2ff] rounded-xl text-center font-mono text-2xl font-black tracking-[0.35em] text-white placeholder:text-zinc-700 outline-none transition-all shadow-inner"
+              autoFocus
+            />
+          </div>
+
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs font-medium flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{successMessage}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isVerifyingOtp || otpCode.length < 6}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#00a2ff] to-blue-600 hover:from-blue-500 hover:to-blue-600 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-blue-500/25 active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isVerifyingOtp ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Validando Código...</span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="h-4 w-4" />
+                <span>Verificar e Entrar</span>
+              </>
+            )}
+          </button>
+
+          <div className="flex items-center justify-between pt-2 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                cancelOtp();
+                setStep("credentials");
+                setOtpCode("");
+                setErrorMessage("");
+                setSuccessMessage("");
+              }}
+              className="inline-flex items-center gap-1 text-zinc-400 hover:text-white font-semibold cursor-pointer transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Voltar</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isResendingOtp}
+              onClick={handleResendOtp}
+              className="text-[#00a2ff] hover:text-blue-400 font-bold cursor-pointer disabled:opacity-50 transition-colors"
+            >
+              {isResendingOtp ? "Reenviando..." : "Reenviar código"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          {/* Seletor de Abas (Tabs: Entrar / Criar Conta) */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#0f0f0f] border border-[#27272a] rounded-xl mb-6">
+            <button
+              type="button"
+              onClick={() => handleTabChange("login")}
+              className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === "login"
+                  ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/25"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
+              }`}
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              <span>Entrar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("signup")}
+              className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === "signup"
+                  ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/25"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
+              }`}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>Criar Conta</span>
+            </button>
+          </div>
+
+          {/* Formulário */}
+          <form onSubmit={handleSubmit} className="space-y-4">
         {/* Campo Nome Completo (Apenas na aba de Cadastro) */}
         {activeTab === "signup" && (
           <div className="space-y-1.5">
@@ -415,6 +598,8 @@ export default function AuthModal({
           )}
         </button>
       </form>
+        </>
+      )}
     </div>
   );
 

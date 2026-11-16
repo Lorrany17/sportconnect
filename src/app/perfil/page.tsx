@@ -134,6 +134,9 @@ export interface AthleteTeam extends Team {
   tournamentName?: string;
   sportType?: SportType | string;
   tournamentStatus?: string;
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
+  tournamentLocation?: string | null;
 }
 
 export interface AthleteMatch {
@@ -434,7 +437,7 @@ export default function PerfilPage() {
         // Busca os times onde o usuário é membro (capitão ou atleta/parceiro convidado)
         const { data: memberRows, error: memberError } = await supabase
           .from("team_members")
-          .select("team_id, teams(*, tournaments(name, sport_type, status))")
+          .select("team_id, teams(*, tournaments(id, name, sport_type, status, start_date, end_date, location))")
           .eq("user_id", user.id);
 
         if (memberError) {
@@ -454,7 +457,7 @@ export default function PerfilPage() {
         // Fallback / Compatibilidade Histórica: busca também onde user_id = user.id na tabela teams
         const { data: directTeams } = await supabase
           .from("teams")
-          .select("*, tournaments(name, sport_type, status)")
+          .select("*, tournaments(id, name, sport_type, status, start_date, end_date, location)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -484,7 +487,7 @@ export default function PerfilPage() {
         if (missingTournIds.length > 0) {
           const { data: fbData } = await supabase
             .from("tournaments")
-            .select("id, name, sport_type, status")
+            .select("id, name, sport_type, status, start_date, end_date, location")
             .in("id", missingTournIds);
 
           if (fbData) {
@@ -510,6 +513,9 @@ export default function PerfilPage() {
             tournamentId: dbT.tournament_id,
             tournamentName: finalTourn?.name || "Torneio Oficial",
             tournamentStatus: finalTourn?.status,
+            tournamentStartDate: finalTourn?.start_date || null,
+            tournamentEndDate: finalTourn?.end_date || null,
+            tournamentLocation: finalTourn?.location || null,
             sportType: finalTourn?.sport_type || "DOMINO",
             payment_status: dbT.payment_status,
             manager_name: dbT.manager_name || dbT.player1,
@@ -1405,107 +1411,250 @@ export default function PerfilPage() {
               </div>
             </div>
 
-            {/* 3.3 Coluna Direita: Times Atuais (Tabela teams do Supabase) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-emerald-400" />
-                  <span>Times Atuais ({userTeams.length})</span>
-                </h3>
-                <Link
-                  href="/explorar"
-                  className="text-[11px] text-[#00a2ff] hover:underline font-bold"
-                >
-                  Inscrever-se
-                </Link>
-              </div>
+            {/* 3.3 Coluna Direita: Times Atuais & Histórico de Competições */}
+            <div className="space-y-6">
+              {(() => {
+                const isCompletedStatus = (st?: string) =>
+                  ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+                    String(st || "").toUpperCase().trim()
+                  );
+                const activeTeams = userTeams.filter((t) => !isCompletedStatus(t.tournamentStatus));
+                const completedTeams = userTeams.filter((t) => isCompletedStatus(t.tournamentStatus));
 
-              {userTeams.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-[#121214] border border-dashed border-[#27272a] text-center space-y-2">
-                  <Users className="h-8 w-8 text-zinc-600 mx-auto" />
-                  <p className="text-xs font-bold text-zinc-400">
-                    Ainda não estás inscrito em nenhum time.
-                  </p>
-                  <p className="text-[11px] text-zinc-600">
-                    Explore os campeonatos disponíveis e inscreva sua dupla ou equipe oficial.
-                  </p>
-                  <Link
-                    href="/explorar"
-                    className="inline-block px-3 py-1.5 rounded-xl bg-[#00a2ff]/15 hover:bg-[#00a2ff]/25 border border-[#00a2ff]/30 text-[#00a2ff] text-xs font-bold"
-                  >
-                    Explorar Torneios
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {userTeams.map((team) => (
-                    <div
-                      key={team.id}
-                      className="p-4 rounded-2xl bg-[#121214] border border-[#27272a] space-y-2.5 hover:border-zinc-700 transition-all shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          <h4 className="text-xs font-black text-white">{team.name}</h4>
-                          <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                            <Trophy className="h-3 w-3 text-amber-400 shrink-0" />
-                            <span className="font-semibold text-zinc-300">
-                              {team.tournamentName || "Torneio"}
-                            </span>
-                            {team.sportType && (
-                              <>
-                                <span className="text-zinc-600">•</span>
-                                <span className="text-[#00a2ff] font-medium">
-                                  {formatSportLabel(team.sportType)}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          {team.category && (
-                            <span className="text-[10px] text-zinc-500 block">
-                              Categoria: {team.category}
-                            </span>
-                          )}
-                        </div>
-                        {["IN_PROGRESS", "CLOSED", "EM_ANDAMENTO", "LIVE"].includes(
-                          String(team.tournamentStatus || "").toUpperCase()
-                        ) ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-blue-500 bg-blue-500/15 text-blue-400 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
-                            <PlayCircle className="h-3 w-3 text-blue-400" />
-                            <span>CAMPEONATO EM ANDAMENTO</span>
-                          </span>
-                        ) : team.status === "PAID" ||
-                          team.payment_status === "PAID" ||
-                          team.status === "APPROVED" ||
-                          team.payment_status === "APPROVED" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border border-emerald-500 bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                            <span>Inscrição Confirmada!</span>
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0">
-                            {team.status || "Ativo"}
-                          </span>
-                        )}
+                const getPlacementInfo = (team: AthleteTeam) => {
+                  const teamMatches = recentMatches.filter(
+                    (m) => m.tournamentId === team.tournamentId
+                  );
+                  const finalM = teamMatches.find((m) => {
+                    const ph = String(m.phase || "").toLowerCase();
+                    return (
+                      ph.includes("final") &&
+                      !ph.includes("semi") &&
+                      !ph.includes("third") &&
+                      !ph.includes("terceiro")
+                    );
+                  });
+                  if (finalM) {
+                    return finalM.result === "WIN"
+                      ? {
+                          label: "🥇 1º Lugar • Campeão",
+                          badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/35",
+                        }
+                      : {
+                          label: "🥈 2º Lugar • Vice",
+                          badgeClass: "bg-zinc-700/70 text-zinc-200 border-zinc-500/40",
+                        };
+                  }
+                  const thirdM = teamMatches.find((m) => {
+                    const ph = String(m.phase || "").toLowerCase();
+                    return ph.includes("third") || ph.includes("terceiro") || ph.includes("3º");
+                  });
+                  if (thirdM && thirdM.result === "WIN") {
+                    return {
+                      label: "🥉 3º Lugar • Bronze",
+                      badgeClass: "bg-amber-900/30 text-amber-400 border-amber-700/40",
+                    };
+                  }
+                  const semiM = teamMatches.find((m) =>
+                    String(m.phase || "").toLowerCase().includes("semi")
+                  );
+                  if (semiM) {
+                    return {
+                      label: "Semifinalista",
+                      badgeClass: "bg-blue-500/10 text-blue-300 border-blue-500/25",
+                    };
+                  }
+                  const qfM = teamMatches.find((m) =>
+                    String(m.phase || "").toLowerCase().includes("quarta")
+                  );
+                  if (qfM) {
+                    return {
+                      label: "Quartas de Final",
+                      badgeClass: "bg-indigo-500/10 text-indigo-300 border-indigo-500/25",
+                    };
+                  }
+                  return {
+                    label: "Torneio Finalizado",
+                    badgeClass: "bg-zinc-800 text-zinc-400 border-zinc-700",
+                  };
+                };
+
+                return (
+                  <>
+                    {/* Times Atuais */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2">
+                          <Users className="h-4 w-4 text-emerald-400" />
+                          <span>Times Atuais ({activeTeams.length})</span>
+                        </h3>
+                        <Link
+                          href="/explorar"
+                          className="text-[11px] text-[#00a2ff] hover:underline font-bold"
+                        >
+                          Inscrever-se
+                        </Link>
                       </div>
 
-                      <div className="pt-2 border-t border-[#27272a]/60 flex items-center justify-between text-[11px] text-zinc-500">
-                        <span>
-                          {team.players?.[0] && `Capitão: ${team.players[0]}`}
-                        </span>
-                        {team.tournamentId && (
+                      {activeTeams.length === 0 ? (
+                        <div className="p-6 rounded-2xl bg-[#121214] border border-dashed border-[#27272a] text-center space-y-2">
+                          <Users className="h-8 w-8 text-zinc-600 mx-auto" />
+                          <p className="text-xs font-bold text-zinc-400">
+                            Nenhum time ativo no momento.
+                          </p>
+                          <p className="text-[11px] text-zinc-600">
+                            Explore os campeonatos disponíveis e inscreva sua dupla ou equipe oficial.
+                          </p>
                           <Link
-                            href={`/torneio/${team.tournamentId}`}
-                            className="text-[#00a2ff] hover:underline flex items-center gap-0.5 font-medium"
+                            href="/explorar"
+                            className="inline-block px-3 py-1.5 rounded-xl bg-[#00a2ff]/15 hover:bg-[#00a2ff]/25 border border-[#00a2ff]/30 text-[#00a2ff] text-xs font-bold"
                           >
-                            <span>Ver Torneio</span>
-                            <ChevronRight className="h-3 w-3" />
+                            Explorar Torneios
                           </Link>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {activeTeams.map((team) => (
+                            <div
+                              key={team.id}
+                              className="p-4 rounded-2xl bg-[#121214] border border-[#27272a] space-y-2.5 hover:border-zinc-700 transition-all shadow-sm"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="space-y-1">
+                                  <h4 className="text-xs font-black text-white">{team.name}</h4>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                                    <Trophy className="h-3 w-3 text-amber-400 shrink-0" />
+                                    <span className="font-semibold text-zinc-300">
+                                      {team.tournamentName || "Torneio"}
+                                    </span>
+                                    {team.sportType && (
+                                      <>
+                                        <span className="text-zinc-600">•</span>
+                                        <span className="text-[#00a2ff] font-medium">
+                                          {formatSportLabel(team.sportType)}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                  {team.category && (
+                                    <span className="text-[10px] text-zinc-500 block">
+                                      Categoria: {team.category}
+                                    </span>
+                                  )}
+                                </div>
+                                {["IN_PROGRESS", "CLOSED", "EM_ANDAMENTO", "LIVE"].includes(
+                                  String(team.tournamentStatus || "").toUpperCase()
+                                ) ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-blue-500 bg-blue-500/15 text-blue-400 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
+                                    <PlayCircle className="h-3 w-3 text-blue-400" />
+                                    <span>CAMPEONATO EM ANDAMENTO</span>
+                                  </span>
+                                ) : team.status === "PAID" ||
+                                  team.payment_status === "PAID" ||
+                                  team.status === "APPROVED" ||
+                                  team.payment_status === "APPROVED" ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border border-emerald-500 bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                    <span>Inscrição Confirmada!</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0">
+                                    {team.status || "Ativo"}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="pt-2 border-t border-[#27272a]/60 flex items-center justify-between text-[11px] text-zinc-500">
+                                <span>
+                                  {team.players?.[0] && `Capitão: ${team.players[0]}`}
+                                </span>
+                                {team.tournamentId && (
+                                  <Link
+                                    href={`/torneio/${team.tournamentId}`}
+                                    className="text-[#00a2ff] hover:underline flex items-center gap-0.5 font-medium"
+                                  >
+                                    <span>Ver Torneio</span>
+                                    <ChevronRight className="h-3 w-3" />
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {/* Seção: Histórico de Competições */}
+                    <div className="space-y-4 pt-2 border-t border-[#27272a]">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-amber-400" />
+                          <span>Histórico de Competições ({completedTeams.length})</span>
+                        </h3>
+                      </div>
+
+                      {completedTeams.length === 0 ? (
+                        <div className="p-5 rounded-2xl bg-[#121214] border border-dashed border-[#27272a] text-center space-y-1.5">
+                          <p className="text-xs font-bold text-zinc-400">
+                            Nenhum torneio finalizado no seu histórico.
+                          </p>
+                          <p className="text-[11px] text-zinc-600">
+                            Quando um campeonato em que você participou for encerrado, ele aparecerá aqui com sua colocação.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {completedTeams.map((team) => {
+                            const placement = getPlacementInfo(team);
+                            const dateStr =
+                              team.tournamentEndDate || team.tournamentStartDate || team.createdAt;
+                            const formattedDate = dateStr
+                              ? new Date(dateStr).toLocaleDateString("pt-BR")
+                              : "Data não informada";
+
+                            return (
+                              <Link
+                                key={team.id}
+                                href={`/torneio/${team.tournamentId}`}
+                                className="block p-4 rounded-2xl bg-[#121214] border border-[#27272a] hover:border-amber-500/40 transition-all shadow-sm group"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="space-y-1 min-w-0">
+                                    <h4 className="text-xs font-black text-white group-hover:text-amber-300 transition-colors truncate">
+                                      {team.tournamentName || "Torneio Oficial"}
+                                    </h4>
+                                    <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+                                      <span className="truncate font-semibold text-zinc-300">
+                                        {team.name}
+                                      </span>
+                                      <span className="text-zinc-600">•</span>
+                                      <span>{formattedDate}</span>
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`px-2.5 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider shrink-0 ${placement.badgeClass}`}
+                                  >
+                                    {placement.label}
+                                  </span>
+                                </div>
+
+                                <div className="pt-2.5 mt-2.5 border-t border-[#27272a]/60 flex items-center justify-between text-[11px] text-zinc-500">
+                                  <span>{formatSportLabel(team.sportType || "DOMINO")}</span>
+                                  <span className="text-[#00a2ff] group-hover:underline flex items-center gap-0.5 font-semibold">
+                                    <span>Ver Pódio e Chaveamento</span>
+                                    <ChevronRight className="h-3 w-3" />
+                                  </span>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </main>

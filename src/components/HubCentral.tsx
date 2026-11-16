@@ -41,6 +41,7 @@ import { Tournament, SportType } from "@/types";
 import { translateTournamentFormat } from "@/utils/formatMap";
 import CreateTournamentModal from "@/components/CreateTournamentModal";
 import PixCheckoutForm from "@/components/PixCheckoutForm";
+import PublicHeader from "@/components/PublicHeader";
 import { cancelRegistration } from "@/app/actions/registration";
 import { syncUserStaffAndNotifications } from "@/app/actions/tournament";
 import NotificationBell from "@/components/NotificationBell";
@@ -84,6 +85,12 @@ export default function HubCentral() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [tournamentTab, setTournamentTab] = useState<"ACTIVE" | "COMPLETED">("ACTIVE");
+
+  const isTournamentCompletedStatus = (status?: string) => {
+    const st = String(status || "").toUpperCase().trim();
+    return st === "COMPLETED" || st === "FINALIZADO" || st === "FINISHED" || st === "CONCLUIDO";
+  };
 
   // Estados com os dados reais do usuário
   const [myTournaments, setMyTournaments] = useState<MyOrganizedTournament[]>([]);
@@ -555,114 +562,8 @@ export default function HubCentral() {
   
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
-      {/* 1. Header de Navegação Global */}
-      <header className="w-full border-b border-[#27272a] bg-[#141416]/95 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-          {/* Esquerda: Logotipo SportConnect */}
-          <div className="flex items-center gap-3 shrink-0">
-            <Link href="/hub" className="flex items-center gap-2 group">
-              <Image
-                src="/logo.png"
-                alt="SportConnect Logo"
-                width={140}
-                height={36}
-                priority
-                className="h-8 w-auto object-contain group-hover:opacity-90 transition-opacity"
-              />
-            </Link>
-            <span className="hidden lg:inline-block px-2.5 py-0.5 rounded-full bg-[#00a2ff]/10 text-[#00a2ff] border border-[#00a2ff]/20 text-[10px] font-black uppercase tracking-wider">
-              Dashboard
-            </span>
-          </div>
-
-          {/* Centro: Links de Navegação */}
-          <nav className="flex items-center gap-1.5 sm:gap-2">
-            <Link
-              href="/hub"
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#1e1e1e] text-white border border-[#27272a] shadow-sm flex items-center gap-1.5 transition-all"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#00a2ff] animate-pulse" />
-              <span>Início</span>
-            </Link>
-            <Link
-              href="/explorar"
-              className="px-3.5 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white hover:bg-[#1a1a1a] transition-all flex items-center gap-1.5"
-            >
-              <Compass className="h-3.5 w-3.5 text-zinc-400" />
-              <span>Explorar Torneios</span>
-            </Link>
-          </nav>
-
-          {/* Direita: Botão Novo Torneio + Menu do Usuário */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 hover:text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95"
-              >
-                <ShieldCheck className="h-4 w-4 text-purple-400" />
-                <span>⚙️ Central do Sistema</span>
-              </Link>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#00a2ff] to-blue-600 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Novo Torneio</span>
-            </button>
-
-            {/* Sino de Alertas do Organizador */}
-            <NotificationBell />
-
-            {/* Perfil do Usuário com link para /perfil */}
-            <Link
-              href="/perfil"
-              className="flex items-center gap-2 pl-2 sm:border-l border-zinc-800 hover:opacity-85 transition-opacity group cursor-pointer"
-              title="Acessar Meu Perfil"
-            >
-              {profile?.avatar_url ? (
-                profile.avatar_url && !profile.avatar_url.startsWith("http") && !profile.avatar_url.startsWith("data:") ? (
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500/25 via-[#1c1c20] to-zinc-800 flex items-center justify-center text-sm select-none border border-zinc-700/80 shadow-inner shrink-0 group-hover:border-[#00a2ff] transition-colors">
-                    <span>{profile.avatar_url}</span>
-                  </div>
-                ) : (
-                  <img
-                    src={profile.avatar_url}
-                    alt={userName}
-                    className="w-8 h-8 rounded-xl object-cover border border-zinc-700/80 shadow-inner shrink-0 group-hover:border-[#00a2ff] transition-colors"
-                  />
-                )
-              ) : (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center uppercase shadow-inner shrink-0 group-hover:from-blue-500 group-hover:to-indigo-500 transition-all">
-                  {userName.charAt(0)}
-                </div>
-              )}
-              <div className="hidden md:flex flex-col text-left">
-                <span className="text-xs font-bold text-white group-hover:text-[#00a2ff] transition-colors truncate max-w-[140px] leading-tight">
-                  {userName}
-                </span>
-                <span className="text-[10px] text-zinc-500 truncate max-w-[140px]">
-                  {user?.email}
-                </span>
-              </div>
-            </Link>
-
-            {/* Logout */}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-xs font-bold text-red-500 hover:text-red-400 transition-all cursor-pointer shadow-sm active:scale-95 flex items-center gap-1.5"
-              title="Encerrar sessão"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* 1. Header de Navegação Global Uniformizado */}
+      <PublicHeader activePage="hub" />
 
       {/* 2. Conteúdo Principal da Dashboard */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
@@ -685,7 +586,16 @@ export default function HubCentral() {
             </div>
 
             {/* Ações do Topo */}
-            <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
+            <div className="flex flex-wrap items-center gap-3 shrink-0 self-start md:self-auto">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00a2ff] to-blue-600 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Novo Torneio</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleRefresh}
@@ -902,6 +812,11 @@ export default function HubCentral() {
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400 text-[10px] font-black uppercase tracking-wider">
                                 <Ban className="h-3 w-3" />
                                 <span>Cancelado / Estornado</span>
+                              </span>
+                            ) : isTournamentCompletedStatus(tournStatus) ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-black uppercase tracking-wider">
+                                <Trophy className="h-3 w-3 text-amber-400" />
+                                <span>Torneio Finalizado</span>
                               </span>
                             ) : isApproved && isTournamentInProgress ? (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-blue-500 text-blue-400 bg-blue-500/10 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(59,130,246,0.3)] animate-pulse">
@@ -1142,62 +1057,147 @@ export default function HubCentral() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {myTournaments.map((tourn) => {
-                    const sportType = tourn.sport_type || "DOMINO";
-                    const sportInfo = SPORT_META[sportType] || SPORT_META.DOMINO;
-                    const maxVagas = tourn.max_teams || 16;
-                    const preenchidas = tourn.teamsCount;
-                    const pct = Math.min(100, Math.round((preenchidas / maxVagas) * 100));
+                (() => {
+                  const activeMyTournaments = myTournaments.filter(
+                    (t) => !isTournamentCompletedStatus(t.status)
+                  );
+                  const completedMyTournaments = myTournaments.filter((t) =>
+                    isTournamentCompletedStatus(t.status)
+                  );
+                  const displayedTournaments =
+                    tournamentTab === "ACTIVE" ? activeMyTournaments : completedMyTournaments;
 
-                    const isFinalizado = tourn.status === "FINALIZADO";
+                  return (
+                    <div className="space-y-5">
+                      {/* Abas de Segregação: Ativos vs Histórico / Finalizados */}
+                      <div className="flex flex-wrap items-center gap-2 bg-[#141416] p-1.5 rounded-2xl border border-[#27272a] w-fit">
+                        <button
+                          type="button"
+                          onClick={() => setTournamentTab("ACTIVE")}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                            tournamentTab === "ACTIVE"
+                              ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
+                              : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+                          }`}
+                        >
+                          <span>Torneios Ativos</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                              tournamentTab === "ACTIVE"
+                                ? "bg-white/20 text-white"
+                                : "bg-zinc-800 text-zinc-400"
+                            }`}
+                          >
+                            {activeMyTournaments.length}
+                          </span>
+                        </button>
 
-                    return (
-                      <div
-                        key={tourn.id}
-                        onClick={() => {
-                          setCurrentTournamentId(tourn.id);
-                          router.push(`/dashboard/${tourn.id}`);
-                        }}
-                        className="bg-[#1a1a1a] border border-[#27272a] hover:border-[#00a2ff]/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-xl hover:shadow-[#00a2ff]/10 cursor-pointer group relative overflow-hidden"
-                      >
-                        {/* Linha decorativa superior azul */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] to-indigo-500" />
+                        <button
+                          type="button"
+                          onClick={() => setTournamentTab("COMPLETED")}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                            tournamentTab === "COMPLETED"
+                              ? "bg-zinc-700 text-white shadow-md"
+                              : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+                          }`}
+                        >
+                          <span>Histórico / Finalizados</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                              tournamentTab === "COMPLETED"
+                                ? "bg-white/20 text-white"
+                                : "bg-zinc-800 text-zinc-400"
+                            }`}
+                          >
+                            {completedMyTournaments.length}
+                          </span>
+                        </button>
+                      </div>
 
-                        <div className="space-y-4">
-                          {/* Topo do Card: Modalidade & Status do Torneio */}
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#121214] border border-zinc-800 text-[11px] font-bold text-zinc-300">
-                              <span>{sportInfo.icon}</span>
-                              <span>{sportInfo.label}</span>
-                              {tourn.format && (
-                                <>
-                                  <span className="text-zinc-600">•</span>
-                                  <span className="text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
-                                </>
-                              )}
-                            </span>
+                      {displayedTournaments.length === 0 ? (
+                        <div className="border border-dashed border-zinc-800 bg-[#141416]/40 rounded-2xl p-8 text-center space-y-2">
+                          <Trophy className="h-8 w-8 text-zinc-600 mx-auto" />
+                          <h3 className="text-sm font-bold text-zinc-300">
+                            {tournamentTab === "ACTIVE"
+                              ? "Nenhum torneio ativo no momento"
+                              : "Nenhum torneio finalizado no histórico ainda"}
+                          </h3>
+                          <p className="text-xs text-zinc-500">
+                            {tournamentTab === "ACTIVE"
+                              ? "Crie um novo campeonato ou confira seus eventos encerrados na aba Histórico."
+                              : "Quando você encerrar um campeonato após concluir todas as partidas, ele aparecerá arquivado aqui."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                          {displayedTournaments.map((tourn) => {
+                            const sportType = tourn.sport_type || "DOMINO";
+                            const sportInfo = SPORT_META[sportType] || SPORT_META.DOMINO;
+                            const maxVagas = tourn.max_teams || 16;
+                            const preenchidas = tourn.teamsCount;
+                            const pct = Math.min(100, Math.round((preenchidas / maxVagas) * 100));
 
-                            <div className="flex items-center gap-1.5">
-                              {String(tourn.status || "").toUpperCase() === "IN_PROGRESS" ||
-                              String(tourn.status || "").toUpperCase() === "EM_ANDAMENTO" ||
-                              String(tourn.status || "").toUpperCase() === "LIVE" ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 border border-blue-400 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 animate-pulse">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                  <span>CAMPEONATO EM ANDAMENTO</span>
-                                </span>
-                              ) : isFinalizado ? (
-                                <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 text-[10px] font-bold uppercase tracking-wider">
-                                  Finalizado
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black uppercase tracking-wider">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                  <span>Ativo</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                            const isFinalizado = isTournamentCompletedStatus(tourn.status);
+                            const isCancelado =
+                              String(tourn.status || "").toUpperCase() === "CANCELLED" ||
+                              String(tourn.status || "").toUpperCase() === "CANCELADO";
+
+                            return (
+                              <div
+                                key={tourn.id}
+                                onClick={() => {
+                                  setCurrentTournamentId(tourn.id);
+                                  router.push(`/dashboard/${tourn.id}`);
+                                }}
+                                className="bg-[#1a1a1a] border border-[#27272a] hover:border-[#00a2ff]/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-xl hover:shadow-[#00a2ff]/10 cursor-pointer group relative overflow-hidden"
+                              >
+                                {/* Linha decorativa superior azul */}
+                                <div
+                                  className={`absolute top-0 left-0 right-0 h-1 ${
+                                    isFinalizado
+                                      ? "bg-zinc-600"
+                                      : "bg-gradient-to-r from-[#00a2ff] to-indigo-500"
+                                  }`}
+                                />
+
+                                <div className="space-y-4">
+                                  {/* Topo do Card: Modalidade & Status do Torneio */}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#121214] border border-zinc-800 text-[11px] font-bold text-zinc-300">
+                                      <span>{sportInfo.icon}</span>
+                                      <span>{sportInfo.label}</span>
+                                      {tourn.format && (
+                                        <>
+                                          <span className="text-zinc-600">•</span>
+                                          <span className="text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
+                                        </>
+                                      )}
+                                    </span>
+
+                                    <div className="flex items-center gap-1.5">
+                                      {isFinalizado ? (
+                                        <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 text-[10px] font-black uppercase tracking-wider">
+                                          FINALIZADO
+                                        </span>
+                                      ) : isCancelado ? (
+                                        <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/25 text-[10px] font-black uppercase tracking-wider">
+                                          CANCELADO
+                                        </span>
+                                      ) : String(tourn.status || "").toUpperCase() === "IN_PROGRESS" ||
+                                        String(tourn.status || "").toUpperCase() === "EM_ANDAMENTO" ||
+                                        String(tourn.status || "").toUpperCase() === "LIVE" ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 border border-blue-400 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 animate-pulse">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                          <span>EM ANDAMENTO</span>
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                          <span>Ativo</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
 
                           {/* Nome do Torneio */}
                           <div>
@@ -1260,7 +1260,11 @@ export default function HubCentral() {
                       </div>
                     );
                   })}
-                </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </section>
 
@@ -1307,7 +1311,7 @@ export default function HubCentral() {
                     const maxVagas = tourn.max_teams || 16;
                     const preenchidas = tourn.teamsCount;
                     const pct = Math.min(100, Math.round((preenchidas / maxVagas) * 100));
-                    const isFinalizado = tourn.status === "FINALIZADO";
+                    const isFinalizado = isTournamentCompletedStatus(tourn.status);
 
                     return (
                       <div

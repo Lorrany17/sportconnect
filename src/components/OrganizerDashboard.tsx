@@ -45,7 +45,7 @@ import RefereePanel from "@/components/RefereePanel";
 import ShareTournamentModal from "@/components/ShareTournamentModal";
 import CloseRegistrationsModal from "@/components/CloseRegistrationsModal";
 import BracketViewer from "@/components/BracketViewer";
-import { generateBracket, generateKnockoutFromGroups } from "@/app/actions/bracket";
+import { generateBracket, generateKnockoutFromGroups, forceCompleteTournamentAction } from "@/app/actions/bracket";
 import { deleteTournament } from "@/app/actions/tournament";
 import { useTournamentPermissions } from "@/hooks/useTournamentPermissions";
 import NotificationBell from "@/components/NotificationBell";
@@ -81,6 +81,14 @@ export default function OrganizerDashboard({
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isForcingEnd, setIsForcingEnd] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Estados de dados reais vindos do Supabase
   const [dbTournament, setDbTournament] = useState<Tournament | null>(null);
@@ -366,33 +374,37 @@ export default function OrganizerDashboard({
     return context.matches;
   }, [propMatches, context.matches]);
 
-  // Ação 1: Cancelar Torneio
+  // Ação 1: Cancelar / Reativar Torneio
   const handleCancelTournament = async () => {
     if (!currentTour?.id || !canEditSettings) return;
     setShowOptionsMenu(false);
 
     const isAlreadyCanceled = currentTour.status === "CANCELLED" || currentTour.status === "CANCELADO";
+    const reactivateStatus = dbMatches.length > 0 || hasDbMatches ? "IN_PROGRESS" : "OPEN";
     const confirmMsg = isAlreadyCanceled
-      ? "Deseja reativar este torneio para o status ATIVO?"
+      ? `Deseja reativar este torneio para o status ${reactivateStatus === "IN_PROGRESS" ? "EM ANDAMENTO (IN_PROGRESS)" : "INSCRIÇÕES ABERTAS (OPEN)"}?`
       : "Tem a certeza que deseja cancelar este torneio? O status será alterado para CANCELADO.";
 
     if (!window.confirm(confirmMsg)) return;
 
     setIsCanceling(true);
     try {
-      const nextStatus = isAlreadyCanceled ? "ATIVO" : "CANCELLED";
+      const nextStatus = isAlreadyCanceled ? reactivateStatus : "CANCELLED";
       const { error } = await supabase
         .from("tournaments")
         .update({ status: nextStatus })
         .eq("id", currentTour.id);
 
       if (error) {
-        console.error("Erro ao cancelar torneio:", JSON.stringify(error, null, 2));
+        console.error("Erro ao cancelar/reativar torneio:", JSON.stringify(error, null, 2));
         alert(`Erro ao alterar status do torneio: ${error.message}`);
         return;
       }
 
       setDbTournament((prev) => (prev ? { ...prev, status: nextStatus } : null));
+      context.setTournaments((prev) =>
+        prev.map((t) => (t.id === currentTour.id ? { ...t, status: nextStatus } : t))
+      );
       alert(`Torneio ${isAlreadyCanceled ? "reativado" : "cancelado"} com sucesso.`);
       fetchTournamentData();
     } catch (err: unknown) {
@@ -403,7 +415,7 @@ export default function OrganizerDashboard({
     }
   };
 
-  // Ação 2: Excluir Torneio (Ação Destrutiva com Validação de Inscrições Ativas)
+  // Ação 2: Excluir Torneio (com opção de exclusão em cascata com confirmação dupla)
   const handleDeleteTournament = async () => {
     if (!currentTour?.id || !canEditSettings) return;
     setShowOptionsMenu(false);
@@ -434,15 +446,35 @@ export default function OrganizerDashboard({
           t.cancellation_status !== "REFUNDED"
       );
 
-      // Se houver equipes com inscrições ativas
+      // Se houver equipes com inscrições ativas: oferece confirmação dupla para exclusão em cascata
       if (activeTeams.length > 0) {
-        alert(
-          "Não é possível excluir um torneio com inscrições ativas. Cancele o torneio ou remova as inscrições primeiro."
+        const cascadeConfirmed = window.confirm(
+          `⚠️ ATENÇÃO: Isto apagará o torneio e TODAS as ${activeTeams.length} inscrições atreladas.\n\nDeseja continuar?`
         );
+        if (!cascadeConfirmed) {
+          return;
+        }
+
+        const secondConfirm = window.confirm(
+          "Confirmação final: Esta ação é irreversível e removerá permanentemente todas as equipes, partidas e dados deste torneio. Tem a certeza?"
+        );
+        if (!secondConfirm) {
+          return;
+        }
+
+        const res = await deleteTournament(currentTour.id, true);
+        if (!res.success) {
+          alert(res.error || "Erro ao excluir torneio em cascata.");
+          return;
+        }
+
+        context.setTournaments((prev) => prev.filter((t) => t.id !== currentTour.id));
+        alert("Torneio e todas as inscrições atreladas foram excluídos com sucesso.");
+        router.push("/hub");
         return;
       }
 
-      // 2. Confirmação do utilizador
+      // 2. Confirmação padrão do utilizador quando não há inscrições ativas
       if (
         !window.confirm(
           "Tem a certeza que deseja excluir permanentemente este torneio? Esta ação não pode ser desfeita."
@@ -1127,7 +1159,13 @@ export default function OrganizerDashboard({
               handleGenerateBracket()
             }
             canManageFinances={canManageFinances}
-            isReadOnly={!canManageFinances || context.isReadOnly}
+            isReadOnly={
+              !canManageFinances ||
+              context.isReadOnly ||
+              ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+                String(currentTour?.status || "").toUpperCase().trim()
+              )
+            }
             onFinishTournament={
               currentTour?.id && canEditSettings ? () => context.handleFinishTournament(currentTour.id) : undefined
             }
@@ -1208,7 +1246,13 @@ export default function OrganizerDashboard({
               await context.handleResetMatch(matchId);
               await fetchTournamentData();
             }}
-            isReadOnly={!canEditScores || context.isReadOnly}
+            isReadOnly={
+              !canEditScores ||
+              context.isReadOnly ||
+              ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+                String(currentTour?.status || "").toUpperCase().trim()
+              )
+            }
             sportType={sportType}
           />
         )}
@@ -1398,65 +1442,77 @@ export default function OrganizerDashboard({
           )}
 
           {/* Grupo de Ações do Torneio: Editar + Menu de Opções (Cancelar e Excluir) */}
-          {canEditSettings && (
-            <div className="flex items-center gap-2 relative">
-              <button
-                onClick={() => setShowEditModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-                title="Editar dados e configurações do campeonato"
-              >
-                <Pencil className="h-3.5 w-3.5 text-[#00a2ff]" />
-                <span>Editar</span>
-              </button>
+          {canEditSettings && (() => {
+            const isTourCompleted = ["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+              String(currentTour?.status || "").toUpperCase().trim()
+            );
 
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowOptionsMenu((prev) => !prev)}
-                  className="p-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-zinc-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center"
-                  title="Mais opções do torneio"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-
-                {showOptionsMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowOptionsMenu(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-2 w-52 bg-[#18181b] border border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 animate-fadeIn space-y-1">
-                      <button
-                        type="button"
-                        onClick={handleCancelTournament}
-                        disabled={isCanceling}
-                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        <Ban className="h-4 w-4 shrink-0 text-amber-400" />
-                        <span>
-                          {currentTour?.status === "CANCELLED" || currentTour?.status === "CANCELADO"
-                            ? "Reativar Torneio"
-                            : "Cancelar Torneio"}
-                        </span>
-                      </button>
-
-                      <div className="border-t border-zinc-800/80 my-1" />
-
-                      <button
-                        type="button"
-                        onClick={handleDeleteTournament}
-                        disabled={isDeleting}
-                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4 shrink-0 text-red-400" />
-                        <span>Excluir Torneio</span>
-                      </button>
-                    </div>
-                  </>
+            return (
+              <div className="flex items-center gap-2 relative">
+                {!isTourCompleted && (
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Editar dados e configurações do campeonato"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-[#00a2ff]" />
+                    <span>Editar</span>
+                  </button>
                 )}
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowOptionsMenu((prev) => !prev)}
+                    className="p-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-zinc-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center"
+                    title="Mais opções do torneio"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+
+                  {showOptionsMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowOptionsMenu(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-2 w-52 bg-[#18181b] border border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 animate-fadeIn space-y-1">
+                        {!isTourCompleted && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleCancelTournament}
+                              disabled={isCanceling}
+                              className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <Ban className="h-4 w-4 shrink-0 text-amber-400" />
+                              <span>
+                                {currentTour?.status === "CANCELLED" || currentTour?.status === "CANCELADO"
+                                  ? "Reativar Torneio"
+                                  : "Cancelar Torneio"}
+                              </span>
+                            </button>
+
+                            <div className="border-t border-zinc-800/80 my-1" />
+                          </>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={handleDeleteTournament}
+                          disabled={isDeleting}
+                          className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4 shrink-0 text-red-400" />
+                          <span>Excluir Torneio</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -1484,6 +1540,103 @@ export default function OrganizerDashboard({
           </div>
         </div>
       )}
+
+      {/* Banner Condicional de Encerramento Manual do Campeonato */}
+      {(() => {
+        const tourMatches =
+          dbMatches.length > 0
+            ? dbMatches
+            : context.currentTournamentId === targetTournamentId && hasDbMatches !== false
+              ? context.matches
+              : [];
+        const canClose =
+          Boolean(tourMatches) &&
+          tourMatches.length > 0 &&
+          tourMatches.every(
+            (m: any) => String(m.status || "").toUpperCase().trim() === "COMPLETED"
+          );
+        const rawTourStatus = String(currentTour?.status || "").toUpperCase().trim();
+        const isAlreadyClosed = [
+          "COMPLETED",
+          "FINALIZADO",
+          "FINISHED",
+          "CONCLUIDO",
+          "CANCELLED",
+          "CANCELADO",
+        ].includes(rawTourStatus);
+
+        if (
+          !(canEditSettings || isSuperAdmin) ||
+          !targetTournamentId ||
+          isAlreadyClosed ||
+          !canClose
+        ) {
+          return null;
+        }
+
+        return (
+          <div className="bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-amber-500/15 border-2 border-emerald-500/40 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 shadow-inner">
+                <Trophy className="h-6 w-6 text-amber-400" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-sm sm:text-base font-black text-white tracking-tight">
+                  Campeonato Pronto para Encerramento Oficial
+                </h3>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  Todos os confrontos foram finalizados. Clique aqui para encerrar o campeonato e gerar o pódio oficial.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={isForcingEnd}
+              onClick={async () => {
+                if (!targetTournamentId) return;
+                setIsForcingEnd(true);
+                try {
+                  const res = await forceCompleteTournamentAction(targetTournamentId);
+                  if (!res.success) {
+                    setToast({
+                      message: res.error || "Não foi possível encerrar o campeonato.",
+                      type: "error",
+                    });
+                  } else {
+                    setDbTournament((prev) =>
+                      prev ? { ...prev, status: "COMPLETED" } : prev
+                    );
+                    await fetchTournamentData();
+                    router.refresh();
+                    setToast({
+                      message: "Campeonato encerrado com sucesso! O pódio oficial foi liberado.",
+                      type: "success",
+                    });
+                  }
+                } catch (err: any) {
+                  setToast({
+                    message: err?.message || "Erro ao encerrar o campeonato.",
+                    type: "error",
+                  });
+                } finally {
+                  setIsForcingEnd(false);
+                }
+              }}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/25 active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
+            >
+              {isForcingEnd ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Encerrando...</span>
+                </>
+              ) : (
+                <span>✅ Encerrar Campeonato</span>
+              )}
+            </button>
+          </div>
+        );
+      })()}
 
       {/* 2. Cartão de Informação do Torneio (Topo) */}
       <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
@@ -1540,6 +1693,36 @@ export default function OrganizerDashboard({
           </div>
         </div>
       </div>
+
+      {/* Banner de Ação para Torneio Cancelado (Gestão de Reembolsos / Remoção de Equipes) */}
+      {(currentTour?.status === "CANCELLED" || currentTour?.status === "CANCELADO") && (
+        <div className="bg-red-950/30 border border-red-500/35 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 shrink-0">
+              <Ban className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-black text-white">
+                Torneio Cancelado • Gestão de Inscrições Liberada
+              </h3>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                O painel de inscrições permanece ativo para que você possa realizar estornos, remover equipes ou reativar o evento.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleShortcutClick("teams")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Gerenciar Inscrições ({confirmedTeamsCount + pendingCount})</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Banner de Destaque: Chaveamento Oficial Pronto ou Regenerável */}
       {canGenerateBracket && canEditSettings && (
@@ -1657,7 +1840,14 @@ export default function OrganizerDashboard({
             {/* Status e Botão de Encerramento Manual de Inscrições */}
             {canEditSettings && (
               <div className="pt-3 mt-3 border-t border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                {currentTour?.status === "CLOSED" ? (
+                {["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
+                  String(currentTour?.status || "").toUpperCase().trim()
+                ) ? (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-400 font-bold uppercase tracking-wider">
+                    <Lock className="h-3.5 w-3.5 text-zinc-400" />
+                    <span>TORNEIO FINALIZADO</span>
+                  </div>
+                ) : currentTour?.status === "CLOSED" ? (
                   <>
                     <div className="flex items-center gap-1.5 text-xs text-red-400 font-bold uppercase tracking-wider">
                       <Lock className="h-3.5 w-3.5" />
@@ -2006,6 +2196,26 @@ export default function OrganizerDashboard({
         confirmedTeamsCount={confirmedTeamsCount}
         maxSpots={maxSpots}
       />
+
+      {/* Toast Flutuante de Feedback */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 animate-fadeIn max-w-sm">
+          <div
+            className={`px-4 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 backdrop-blur-md ${
+              toast.type === "success"
+                ? "bg-emerald-950/90 border-emerald-500/50 text-emerald-200"
+                : "bg-red-950/90 border-red-500/50 text-red-200"
+            }`}
+          >
+            {toast.type === "success" ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
+            )}
+            <span className="text-xs font-bold leading-snug">{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAuthenticatedUser, requireTournamentAccess } from "@/lib/serverAuth";
 import {
   cancelRegistration as baseCancelRegistration,
   type CancelRegistrationParams,
@@ -223,6 +224,10 @@ export async function generateLeagueMatches(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournament_id) {
+      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     // 1. Verifica se já existem partidas criadas e se alguma já iniciou
@@ -396,6 +401,10 @@ export async function generateGroupStage(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournament_id) {
+      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     // 1. Verifica se já existem partidas criadas e se alguma já iniciou
@@ -677,6 +686,10 @@ export async function generateKnockoutFromGroups(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournament_id) {
+      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     const { data: tournamentRow } = await supabase
@@ -1606,6 +1619,10 @@ export async function generateBracket(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournament_id) {
+      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     // 1. Verifica se já existem partidas criadas e se alguma já iniciou
@@ -1930,6 +1947,10 @@ export async function startTournamentAction(
     return { success: false, error: "ID do torneio não fornecido." };
   }
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournament_id) {
+      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
     await setTournamentStatusInProgress(supabase, tournament_id);
     return {
@@ -1967,6 +1988,7 @@ export interface CompleteMatchResponse {
   winnerId?: string;
   nextMatchId?: string | null;
   advancedToSlot?: string | null;
+  tournamentCompleted?: boolean;
 }
 
 /**
@@ -1982,6 +2004,7 @@ export async function completeMatchAction(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     const { data: match, error: fetchErr } = await supabase
@@ -1995,6 +2018,10 @@ export async function completeMatchAction(
         success: false,
         error: `Partida não encontrada no banco: ${fetchErr?.message || "ID inexistente"}`,
       };
+    }
+
+    if (match.tournament_id) {
+      await requireTournamentAccess(authUser, match.tournament_id, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
     }
 
     const team1_id = match.team1_id || match.team_a_id;
@@ -2525,6 +2552,100 @@ export async function finishMatch(
   return completeMatchAction(paramsOrMatchId);
 }
 
+/**
+ * Server Action de força bruta (Bypass de RLS via Service Role) para encerrar o torneio manualmente.
+ */
+export async function forceCompleteTournamentAction(
+  tournamentId: string,
+  userAuthToken?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!tournamentId) {
+    return { success: false, error: "ID do torneio não fornecido." };
+  }
+
+  try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    await requireTournamentAccess(authUser, tournamentId, ["ADMIN"]);
+
+    let client: any = null;
+    try {
+      client = getSupabaseAdmin();
+    } catch (adminErr) {
+      console.warn("[forceCompleteTournamentAction] Fallback para cliente autenticado:", adminErr);
+      client = await createAuthenticatedSupabase(userAuthToken);
+    }
+
+    const { data: tourMatches, error: matchesCheckErr } = await client
+      .from("matches")
+      .select("id, status")
+      .eq("tournament_id", tournamentId);
+
+    if (matchesCheckErr) {
+      return { success: false, error: `Erro ao validar partidas do torneio: ${matchesCheckErr.message}` };
+    }
+
+    if (!tourMatches || tourMatches.length === 0) {
+      throw new Error("Não existem partidas finalizadas para encerrar este torneio.");
+    }
+
+    const allDone = tourMatches.every(
+      (m: any) => String(m.status || "").toUpperCase().trim() === "COMPLETED"
+    );
+    if (!allDone) {
+      return {
+        success: false,
+        error: "Ainda existem partidas pendentes ou em andamento neste torneio.",
+      };
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const { error: err1 } = await client
+      .from("tournaments")
+      .update({
+        status: "COMPLETED",
+        end_date: nowIso,
+        current_stage: "completed",
+      })
+      .eq("id", tournamentId);
+
+    if (err1) {
+      const { error: err2 } = await client
+        .from("tournaments")
+        .update({
+          status: "COMPLETED",
+          end_date: nowIso,
+        })
+        .eq("id", tournamentId);
+
+      if (err2) {
+        const { error: err3 } = await client
+          .from("tournaments")
+          .update({ status: "COMPLETED" })
+          .eq("id", tournamentId);
+
+        if (err3) {
+          console.error("[forceCompleteTournamentAction] Erro ao atualizar torneio:", err3);
+          return { success: false, error: err3.message || "Falha ao atualizar status do torneio." };
+        }
+      }
+    }
+
+    try {
+      revalidatePath(`/dashboard/${tournamentId}/bracket`, "page");
+      revalidatePath(`/dashboard/${tournamentId}`, "page");
+      revalidatePath(`/dashboard/torneios/${tournamentId}`, "page");
+      revalidatePath(`/torneio/${tournamentId}`, "page");
+      revalidatePath(`/torneio/${tournamentId}/chaveamento`, "page");
+    } catch (_) {}
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[forceCompleteTournamentAction] Exceção:", err);
+    return { success: false, error: err?.message || "Erro interno ao encerrar torneio." };
+  }
+}
+
 export async function getTournamentMatches(tournament_id: string) {
   if (!tournament_id) return [];
 
@@ -2753,6 +2874,10 @@ export async function updateMatchParticipants(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournamentId) {
+      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
     const adminClient = getSupabaseAdmin() || supabase;
 
@@ -2836,6 +2961,10 @@ export async function swapTeams(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournamentId) {
+      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
     const adminClient = getSupabaseAdmin() || supabase;
 
@@ -2992,6 +3121,10 @@ export async function updateMatchScoreAction(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournamentId) {
+      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     const updatePayload: Record<string, any> = {
@@ -3078,6 +3211,10 @@ export async function resetMatchAction(
   }
 
   try {
+    const authUser = await requireAuthenticatedUser(userAuthToken);
+    if (tournamentId) {
+      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
+    }
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     const resetPayload: Record<string, any> = {

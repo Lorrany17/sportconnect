@@ -13,6 +13,7 @@ import {
   Network,
   Settings,
   Printer,
+  CheckCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Tournament, Team, SportType, Match } from "@/types";
@@ -556,6 +557,29 @@ export default function BracketViewer({
           fetchData(true);
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "tournaments",
+          filter: `id=eq.${effectiveTournamentId}`,
+        },
+        (payload) => {
+          const updatedTour = payload.new as any;
+          if (updatedTour) {
+            setTournament((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: updatedTour.status as "ATIVO" | "FINALIZADO",
+                    end_date: updatedTour.end_date,
+                  }
+                : null
+            );
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -886,6 +910,81 @@ export default function BracketViewer({
     return "Chaveamento Oficial Mata-Mata";
   }, [resolvedFormat]);
 
+  // Detecção de Conclusão e Pódio Oficial do Torneio
+  const podiumData = useMemo(() => {
+    // Busca a Grande Final
+    const finalCandidate = matches.find((m) => {
+      const ph = String(m.phase || "").toLowerCase().trim();
+      let d: any = m.details;
+      if (typeof d === "string") {
+        try { d = JSON.parse(d); } catch (_) { d = {}; }
+      }
+      const rl = String(d?.round_label || "").toLowerCase().trim();
+      const mt = String(d?.match_title || "").toLowerCase().trim();
+      const full = `${ph} ${rl} ${mt}`;
+      return (
+        (full.includes("final") || !m.next_match_id) &&
+        !full.includes("semi") &&
+        !full.includes("quarta") &&
+        !full.includes("oitava") &&
+        !full.includes("third") &&
+        !full.includes("terceiro") &&
+        !full.includes("3")
+      );
+    });
+
+    if (!finalCandidate) return null;
+
+    const finalStatus = String(finalCandidate.status || "").toUpperCase().trim();
+    const isFinalDone = finalStatus === "COMPLETED" || finalStatus === "FINISHED" || finalStatus === "FINALIZADO";
+    const winnerId = finalCandidate.winnerId || (finalCandidate as any).winner_id;
+
+    if (!isFinalDone || !winnerId) return null;
+
+    const champ = winnerId === finalCandidate.teamA?.id ? finalCandidate.teamA : (winnerId === finalCandidate.teamB?.id ? finalCandidate.teamB : null);
+    const runnerUp = winnerId === finalCandidate.teamA?.id ? finalCandidate.teamB : (winnerId === finalCandidate.teamB?.id ? finalCandidate.teamA : null);
+
+    // 3º Lugar
+    const thirdMatch = matches.find((m) => {
+      const ph = String(m.phase || "").toLowerCase().trim();
+      let d: any = m.details;
+      if (typeof d === "string") {
+        try { d = JSON.parse(d); } catch (_) { d = {}; }
+      }
+      const rl = String(d?.round_label || "").toLowerCase().trim();
+      const mt = String(d?.match_title || "").toLowerCase().trim();
+      const full = `${ph} ${rl} ${mt}`;
+      return full.includes("third") || full.includes("terceiro") || full.includes("3º") || full.includes("3o");
+    });
+
+    let thirdPlaceTeam = null;
+    if (thirdMatch) {
+      const thirdStatus = String(thirdMatch.status || "").toUpperCase().trim();
+      const isThirdDone = thirdStatus === "COMPLETED" || thirdStatus === "FINISHED" || thirdStatus === "FINALIZADO";
+      const thirdWinnerId = thirdMatch.winnerId || (thirdMatch as any).winner_id;
+      if (isThirdDone && thirdWinnerId) {
+        thirdPlaceTeam = thirdWinnerId === thirdMatch.teamA?.id ? thirdMatch.teamA : (thirdWinnerId === thirdMatch.teamB?.id ? thirdMatch.teamB : null);
+      }
+    }
+
+    const isTourneyDone =
+      tournament?.status === "FINALIZADO" ||
+      tournament?.status === "COMPLETED" ||
+      tournament?.status === "FINISHED";
+
+    return {
+      champion: champ,
+      runnerUp,
+      thirdPlace: thirdPlaceTeam,
+      isFinished: isTourneyDone,
+    };
+  }, [matches, tournament]);
+
+  const isTournamentEnded = useMemo(() => {
+    const st = String(tournament?.status || "").toUpperCase().trim();
+    return st === "FINALIZADO" || st === "COMPLETED" || st === "FINISHED";
+  }, [tournament?.status]);
+
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] print:bg-white print:text-black print:min-h-0 flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
       <div>
@@ -1005,7 +1104,7 @@ export default function BracketViewer({
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-indigo-500 to-purple-500 print:hidden" />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-md bg-[#00a2ff]/10 text-[#00a2ff] print:bg-transparent print:text-black print:border-neutral-400 text-[10px] font-black uppercase tracking-wider border border-[#00a2ff]/20">
                       {sportLabel}
                     </span>
@@ -1014,6 +1113,18 @@ export default function BracketViewer({
                       <Trophy className="h-3.5 w-3.5 text-amber-400 print:text-black" />
                       <span>{formatHeaderLabel}</span>
                     </span>
+                    <span className="text-zinc-500 text-xs">•</span>
+                    {isTournamentEnded ? (
+                      <span className="px-2.5 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[10px] font-black uppercase tracking-wider border border-zinc-700 flex items-center gap-1.5 shadow-sm">
+                        <CheckCircle className="h-3 w-3 text-emerald-400" />
+                        <span>Torneio Finalizado</span>
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Em Andamento</span>
+                      </span>
+                    )}
                   </div>
 
                   <h1 className="text-xl sm:text-3xl font-black text-white print:text-black font-display tracking-tight">
@@ -1036,6 +1147,65 @@ export default function BracketViewer({
                     <span>Ver Inscrições</span>
                     <ExternalLink className="h-3.5 w-3.5" />
                   </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pódio Oficial do Torneio Encerrado */}
+          {isTournamentEnded && podiumData?.champion && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/15 to-amber-500/10 border-2 border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden backdrop-blur-md print:bg-white print:text-black print:border-neutral-400">
+              <div className="absolute top-0 right-0 transform translate-x-8 -translate-y-8 w-40 h-40 bg-amber-400/10 rounded-full blur-2xl pointer-events-none print:hidden" />
+              <div className="absolute bottom-0 left-0 transform -translate-x-8 translate-y-8 w-40 h-40 bg-yellow-400/10 rounded-full blur-2xl pointer-events-none print:hidden" />
+
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-black tracking-widest uppercase print:border-neutral-400 print:text-black">
+                  <Trophy className="h-4 w-4 text-amber-400 print:text-black" />
+                  <span>PÓDIO OFICIAL DO TORNEIO</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-black text-white print:text-black tracking-tight font-display">
+                  🏆 Campeões de {tournament?.name}
+                </h2>
+
+                {/* Grid com os 3 degraus do pódio */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl pt-2 items-end">
+                  {/* 2º Lugar - Prata */}
+                  {podiumData.runnerUp ? (
+                    <div className="order-2 sm:order-1 flex flex-col items-center p-4 rounded-2xl bg-zinc-900/80 border border-zinc-700/80 shadow-md print:bg-white print:text-black print:border-neutral-300">
+                      <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-lg mb-2 shadow-sm">
+                        🥈
+                      </div>
+                      <span className="text-[10px] font-black tracking-widest text-zinc-400 uppercase">2º LUGAR • VICE-CAMPEÃO</span>
+                      <span className="text-sm sm:text-base font-bold text-white print:text-black mt-1 text-center truncate w-full">
+                        {podiumData.runnerUp.name}
+                      </span>
+                    </div>
+                  ) : <div className="hidden sm:block order-1" />}
+
+                  {/* 1º Lugar - Ouro (Grande Campeão) */}
+                  <div className="order-1 sm:order-2 flex flex-col items-center p-6 rounded-2xl bg-gradient-to-b from-amber-500/25 to-zinc-900/90 border-2 border-amber-400 shadow-xl shadow-amber-500/20 transform sm:-translate-y-2 print:bg-white print:text-black print:border-neutral-400 print:shadow-none">
+                    <div className="w-14 h-14 rounded-full bg-amber-400/30 border border-amber-300 flex items-center justify-center text-2xl mb-2 shadow-inner animate-bounce">
+                      🥇
+                    </div>
+                    <span className="text-[11px] font-black tracking-widest text-amber-300 print:text-black uppercase">1º LUGAR • GRANDE CAMPEÃO</span>
+                    <span className="text-base sm:text-xl font-black text-amber-200 print:text-black mt-1 text-center truncate w-full">
+                      {podiumData.champion.name}
+                    </span>
+                  </div>
+
+                  {/* 3º Lugar - Bronze */}
+                  {podiumData.thirdPlace ? (
+                    <div className="order-3 sm:order-3 flex flex-col items-center p-4 rounded-2xl bg-zinc-900/80 border border-amber-700/50 shadow-md print:bg-white print:text-black print:border-neutral-300">
+                      <div className="w-10 h-10 rounded-full bg-amber-950/40 border border-amber-700/50 flex items-center justify-center text-lg mb-2 shadow-sm">
+                        🥉
+                      </div>
+                      <span className="text-[10px] font-black tracking-widest text-amber-500 uppercase">3º LUGAR • BRONZE</span>
+                      <span className="text-sm sm:text-base font-bold text-white print:text-black mt-1 text-center truncate w-full">
+                        {podiumData.thirdPlace.name}
+                      </span>
+                    </div>
+                  ) : <div className="hidden sm:block order-3" />}
                 </div>
               </div>
             </div>
