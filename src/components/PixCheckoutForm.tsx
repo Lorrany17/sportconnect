@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthProvider";
+import { submitPaymentProofAction } from "@/app/actions/registration";
 
 export interface PixCheckoutFormProps {
   tournamentId: string;
@@ -261,23 +262,12 @@ export default function PixCheckoutForm({
         throw uploadError;
       }
 
-      // Tratamento Estrito no Update com captura de erro e status WAITING_APPROVAL
-      const { data, error: updateError } = await supabase
-        .from("teams")
-        .update({
-          payment_proof_url: filePath,
-          payment_status: "WAITING_APPROVAL",
-        })
-        .eq("id", effectiveTeamId)
-        .select();
+      // Atualização segura via Server Action (evita bloqueio de RLS no cliente)
+      const actionRes = await submitPaymentProofAction(effectiveTeamId, filePath);
 
-      if (updateError) {
-        console.error("Erro no update da equipe com comprovante:", updateError);
-        throw updateError;
-      }
-
-      if (!data || data.length === 0) {
+      if (!actionRes.success) {
         throw new Error(
+          actionRes.error ||
           "Não foi possível registrar o comprovante da equipe. Registro não encontrado ou permissão negada."
         );
       }
