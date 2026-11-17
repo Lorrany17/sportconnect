@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Mail,
@@ -53,6 +53,16 @@ export default function AuthModal({
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isResendingOtp, setIsResendingOtp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Contador regressivo para o reenvio de código (cooldown de 60 segundos)
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -76,7 +86,7 @@ export default function AuthModal({
     if (lower.includes("email not confirmed")) {
       return "E-mail ainda não confirmado. Por favor, verifique sua caixa de entrada para ativar a conta.";
     }
-    if (lower.includes("rate limit") || lower.includes("too many requests")) {
+    if (lower.includes("rate limit") || lower.includes("too many requests") || lower.includes("429")) {
       return "Muitas tentativas consecutivas. Aguarde alguns instantes antes de tentar novamente.";
     }
     if (lower.includes("invalid email")) {
@@ -85,8 +95,41 @@ export default function AuthModal({
     return message || "Ocorreu um erro na autenticação. Tente novamente.";
   };
 
+  // Mapeamento específico e granular para erros durante o fluxo de código OTP
+  const mapOtpError = (message: string): string => {
+    const lower = (message || "").toLowerCase();
+    if (lower.includes("rate limit") || lower.includes("too many requests") || lower.includes("429")) {
+      return "Limite de envios excedido. Aguarde alguns minutos antes de solicitar um novo código.";
+    }
+    if (lower.includes("network") || lower.includes("failed to fetch") || lower.includes("connection")) {
+      return "Falha de rede ou conexão instável. Verifique sua internet e tente novamente.";
+    }
+    if (lower.includes("expired") || lower.includes("invalid") || lower.includes("token")) {
+      return "Código incorreto ou expirado. Verifique os dígitos recebidos no e-mail ou aguarde para reenviar.";
+    }
+    return mapAuthError(message);
+  };
+
   const handleTabChange = (tab: "login" | "signup") => {
     setActiveTab(tab);
+    setStep("credentials");
+    setOtpCode("");
+    setOtpType(tab === "signup" ? "signup" : "email");
+    setMfaFactorId(null);
+    setMfaChallengeId(null);
+    setResendCooldown(0);
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  const handleBackFromOtp = () => {
+    cancelOtp();
+    setStep("credentials");
+    setOtpCode("");
+    setOtpType(activeTab === "signup" ? "signup" : "email");
+    setMfaFactorId(null);
+    setMfaChallengeId(null);
+    setResendCooldown(0);
     setErrorMessage("");
     setSuccessMessage("");
   };
@@ -165,10 +208,12 @@ export default function AuthModal({
         if (error) {
           setErrorMessage(mapAuthError(error.message));
         } else if (requiresOtp) {
-          setOtpType(nextOtpType || "signup");
+          const targetOtpType = nextOtpType || "signup";
+          setOtpType(targetOtpType);
           setOtpCode("");
+          setResendCooldown(60);
           setStep("otp");
-          setSuccessMessage("Enviamos um código numérico de verificação para o seu e-mail!");
+          setSuccessMessage("Enviamos um código numérico de confirmação para o seu e-mail!");
         } else if (data?.session) {
           setSuccessMessage("Conta criada e autenticada com sucesso! Redirecionando...");
           setTimeout(() => {
@@ -193,13 +238,16 @@ export default function AuthModal({
           setMfaFactorId(factorId);
           setMfaChallengeId(challengeId);
           setOtpCode("");
+          setResendCooldown(0);
           setStep("otp");
           setSuccessMessage("Digite o código numérico do seu autenticador (2FA).");
         } else if (requiresOtp) {
           setMfaFactorId(null);
           setMfaChallengeId(null);
-          setOtpType(nextOtpType || "email");
+          const targetOtpType = nextOtpType || "email";
+          setOtpType(targetOtpType);
           setOtpCode("");
+          setResendCooldown(60);
           setStep("otp");
           setSuccessMessage("Credenciais válidas! Digite o código de 8 dígitos enviado para o seu e-mail.");
         } else {
@@ -237,11 +285,7 @@ export default function AuthModal({
           ? await verifyMfaCode(mfaFactorId, mfaChallengeId, cleanCode)
           : await verifyEmailOtp(email.trim(), cleanCode, otpType);
       if (error) {
-        setErrorMessage(
-          error.message.toLowerCase().includes("expired") || error.message.toLowerCase().includes("invalid")
-            ? "Código inválido ou expirado. Verifique seu e-mail ou solicite um novo código."
-            : mapAuthError(error.message)
-        );
+        setErrorMessage(mapOtpError(error.message));
       } else {
         setSuccessMessage("Verificação de segurança concluída! Entrando na plataforma...");
         setTimeout(() => {
@@ -251,27 +295,33 @@ export default function AuthModal({
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao validar código de verificação.";
-      setErrorMessage(mapAuthError(msg));
+      setErrorMessage(mapOtpError(msg));
     } finally {
       setIsVerifyingOtp(false);
     }
   };
 
   const handleResendOtp = async () => {
-    if (!email.trim() || isResendingOtp) return;
+    if (!email.trim() || isResendingOtp || resendCooldown > 0) return;
+    if (mfaFactorId && mfaChallengeId) {
+      setErrorMessage("Para o aplicativo autenticador (TOTP), utilize o código atualizado no seu celular.");
+      return;
+    }
+
     setErrorMessage("");
     setSuccessMessage("");
     setIsResendingOtp(true);
     try {
-      const { error } = await sendEmailOtp(email.trim());
+      const { error } = await sendEmailOtp(email.trim(), otpType);
       if (error) {
-        setErrorMessage(mapAuthError(error.message));
+        setErrorMessage(mapOtpError(error.message));
       } else {
-        setSuccessMessage("Novo código numérico de verificação enviado para o seu e-mail!");
+        setResendCooldown(60);
+        setSuccessMessage("Novo código de verificação enviado para o seu e-mail!");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao reenviar código.";
-      setErrorMessage(mapAuthError(msg));
+      setErrorMessage(mapOtpError(msg));
     } finally {
       setIsResendingOtp(false);
     }
@@ -383,13 +433,7 @@ export default function AuthModal({
           <div className="flex items-center justify-between pt-2 text-xs">
             <button
               type="button"
-              onClick={() => {
-                cancelOtp();
-                setStep("credentials");
-                setOtpCode("");
-                setErrorMessage("");
-                setSuccessMessage("");
-              }}
+              onClick={handleBackFromOtp}
               className="inline-flex items-center gap-1 text-zinc-400 hover:text-white font-semibold cursor-pointer transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -398,11 +442,15 @@ export default function AuthModal({
 
             <button
               type="button"
-              disabled={isResendingOtp}
+              disabled={isResendingOtp || resendCooldown > 0}
               onClick={handleResendOtp}
-              className="text-[#00a2ff] hover:text-blue-400 font-bold cursor-pointer disabled:opacity-50 transition-colors"
+              className="text-[#00a2ff] hover:text-blue-400 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isResendingOtp ? "Reenviando..." : "Reenviar código"}
+              {isResendingOtp
+                ? "Reenviando..."
+                : resendCooldown > 0
+                ? `Reenviar em ${resendCooldown}s`
+                : "Reenviar código"}
             </button>
           </div>
         </form>
@@ -458,7 +506,7 @@ export default function AuthModal({
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="Ex: Carlos Eduardo Silva"
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
               />
             </div>
           </div>
@@ -484,7 +532,7 @@ export default function AuthModal({
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="(XX) XXXXX-XXXX"
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
               />
             </div>
           </div>
@@ -509,7 +557,7 @@ export default function AuthModal({
                 if (successMessage) setSuccessMessage("");
               }}
               placeholder="seu@email.com"
-              className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
             />
           </div>
         </div>
@@ -533,7 +581,7 @@ export default function AuthModal({
                 if (successMessage) setSuccessMessage("");
               }}
               placeholder={activeTab === "signup" ? "Mínimo 6 caracteres" : "Sua senha de acesso"}
-              className="w-full pl-10 pr-11 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+              className="w-full pl-10 pr-11 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
             />
             <button
               type="button"

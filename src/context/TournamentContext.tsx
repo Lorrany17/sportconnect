@@ -765,25 +765,17 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     init();
 
     const savedEvents = localStorage.getItem("sc_events");
-    const savedAuth = localStorage.getItem("sc_admin_auth");
     if (savedEvents) setEvents(JSON.parse(savedEvents));
-    if (savedAuth === "true") setIsAdmin(true);
 
-    // Sincroniza isAdmin com sessão do Supabase Auth
+    // Sincroniza isAdmin com sessão real do Supabase Auth
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setIsAdmin(true);
-      }
+      setIsAdmin(Boolean(session?.user));
     });
 
     const {
       data: { subscription: authSub },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setIsAdmin(true);
-      } else if (localStorage.getItem("sc_admin_auth") !== "true") {
-        setIsAdmin(false);
-      }
+      setIsAdmin(Boolean(session?.user));
     });
 
     return () => {
@@ -806,8 +798,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           table: "matches",
           filter: `tournament_id=eq.${currentTournamentId}`
         },
-        (payload) => {
-          console.log("Mudança recebida em tempo real nas partidas:", payload);
+        () => {
           loadTeamsAndMatches(currentTournamentId);
         }
       )
@@ -819,16 +810,14 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           table: "teams",
           filter: `tournament_id=eq.${currentTournamentId}`
         },
-        (payload) => {
-          console.log("Mudança recebida em tempo real nas equipes:", payload);
+        () => {
           loadTeamsAndMatches(currentTournamentId);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tournaments" },
-        (payload) => {
-          console.log("Mudança recebida em tempo real nos torneios:", payload);
+        () => {
           loadTournaments();
         }
       )
@@ -950,20 +939,14 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  // Auth Functions
-  const login = (pin: string): boolean => {
-    const adminPin = process.env.NEXT_PUBLIC_ADMIN_PIN || "painelAdmin123!";
-    if (pin === adminPin) {
-      setIsAdmin(true);
-      localStorage.setItem("sc_admin_auth", "true");
-      return true;
-    }
+  // Auth Functions (Gerenciadas exclusivamente pelo Supabase Auth)
+  const login = (_pin?: string): boolean => {
+    // Autenticação legada por PIN descontinuada em favor do Supabase Auth
     return false;
   };
 
   const logout = () => {
     setIsAdmin(false);
-    localStorage.removeItem("sc_admin_auth");
   };
 
   // Team Actions
@@ -1980,7 +1963,6 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
 
     try {
-      console.log("[handleResetMatch] Disparando resetMatchAction para:", dbMatchUuid);
       const res = await resetMatchAction({
         matchId: dbMatchUuid,
         tournamentId: currentTournamentId || undefined,

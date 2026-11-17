@@ -287,7 +287,6 @@ export default function MatchDetailsModal({
         .maybeSingle()
         .then(({ data, error }) => {
           if (!error && data) {
-            console.log("FETCH DIRETO DO SUPABASE NO MODAL:", data.detailed_score || data.details);
             if (data.detailed_score) {
               setAsyncDetailedScore(data.detailed_score);
             } else if (data.details) {
@@ -308,9 +307,6 @@ export default function MatchDetailsModal({
       : match?.detailed_score !== undefined
       ? match.detailed_score
       : (match as any)?.detailedScore);
-
-  // 3. Debug Visual Rápido solicitado pelo usuário
-  console.log("DADOS VIVOS NO MODAL:", liveMatch?.detailed_score ?? resolvedDetailedScore);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { MercadoPagoConfig, Payment } from "mercadopago";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { notifyRegistrationApproved } from "@/app/actions/notifications";
 
 // Inicializa o cliente do Mercado Pago V2
@@ -8,6 +9,44 @@ const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || "",
 });
 const payment = new Payment(client);
+
+/**
+ * Validação de Assinatura HMAC SHA256 do Webhook do Mercado Pago (x-signature)
+ */
+function verifyMercadoPagoSignature(
+  xSignature: string | null,
+  xRequestId: string | null,
+  dataId: string,
+  secret: string
+): boolean {
+  if (!xSignature || !secret) return false;
+
+  const parts = xSignature.split(",").map((p) => p.trim());
+  let ts = "";
+  let v1 = "";
+  for (const part of parts) {
+    const [key, val] = part.split("=");
+    if (key === "ts") ts = val;
+    if (key === "v1") v1 = val;
+  }
+
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${dataId};request-id:${xRequestId || ""};ts:${ts};`;
+  const computedHash = crypto
+    .createHmac("sha256", secret)
+    .update(manifest)
+    .digest("hex");
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(computedHash, "hex"),
+      Buffer.from(v1, "hex")
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Função utilitária para executar a transferência via Pix (Pix Out) para o organizador.
@@ -147,6 +186,45 @@ export async function POST(request: Request) {
       );
     }
 
+    // 1.1 Validação de Assinatura Criptográfica (x-signature)
+    const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+    const isProduction = process.env.NODE_ENV === "production";
+
+    if (!webhookSecret) {
+      if (isProduction) {
+        console.error(
+          "[Mercado Pago Webhook] Erro crítico: MERCADOPAGO_WEBHOOK_SECRET não configurado em ambiente de produção."
+        );
+        return NextResponse.json(
+          { error: "Webhook secret não configurado no servidor." },
+          { status: 500 }
+        );
+      } else {
+        console.warn(
+          "[Mercado Pago Webhook] Aviso: MERCADOPAGO_WEBHOOK_SECRET não configurado em ambiente de desenvolvimento. Pulando validação de assinatura."
+        );
+      }
+    } else {
+      const xSignature = request.headers.get("x-signature");
+      const xRequestId = request.headers.get("x-request-id");
+      const isValid = verifyMercadoPagoSignature(
+        xSignature,
+        xRequestId,
+        String(paymentId),
+        webhookSecret
+      );
+
+      if (!isValid) {
+        console.warn(
+          "[Mercado Pago Webhook] Assinatura do webhook inválida (x-signature). Requisição rejeitada."
+        );
+        return NextResponse.json(
+          { error: "Assinatura do webhook inválida." },
+          { status: 401 }
+        );
+      }
+    }
+
     if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
       console.warn("Aviso: MERCADOPAGO_ACCESS_TOKEN não configurado para processar webhook.");
       return NextResponse.json(
@@ -154,6 +232,8 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    const adminClient = getSupabaseAdmin();
 
     // 2. Consultar a API do Mercado Pago para verificar o status real desse pagamento
     const paymentInfo = await payment.get({ id: String(paymentId) });
@@ -168,7 +248,7 @@ export async function POST(request: Request) {
       // 3.1 Localizar a inscrição (team)
       let team: any = null;
 
-      const { data: teamByMpId, error: teamQueryError } = await supabase
+      const { data: teamByMpId } = await adminClient
         .from("teams")
         .select("id, name, tournament_id, status, payment_status, payout_status, mp_payment_id, user_id")
         .eq("mp_payment_id", String(paymentId))
@@ -178,7 +258,7 @@ export async function POST(request: Request) {
         team = teamByMpId;
       } else if (paymentInfo?.metadata?.team_id) {
         // Fallback por metadata registrada no Mercado Pago
-        const { data: teamByMeta } = await supabase
+        const { data: teamByMeta } = await adminClient
           .from("teams")
           .select("id, name, tournament_id, status, payment_status, payout_status, mp_payment_id, user_id")
           .eq("id", paymentInfo.metadata.team_id)
@@ -209,7 +289,7 @@ export async function POST(request: Request) {
       let organizerPixKey = "";
 
       if (tournamentId) {
-        const { data: tournData } = await supabase
+        const { data: tournData } = await adminClient
           .from("tournaments")
           .select("id, name, organizer_pix_key, owner_id")
           .eq("id", tournamentId)
@@ -258,10 +338,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3.5 Atualização no Banco de Dados:
-      // - Status da inscrição: PAID (o atleta realizou o pagamento com sucesso)
-      // - payment_status: APPROVED (para compatibilidade contínua com todo o sistema)
-      // - payout_status: COMPLETED (se split efetuado) ou FAILED_TRANSFER (para repasse manual pelo Super Admin)
+      // 3.5 Atualização no Banco de Dados via adminClient
       const updatePayload: Record<string, any> = {
         status: "PAID",
         payment_status: "APPROVED",
@@ -271,7 +348,7 @@ export async function POST(request: Request) {
       };
 
       const teamIdentifier = team?.id;
-      let { data: updatedTeams, error: updateError } = await supabase
+      let { data: updatedTeams, error: updateError } = await adminClient
         .from("teams")
         .update(updatePayload)
         .eq(teamIdentifier ? "id" : "mp_payment_id", teamIdentifier || String(paymentId))
@@ -284,7 +361,7 @@ export async function POST(request: Request) {
           updateError.code === "PGRST204" ||
           String(updateError.message).includes("amount_paid"))
       ) {
-        const fallbackRes = await supabase
+        const fallbackRes = await adminClient
           .from("teams")
           .update({
             status: "PAID",
@@ -342,7 +419,7 @@ export async function POST(request: Request) {
       );
     } else if (paymentStatus === "refunded") {
       // Se tiver sido estornado pelo Mercado Pago
-      const { error: refundError } = await supabase
+      const { error: refundError } = await adminClient
         .from("teams")
         .update({
           payment_status: "CANCELED",

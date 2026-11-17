@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, Calendar, Users, Trophy, ArrowRight, Layers, PlayCircle, CheckCircle } from "lucide-react";
 import { Tournament, SportType } from "@/types";
 import { DEFAULT_COVERS, SPORT_SELECT_OPTIONS } from "@/components/CreateTournamentForm";
@@ -121,11 +122,13 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
       <div>
         {/* Imagem de Capa (Metade Superior) */}
         <div className="relative h-48 w-full overflow-hidden bg-zinc-900">
-          <img
+          <Image
             src={coverImage}
             alt={tournament.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            unoptimized={coverImage.startsWith("data:") || coverImage.startsWith("blob:")}
           />
           {/* Overlay gradiente escuro para legibilidade */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-black/50" />

@@ -1336,8 +1336,7 @@ export default function CreateTournamentForm({
       const effectiveEndDate = endDate || startDate;
       const formattedEndDate = effectiveEndDate ? new Date(effectiveEndDate).toISOString() : null;
       const finalStartTime = noTimeSet || !startTime.trim() ? null : startTime.trim();
-      const ownerId =
-        user?.id && user.id !== "organizer-admin-session" ? user.id : null;
+      const ownerId = user?.id || null;
 
       // Sanitização dos campos personalizados
       const sanitizedCustomFields = customFields

@@ -167,10 +167,13 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                         <span>{avatarUrl}</span>
                       </div>
                     ) : (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt="Perfil"
+                        width={32}
+                        height={32}
                         className="w-full h-full object-cover rounded-full"
+                        unoptimized={avatarUrl.startsWith("data:") || avatarUrl.startsWith("blob:")}
                       />
                     )
                   ) : (

@@ -40,7 +40,6 @@ import { supabase } from "@/lib/supabase";
 import CreateTournamentModal from "@/components/CreateTournamentModal";
 import TeamRegistration from "@/components/TeamRegistration";
 import RegistrationManagement from "@/components/RegistrationManagement";
-import TournamentBracket from "@/components/TournamentBracket";
 import RefereePanel from "@/components/RefereePanel";
 import ShareTournamentModal from "@/components/ShareTournamentModal";
 import CloseRegistrationsModal from "@/components/CloseRegistrationsModal";
@@ -145,9 +144,7 @@ export default function OrganizerDashboard({
 
       // A. Consulta na tabela profiles para verificar se o utilizador logado é Super Admin
       let superAdmin = false;
-      if (user.id === "organizer-admin-session") {
-        superAdmin = true;
-      } else {
+      if (user.id) {
         try {
           const { data: profile, error: profileErr } = await supabase
             .from("profiles")
