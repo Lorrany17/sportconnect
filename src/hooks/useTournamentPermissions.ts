@@ -206,7 +206,18 @@ export function useTournamentPermissions(tournamentId?: string) {
   }, [tournamentId, user]);
 
   useEffect(() => {
-    fetchPermissions();
+    let isCancelled = false;
+
+    const timer = setTimeout(() => {
+      if (!isCancelled) {
+        fetchPermissions();
+      }
+    }, 0);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [fetchPermissions]);
 
   return {

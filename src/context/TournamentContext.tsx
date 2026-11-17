@@ -798,8 +798,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           table: "matches",
           filter: `tournament_id=eq.${currentTournamentId}`
         },
-        (payload) => {
-          console.log("Mudança recebida em tempo real nas partidas:", payload);
+        () => {
           loadTeamsAndMatches(currentTournamentId);
         }
       )
@@ -811,16 +810,14 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           table: "teams",
           filter: `tournament_id=eq.${currentTournamentId}`
         },
-        (payload) => {
-          console.log("Mudança recebida em tempo real nas equipes:", payload);
+        () => {
           loadTeamsAndMatches(currentTournamentId);
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tournaments" },
-        (payload) => {
-          console.log("Mudança recebida em tempo real nos torneios:", payload);
+        () => {
           loadTournaments();
         }
       )
@@ -1966,7 +1963,6 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
 
     try {
-      console.log("[handleResetMatch] Disparando resetMatchAction para:", dbMatchUuid);
       const res = await resetMatchAction({
         matchId: dbMatchUuid,
         tournamentId: currentTournamentId || undefined,

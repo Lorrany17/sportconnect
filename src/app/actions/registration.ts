@@ -585,6 +585,12 @@ export async function confirmCancellation(
         refundResult = await refundClient.create({
           payment_id: team.mp_payment_id,
         });
+
+        if (!refundResult || (refundResult.status && refundResult.status !== "approved")) {
+          throw new Error(
+            `Estorno não confirmado pelo Mercado Pago (status retornado: ${refundResult?.status || "desconhecido"}).`
+          );
+        }
       } catch (mpError: any) {
         const apiDetail =
           mpError?.cause?.[0]?.description ||

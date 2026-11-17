@@ -1302,7 +1302,6 @@ export default function BracketViewer({
                       ? fullMatch.historicoSets
                       : clickedMatch.historicoSets,
                 };
-                console.log("SELECIONANDO PARTIDA NO CARD (COMPLETA):", completeMatch);
                 setSelectedDetailMatch(completeMatch);
               }}
               isEditMode={isEditMode}
@@ -1401,9 +1400,6 @@ export default function BracketViewer({
               ? liveMatch.historicoSets
               : selectedDetailMatch.historicoSets,
         };
-
-        // Trace exigido no Item 1:
-        console.log("PASSANDO PARA O MODAL:", mergedForModal);
 
         return (
           <MatchDetailsModal

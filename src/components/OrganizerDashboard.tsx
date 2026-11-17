@@ -40,7 +40,6 @@ import { supabase } from "@/lib/supabase";
 import CreateTournamentModal from "@/components/CreateTournamentModal";
 import TeamRegistration from "@/components/TeamRegistration";
 import RegistrationManagement from "@/components/RegistrationManagement";
-import TournamentBracket from "@/components/TournamentBracket";
 import RefereePanel from "@/components/RefereePanel";
 import ShareTournamentModal from "@/components/ShareTournamentModal";
 import CloseRegistrationsModal from "@/components/CloseRegistrationsModal";

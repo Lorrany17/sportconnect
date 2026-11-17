@@ -1079,7 +1079,6 @@ export default function RegistrationManagement({
 
   // Leitura Segura de Comprovantes via Signed URL de 60 minutos (3600s)
   const handleViewReceipt = async (path?: string | null) => {
-    console.log("Tentando abrir comprovante no caminho:", path);
     if (!path) return alert("Caminho do comprovante vazio no banco de dados.");
 
     // Fallback de legado: se for URL completa (http:// ou https://) que não contenha /receipts/
@@ -1087,7 +1086,6 @@ export default function RegistrationManagement({
       if (path.includes("/receipts/")) {
         path = path.split("/receipts/").pop() || path;
       } else {
-        console.log("Detectada URL legada, abrindo diretamente:", path);
         window.open(path, "_blank");
         return;
       }

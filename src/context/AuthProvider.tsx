@@ -118,13 +118,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // 1. Obtém sessão inicial ativa do Supabase
+    // 1. Obtém sessão inicial ativa do Supabase e valida o nível de garantia de autenticação (MFA AAL)
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
         if (!mounted) return;
 
         if (session?.user) {
+          // BUG-04: Se o usuário tem 2FA/MFA cadastrado, garante que a sessão atingiu aal2
+          try {
+            const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+            if (aalData && aalData.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
+              await supabase.auth.signOut();
+              setUser(null);
+              setSession(null);
+              syncAuthCookies(null);
+              fetchProfile(null);
+              return;
+            }
+          } catch (mfaCheckErr) {
+            console.warn("[AuthProvider] Erro ao verificar AAL na inicialização:", mfaCheckErr);
+          }
+
           setSession(session);
           setUser(session.user);
           syncAuthCookies(session);
@@ -150,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, newSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
       if (isPending2faRef.current) return;
 
@@ -158,12 +173,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsRecoveringPassword(true);
       }
 
-      setSession(newSession);
       if (newSession?.user) {
+        try {
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aalData && aalData.nextLevel === "aal2" && aalData.currentLevel !== "aal2") {
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
+            syncAuthCookies(null);
+            fetchProfile(null);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
+        setSession(newSession);
         setUser(newSession.user);
         syncAuthCookies(newSession);
         fetchProfile(newSession.user);
       } else {
+        setSession(null);
         setUser(null);
         syncAuthCookies(null);
         fetchProfile(null);
