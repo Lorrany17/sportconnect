@@ -145,9 +145,7 @@ export default function OrganizerDashboard({
 
       // A. Consulta na tabela profiles para verificar se o utilizador logado é Super Admin
       let superAdmin = false;
-      if (user.id === "organizer-admin-session") {
-        superAdmin = true;
-      } else {
+      if (user.id) {
         try {
           const { data: profile, error: profileErr } = await supabase
             .from("profiles")

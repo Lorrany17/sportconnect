@@ -8,12 +8,6 @@ export async function middleware(request: NextRequest) {
     request.cookies.get("sb-access-token")?.value ||
     request.cookies.get("supabase-auth-token")?.value;
 
-  // Verifica cookie de sessão administrativa local (PIN do organizador)
-  const adminPinCookie = request.cookies.get("sc_admin_auth")?.value;
-  if (adminPinCookie === "true") {
-    return NextResponse.next();
-  }
-
   // 2. Verifica cookies nativos do Supabase Auth (ex: sb-<project-ref>-auth-token)
   let sbToken = accessToken;
   if (!sbToken) {

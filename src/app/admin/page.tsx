@@ -239,14 +239,9 @@ export default function AdminPage() {
       try {
         setLoading(true);
 
-        // A. Verificação de Super Admin
-        let isSuperAdmin = Boolean(
-          user.email === "admin@sportconnect.com" ||
-          user.email === "santoslorrany250@gmail.com" ||
-          user.id === "organizer-admin-session"
-        );
-
-        if (!isSuperAdmin) {
+        // A. Verificação de Super Admin estritamente via profiles.is_admin
+        let isSuperAdmin = false;
+        if (user.id) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("is_admin")

@@ -70,12 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (currentUser.id === "organizer-admin-session") {
-      setIsAdmin(true);
-      setProfile({ id: currentUser.id, full_name: "Organizador Principal", is_admin: true });
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -85,18 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!error && data) {
         setProfile(data);
-        const adminFlag = Boolean(
-          data.is_admin === true ||
-          currentUser.email === "admin@sportconnect.com" ||
-          currentUser.email === "santoslorrany250@gmail.com"
-        );
-        setIsAdmin(adminFlag);
+        setIsAdmin(Boolean(data.is_admin === true));
       } else {
-        const adminByEmail = Boolean(
-          currentUser.email === "admin@sportconnect.com" ||
-          currentUser.email === "santoslorrany250@gmail.com"
-        );
-        setIsAdmin(adminByEmail);
+        setIsAdmin(false);
         setProfile(null);
       }
     } catch (err) {
@@ -115,7 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sincroniza cookies para leitura no middleware de rotas protegidas
   const syncAuthCookies = (
     sessionToSync: Session | null,
-    isAdminLogged?: boolean,
     twoFaVerified?: boolean
   ) => {
     if (typeof document === "undefined") return;
@@ -123,11 +107,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       document.cookie = `sb-access-token=${sessionToSync.access_token}; path=/; max-age=604800; SameSite=Lax`;
     } else {
       document.cookie = `sb-access-token=; path=/; max-age=0; SameSite=Lax`;
-    }
-    if (isAdminLogged) {
-      document.cookie = `sc_admin_auth=true; path=/; max-age=604800; SameSite=Lax`;
-    } else if (isAdminLogged === false) {
-      document.cookie = `sc_admin_auth=; path=/; max-age=0; SameSite=Lax`;
     }
     if (twoFaVerified === true) {
       document.cookie = `sc_2fa_verified=true; path=/; max-age=604800; SameSite=Lax`;
@@ -144,38 +123,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .getSession()
       .then(({ data: { session } }) => {
         if (!mounted) return;
-        const isAdminLogged =
-          typeof window !== "undefined" && localStorage.getItem("sc_admin_auth") === "true";
 
         if (session?.user) {
           setSession(session);
           setUser(session.user);
-          syncAuthCookies(session, isAdminLogged);
+          syncAuthCookies(session);
           fetchProfile(session.user);
         } else {
-          // Compatibilidade com sessão administrativa local (PIN do organizador)
-          if (isAdminLogged) {
-            const adminUser = {
-              id: "organizer-admin-session",
-              email: "organizador@sportconnect.com",
-              app_metadata: {},
-              user_metadata: {
-                role: "organizer",
-                name: "Organizador Principal",
-                full_name: "Organizador Principal",
-              },
-              aud: "authenticated",
-              created_at: new Date().toISOString(),
-            } as User;
-            setUser(adminUser);
-            syncAuthCookies(null, true);
-            fetchProfile(adminUser);
-          } else {
-            setUser(null);
-            setSession(null);
-            syncAuthCookies(null, false);
-            fetchProfile(null);
-          }
+          setUser(null);
+          setSession(null);
+          syncAuthCookies(null);
+          fetchProfile(null);
         }
       })
       .catch((err) => {
@@ -200,36 +158,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsRecoveringPassword(true);
       }
 
-      const isAdminLogged =
-        typeof window !== "undefined" && localStorage.getItem("sc_admin_auth") === "true";
-
       setSession(newSession);
       if (newSession?.user) {
         setUser(newSession.user);
-        syncAuthCookies(newSession, isAdminLogged);
+        syncAuthCookies(newSession);
         fetchProfile(newSession.user);
       } else {
-        if (isAdminLogged) {
-          const adminUser = {
-            id: "organizer-admin-session",
-            email: "organizador@sportconnect.com",
-            app_metadata: {},
-            user_metadata: {
-              role: "organizer",
-              name: "Organizador Principal",
-              full_name: "Organizador Principal",
-            },
-            aud: "authenticated",
-            created_at: new Date().toISOString(),
-          } as User;
-          setUser(adminUser);
-          syncAuthCookies(null, true);
-          fetchProfile(adminUser);
-        } else {
-          setUser(null);
-          syncAuthCookies(null, false);
-          fetchProfile(null);
-        }
+        setUser(null);
+        syncAuthCookies(null);
+        fetchProfile(null);
       }
       setLoading(false);
     });
@@ -242,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<AuthResultWithOtp> => {
     isPending2faRef.current = true;
-    syncAuthCookies(null, false, false);
+    syncAuthCookies(null, false);
     try {
       const result = await supabase.auth.signInWithPassword({ email, password });
       if (result.error || !result.data?.user) {
@@ -400,7 +337,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isPending2faRef.current = false;
       setUser(result.data.user);
       setSession(result.data.session);
-      syncAuthCookies(result.data.session, false, true);
+      syncAuthCookies(result.data.session, true);
       await fetchProfile(result.data.user);
     }
 
@@ -420,7 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (sessData?.session?.user) {
         setUser(sessData.session.user);
         setSession(sessData.session);
-        syncAuthCookies(sessData.session, false, true);
+        syncAuthCookies(sessData.session, true);
         await fetchProfile(sessData.session.user);
       }
     }
@@ -430,7 +367,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const cancelOtp = () => {
     isPending2faRef.current = false;
-    syncAuthCookies(null, false, false);
+    syncAuthCookies(null, false);
   };
 
   const signOut = async () => {
@@ -440,10 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setProfile(null);
     setIsAdmin(false);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("sc_admin_auth");
-    }
-    syncAuthCookies(null, false, false);
+    syncAuthCookies(null, false);
     setLoading(false);
     return result;
   };

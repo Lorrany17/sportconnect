@@ -18,7 +18,6 @@ import {
 import {
   buildRoundRobinPairs,
   calculateOptimalGroupCount,
-  chunkBalancedGroups,
   generateGroupRoundRobinMatches,
 } from "@/utils/bracket-logic";
 
