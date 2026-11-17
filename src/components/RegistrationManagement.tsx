@@ -2796,95 +2796,18 @@ export default function RegistrationManagement({
                       </div>
                     )
                   ) : (
-                    <>
-                      {isApproved && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTeamDetails(team)}
-                          className="w-full py-2.5 px-4 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-transparent text-zinc-300 hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:bg-zinc-800/40"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>Ver Detalhes</span>
-                        </button>
-                      )}
-
-                      {(isWaitingApproval || isWaitingPix) && hasFinancialAccess && !effectiveIsReadOnly && (
-                        <button
-                          type="button"
-                          disabled={isApprovingId === team.id}
-                          onClick={() => handleApprovePix(team.id)}
-                          className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                        >
-                          {isApprovingId === team.id ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              <span>Aprovando & Repassando...</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span>Aprovar Pix</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {isWaitingApproval && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTeamDetails(team)}
-                          className="w-full py-2.5 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Receipt className="h-3.5 w-3.5" />
-                          <span>Detalhar Inscrição</span>
-                        </button>
-                      )}
-
-                      {isWaitingPix && (!hasFinancialAccess || effectiveIsReadOnly) && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTeamDetails(team)}
-                          className="w-full py-2 px-3 rounded-xl border border-zinc-700 bg-transparent text-zinc-400 text-xs font-bold flex items-center justify-center gap-1.5"
-                        >
-                          <Clock className="h-3.5 w-3.5 text-orange-400" />
-                          <span>Aguardando Pix</span>
-                        </button>
-                      )}
-
-                      {isPending && (
-                        <div className="space-y-2">
-                          {hasFinancialAccess && !effectiveIsReadOnly && (
-                            <button
-                              type="button"
-                              disabled={isApprovingId === team.id}
-                              onClick={() => handleApprovePix(team.id)}
-                              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                            >
-                              {isApprovingId === team.id ? (
-                                <>
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  <span>Aprovando...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  <span>Aprovar</span>
-                                </>
-                              )}
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => setSelectedTeamDetails(team)}
-                            className="w-full py-2.5 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <Receipt className="h-3.5 w-3.5" />
-                            <span>Detalhar Inscrição</span>
-                          </button>
-                        </div>
-                      )}
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTeamDetails(team)}
+                      className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        isApproved
+                          ? "border border-zinc-700 hover:border-zinc-500 bg-transparent text-zinc-300 hover:text-white hover:bg-zinc-800/40"
+                          : "bg-zinc-800 hover:bg-zinc-700 border border-zinc-600/80 text-white shadow-sm active:scale-95"
+                      }`}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Ver Detalhes</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -4180,7 +4103,7 @@ export default function RegistrationManagement({
                     ) : (
                       <>
                         <Trash2 className="h-3.5 w-3.5" />
-                        <span>Excluir / Remover Inscrição</span>
+                        <span>Excluir Inscrição</span>
                       </>
                     )}
                   </button>

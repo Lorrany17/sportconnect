@@ -478,7 +478,96 @@ export default function PublicRegistrationForm({
 
     let newlyCreatedTeamId: string | null = null;
 
+    const isDuplicateConflictError = (err: unknown): boolean => {
+      if (!err || typeof err !== "object") {
+        const str = String(err || "").toLowerCase();
+        return (
+          str.includes("409") ||
+          str.includes("23505") ||
+          str.includes("team_members_user_id_email_key") ||
+          str.includes("duplicate key") ||
+          str.includes("unique constraint")
+        );
+      }
+      const e = err as { code?: unknown; status?: unknown; message?: unknown; details?: unknown };
+      const code = String(e.code || "");
+      const status = Number(e.status || 0);
+      const msg = `${String(e.message || "")} ${String(e.details || "")}`.toLowerCase();
+      return (
+        status === 409 ||
+        code === "23505" ||
+        code === "409" ||
+        msg.includes("409") ||
+        msg.includes("23505") ||
+        msg.includes("team_members_user_id_email_key") ||
+        msg.includes("duplicate key") ||
+        msg.includes("unique constraint")
+      );
+    };
+
+    const mapDbTeamRow = (row: any): Team => ({
+      id: row.id,
+      name: row.name,
+      user_id: row.user_id,
+      players: [row.player1, row.player2],
+      roster: row.roster,
+      createdAt: row.created_at || new Date().toISOString(),
+      status: row.status,
+      tournamentId: row.tournament_id,
+      payment_status: row.payment_status,
+      payment_proof_url: row.payment_proof_url,
+      manager_name: row.manager_name,
+      category: row.category,
+      contact: row.contact,
+      custom_registration_answers: row.custom_registration_answers || formattedCustomAnswers,
+    });
+
+    const rollbackCreatedTeam = async (teamIdToRollback: string) => {
+      try {
+        await supabase.from("team_members").delete().eq("team_id", teamIdToRollback);
+      } catch { }
+      try {
+        await supabase.from("teams").delete().eq("id", teamIdToRollback);
+      } catch { }
+      try {
+        await deleteOrphanTeam(teamIdToRollback);
+      } catch { }
+    };
+
     try {
+      // 0. Idempotência: verifica se o usuário já possui inscrição ativa/pendente neste torneio
+      let targetTeamIdToReuse: string | null = createdTeam?.id || null;
+      if (!targetTeamIdToReuse && user?.id) {
+        const { data: existingRows } = await supabase
+          .from("teams")
+          .select("*")
+          .eq("tournament_id", tournament.id)
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        const activeExisting = (existingRows || []).find(
+          (row: any) =>
+            row.status !== "CANCELED" &&
+            row.status !== "CANCELLED" &&
+            row.payment_status !== "CANCELED" &&
+            row.payment_status !== "CANCELLED" &&
+            row.cancellation_status !== "REFUNDED"
+        );
+
+        if (activeExisting) {
+          const alreadyConfirmed =
+            activeExisting.status === "PAID" ||
+            activeExisting.status === "CONFIRMED" ||
+            activeExisting.payment_status === "PAID" ||
+            activeExisting.payment_status === "APPROVED";
+
+          if (alreadyConfirmed) {
+            throw new Error("Esta equipa ou e-mail já está registada neste torneio.");
+          }
+
+          targetTeamIdToReuse = activeExisting.id;
+        }
+      }
       // 1. Prepara dados detalhados dos integrantes para persistência em 'teams'
       const rosterDetails = [
         {
@@ -561,11 +650,11 @@ export default function PublicRegistrationForm({
         declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
       };
 
-      let { data: insertedTeam, error: insertError } = createdTeam?.id
+      let { data: insertedTeam, error: insertError } = targetTeamIdToReuse
         ? await supabase
           .from("teams")
           .update(payload)
-          .eq("id", createdTeam.id)
+          .eq("id", targetTeamIdToReuse)
           .select()
           .single()
         : await supabase
@@ -583,11 +672,11 @@ export default function PublicRegistrationForm({
       ) {
         const safePayload = { ...payload };
         delete safePayload.amount_paid;
-        const retryRes = createdTeam?.id
+        const retryRes = targetTeamIdToReuse
           ? await supabase
             .from("teams")
             .update(safePayload)
-            .eq("id", createdTeam.id)
+            .eq("id", targetTeamIdToReuse)
             .select()
             .single()
           : await supabase
@@ -601,10 +690,13 @@ export default function PublicRegistrationForm({
 
       if (insertError || !insertedTeam) {
         console.error("ERRO COMPLETO AO INSERIR EQUIPE:", insertError);
+        if (isDuplicateConflictError(insertError)) {
+          throw new Error("Esta equipa ou e-mail já está registada neste torneio.");
+        }
         throw insertError || new Error("Falha ao registrar equipe.");
       }
 
-      if (!createdTeam?.id && insertedTeam?.id) {
+      if (!targetTeamIdToReuse && insertedTeam?.id) {
         newlyCreatedTeamId = insertedTeam.id;
       }
 
@@ -697,8 +789,8 @@ export default function PublicRegistrationForm({
       }));
 
       if (sanitizedMembers.length > 0) {
-        if (createdTeam?.id) {
-          await supabase.from("team_members").delete().eq("team_id", createdTeam.id);
+        if (targetTeamIdToReuse) {
+          await supabase.from("team_members").delete().eq("team_id", targetTeamIdToReuse);
         }
 
         const { error: tmError } = await supabase
@@ -708,37 +800,20 @@ export default function PublicRegistrationForm({
         if (tmError) {
           console.error("ERRO CRÍTICO AO INSERIR MEMBROS DA EQUIPE (ROLLBACK OBRIGATÓRIO):", tmError);
           if (newlyCreatedTeamId) {
-            try {
-              await supabase.from("teams").delete().eq("id", newlyCreatedTeamId);
-            } catch { }
-            try {
-              await deleteOrphanTeam(newlyCreatedTeamId);
-            } catch { }
+            await rollbackCreatedTeam(newlyCreatedTeamId);
             newlyCreatedTeamId = null;
+          }
+          if (isDuplicateConflictError(tmError)) {
+            throw new Error("Esta equipa ou e-mail já está registada neste torneio.");
           }
           throw tmError;
         }
       }
 
-      const mappedTeam: Team = {
-        id: insertedTeam.id,
-        name: insertedTeam.name,
-        user_id: insertedTeam.user_id,
-        players: [insertedTeam.player1, insertedTeam.player2],
-        roster: insertedTeam.roster,
-        createdAt: insertedTeam.created_at || new Date().toISOString(),
-        status: insertedTeam.status,
-        tournamentId: insertedTeam.tournament_id,
-        payment_status: insertedTeam.payment_status,
-        payment_proof_url: insertedTeam.payment_proof_url,
-        manager_name: insertedTeam.manager_name,
-        category: insertedTeam.category,
-        contact: insertedTeam.contact,
-        custom_registration_answers: insertedTeam.custom_registration_answers || formattedCustomAnswers,
-      };
+      const mappedTeam: Team = mapDbTeamRow(insertedTeam);
 
       setTeams((prev: Team[]) =>
-        createdTeam?.id
+        targetTeamIdToReuse
           ? prev.map((t) => (t.id === mappedTeam.id ? mappedTeam : t))
           : [...prev, mappedTeam]
       );
@@ -761,12 +836,10 @@ export default function PublicRegistrationForm({
       return mappedTeam;
     } catch (err) {
       if (newlyCreatedTeamId) {
-        try {
-          await supabase.from("teams").delete().eq("id", newlyCreatedTeamId);
-        } catch { }
-        try {
-          await deleteOrphanTeam(newlyCreatedTeamId);
-        } catch { }
+        await rollbackCreatedTeam(newlyCreatedTeamId);
+      }
+      if (isDuplicateConflictError(err)) {
+        throw new Error("Esta equipa ou e-mail já está registada neste torneio.");
       }
       throw err;
     }
@@ -1233,6 +1306,65 @@ export default function PublicRegistrationForm({
       }
 
       // Se houver taxa de inscrição e o atleta NÃO anexou comprovante prévio nesta etapa inicial:
+      // Verifica antes se já existe inscrição pendente (idempotência) para retomar o pagamento sem duplicar
+      if (!isEditMode && !createdTeam?.id && user?.id) {
+        const { data: existingTeams } = await supabase
+          .from("teams")
+          .select("*")
+          .eq("tournament_id", tournament.id)
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        const activeExisting = (existingTeams || []).find(
+          (row: any) =>
+            row.status !== "CANCELED" &&
+            row.status !== "CANCELLED" &&
+            row.payment_status !== "CANCELED" &&
+            row.payment_status !== "CANCELLED" &&
+            row.cancellation_status !== "REFUNDED"
+        );
+
+        if (activeExisting) {
+          const isAlreadyConfirmed =
+            activeExisting.status === "PAID" ||
+            activeExisting.status === "CONFIRMED" ||
+            activeExisting.payment_status === "PAID" ||
+            activeExisting.payment_status === "APPROVED";
+
+          if (isAlreadyConfirmed) {
+            const msg = "Esta equipa ou e-mail já está registada neste torneio.";
+            setErrorMessage(msg);
+            setToast({ message: msg, type: "error" });
+            setIsSubmitting(false);
+            return;
+          }
+
+          if (entryFee > 0) {
+            const existingMappedTeam: Team = {
+              id: activeExisting.id,
+              name: activeExisting.name,
+              user_id: activeExisting.user_id,
+              players: [activeExisting.player1, activeExisting.player2],
+              roster: activeExisting.roster,
+              createdAt: activeExisting.created_at || new Date().toISOString(),
+              status: activeExisting.status,
+              tournamentId: activeExisting.tournament_id,
+              payment_status: activeExisting.payment_status,
+              payment_proof_url: activeExisting.payment_proof_url,
+              manager_name: activeExisting.manager_name,
+              category: activeExisting.category,
+              contact: activeExisting.contact,
+              custom_registration_answers:
+                activeExisting.custom_registration_answers || formattedCustomAnswers,
+            };
+            setCreatedTeam(existingMappedTeam);
+            setIsSubmitting(false);
+            setStep("checkout");
+            return;
+          }
+        }
+      }
+
       // Aplica o atraso na inserção (Delayed DB Insert). Os dados validados são mantidos no estado local
       // e nenhuma gravação ocorre no Supabase até que o comprovante seja anexado ou o pagamento postergado no checkout.
       if (entryFee > 0 && !uploadedReceiptPath && !isEditMode) {
@@ -1288,7 +1420,22 @@ export default function PublicRegistrationForm({
       }
     } catch (err: unknown) {
       console.error("ERRO COMPLETO NA INSCRIÇÃO:", err);
-      const userMessage = "Erro ao registar equipa. Por favor, tente novamente.";
+      const rawErr = err as { code?: unknown; status?: unknown; message?: unknown; details?: unknown } | null;
+      const errText = `${String(rawErr?.message || "")} ${String(rawErr?.details || "")}`.toLowerCase();
+      const isConflict =
+        Number(rawErr?.status || 0) === 409 ||
+        String(rawErr?.code || "") === "23505" ||
+        errText.includes("409") ||
+        errText.includes("23505") ||
+        errText.includes("team_members_user_id_email_key") ||
+        errText.includes("duplicate key") ||
+        errText.includes("já está registada");
+
+      const userMessage = isConflict
+        ? "Esta equipa ou e-mail já está registada neste torneio."
+        : (err instanceof Error && err.message
+            ? err.message
+            : "Erro ao registar equipa. Por favor, tente novamente.");
       setErrorMessage(userMessage);
       setToast({ message: userMessage, type: "error" });
     } finally {
