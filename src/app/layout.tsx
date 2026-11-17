@@ -9,12 +9,14 @@ const montserrat = Montserrat({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "700", "900"],
+  display: "swap",
 });
 
 const outfit = Outfit({
   variable: "--font-sport",
   subsets: ["latin"],
   weight: ["300", "400", "500", "700", "900"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {

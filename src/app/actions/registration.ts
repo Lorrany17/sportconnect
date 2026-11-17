@@ -585,6 +585,12 @@ export async function confirmCancellation(
         refundResult = await refundClient.create({
           payment_id: team.mp_payment_id,
         });
+
+        if (!refundResult || (refundResult.status && refundResult.status !== "approved")) {
+          throw new Error(
+            `Estorno não confirmado pelo Mercado Pago (status retornado: ${refundResult?.status || "desconhecido"}).`
+          );
+        }
       } catch (mpError: any) {
         const apiDetail =
           mpError?.cause?.[0]?.description ||
@@ -1005,4 +1011,79 @@ export async function addManualTeam(params: AddManualTeamParams): Promise<AddMan
     };
   }
 }
+
+/**
+ * Server Action para submissão segura de comprovante de pagamento pelo atleta (BUG-01).
+ * Valida a sessão autenticada, verifica que o usuário é o dono da equipe (user_id)
+ * ou organizador do torneio, e atualiza o status para WAITING_APPROVAL de forma atômica.
+ */
+export async function submitPaymentProofAction(
+  teamId: string,
+  filePath: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const authUser = await requireAuthenticatedUser();
+    if (!teamId || !filePath) {
+      return { success: false, error: "Identificador da equipe ou caminho do arquivo inválido." };
+    }
+
+    const adminClient = getSupabaseAdmin();
+    const { data: team, error: teamErr } = await adminClient
+      .from("teams")
+      .select("id, user_id, tournament_id, status, payment_status")
+      .eq("id", teamId)
+      .maybeSingle();
+
+    if (teamErr || !team) {
+      return { success: false, error: "Equipe não encontrada." };
+    }
+
+    // Verifica se o usuário autenticado é o capitão ou se é Super Admin / dono do torneio
+    const isTeamOwner = team.user_id === authUser.id;
+    if (!isTeamOwner) {
+      const { data: tour } = await adminClient
+        .from("tournaments")
+        .select("owner_id")
+        .eq("id", team.tournament_id)
+        .maybeSingle();
+      const isTourOwner = tour?.owner_id === authUser.id;
+
+      const { data: prof } = await adminClient
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", authUser.id)
+        .maybeSingle();
+      const isSuperAdmin = prof?.is_admin === true;
+
+      if (!isTourOwner && !isSuperAdmin) {
+        return { success: false, error: "Permissão negada para atualizar o comprovante desta equipe." };
+      }
+    }
+
+    const { error: updateErr } = await adminClient
+      .from("teams")
+      .update({
+        payment_proof_url: filePath,
+        payment_status: "WAITING_APPROVAL",
+      })
+      .eq("id", teamId);
+
+    if (updateErr) {
+      return { success: false, error: "Erro ao registrar comprovante: " + updateErr.message };
+    }
+
+    try {
+      revalidatePath(`/torneio/${team.tournament_id}`);
+      revalidatePath(`/dashboard/tournaments/${team.tournament_id}`);
+    } catch {
+      // ignore revalidation error
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro interno ao processar comprovante.";
+    return { success: false, error: msg };
+  }
+}
+
 

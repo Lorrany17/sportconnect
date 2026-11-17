@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAuthenticatedUser } from "@/lib/serverAuth";
 import { notifyRegistrationApproved } from "@/app/actions/notifications";
 
 // Inicializa o cliente do Mercado Pago para consultas de leitura (se necessário)
@@ -11,6 +12,20 @@ const payment = new Payment(client);
 
 export async function POST(request: Request) {
   try {
+    // 0. Autenticação estrita do usuário
+    const authHeader = request.headers.get("authorization");
+    const explicitToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    let authUser;
+    try {
+      authUser = await requireAuthenticatedUser(explicitToken);
+    } catch (authErr: unknown) {
+      const msg = authErr instanceof Error ? authErr.message : "401 Unauthorized: Usuário não autenticado.";
+      return NextResponse.json(
+        { error: msg },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const teamId = body?.team_id || body?.teamId;
 
@@ -21,8 +36,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const adminClient = getSupabaseAdmin();
+
     // 1. Buscar dados da equipe
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await adminClient
       .from("teams")
       .select("id, name, tournament_id, status, payment_status, mp_payment_id, player1, manager_name, user_id")
       .eq("id", teamId)
@@ -36,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Buscar dados do torneio (valor de inscrição e chave Pix do organizador)
-    const { data: tournament, error: tournError } = await supabase
+    const { data: tournament, error: tournError } = await adminClient
       .from("tournaments")
       .select("id, name, status, entry_fee, organizer_pix_key, owner_id")
       .eq("id", team.tournament_id)
@@ -46,6 +63,23 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Torneio vinculado à inscrição não foi encontrado." },
         { status: 404 }
+      );
+    }
+
+    // Validação de Autorização: O usuário deve ser Super Admin (profiles.is_admin) ou dono do torneio
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
+    const isSuperAdmin = profile?.is_admin === true;
+    const isTournamentOwner = tournament.owner_id === authUser.id;
+
+    if (!isSuperAdmin && !isTournamentOwner) {
+      return NextResponse.json(
+        { error: "403 Forbidden: Você não tem permissão para acionar o split manual desta equipe." },
+        { status: 403 }
       );
     }
 
@@ -80,12 +114,7 @@ export async function POST(request: Request) {
     const platformFee = Math.round((entryFee - amountToTransfer) * 100) / 100;
     const organizerPixKey = (tournament.organizer_pix_key || "").trim();
 
-    console.log(`[Manual Split MVP] Equipe: ${team.name} (${team.id}) | Torneio: ${tournament.name}`);
-    console.log(`[Manual Split MVP] Total: R$ ${entryFee.toFixed(2)} | Repasse 90%: R$ ${amountToTransfer.toFixed(2)} | Taxa 10%: R$ ${platformFee.toFixed(2)} | Chave Pix: ${organizerPixKey || "Não informada"}`);
-
-    // 5. Atualização do Banco de Dados:
-    // Bypass da API de Transferência do Mercado Pago (MVP com repasse manual fora do sistema)
-    // Atualiza tabela teams com: payment_status: 'PAID', status: 'PAID', payout_status: 'MANUAL_PENDING', payout_amount: amountToTransfer
+    // 5. Atualização do Banco de Dados via AdminClient
     const updatePayload: Record<string, any> = {
       status: "PAID",
       payment_status: "PAID",
@@ -94,7 +123,7 @@ export async function POST(request: Request) {
       amount_paid: entryFee,
     };
 
-    let { data: updatedTeam, error: updateError } = await supabase
+    let { data: updatedTeam, error: updateError } = await adminClient
       .from("teams")
       .update(updatePayload)
       .eq("id", team.id)
@@ -109,7 +138,7 @@ export async function POST(request: Request) {
     ) {
       const safePayload = { ...updatePayload };
       delete safePayload.amount_paid;
-      const retryRes = await supabase
+      const retryRes = await adminClient
         .from("teams")
         .update(safePayload)
         .eq("id", team.id)

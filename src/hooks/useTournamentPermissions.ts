@@ -52,14 +52,9 @@ export function useTournamentPermissions(tournamentId?: string) {
     }
 
     try {
-      // 1. Super Admin global do sistema
-      let isSuperAdmin =
-        user.email === "admin@sportconnect.com" ||
-        user.email === "santoslorrany250@gmail.com" ||
-        user.user_metadata?.role === "admin" ||
-        user.id === "organizer-admin-session";
-
-      if (!isSuperAdmin && user.id) {
+      // 1. Super Admin global do sistema via profiles.is_admin
+      let isSuperAdmin = false;
+      if (user.id) {
         try {
           const { data: profile } = await supabase
             .from("profiles")
@@ -211,7 +206,18 @@ export function useTournamentPermissions(tournamentId?: string) {
   }, [tournamentId, user]);
 
   useEffect(() => {
-    fetchPermissions();
+    let isCancelled = false;
+
+    const timer = setTimeout(() => {
+      if (!isCancelled) {
+        fetchPermissions();
+      }
+    }, 0);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [fetchPermissions]);
 
   return {

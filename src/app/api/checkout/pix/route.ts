@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAuthenticatedUser } from "@/lib/serverAuth";
 
 // 1. Configuração do SDK do Mercado Pago V2
 const client = new MercadoPagoConfig({
@@ -10,30 +11,94 @@ const payment = new Payment(client);
 
 export async function POST(request: Request) {
   try {
+    // 0. Autenticação estrita do usuário
+    const authHeader = request.headers.get("authorization");
+    const explicitToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    let authUser;
+    try {
+      authUser = await requireAuthenticatedUser(explicitToken);
+    } catch (authErr: unknown) {
+      const msg = authErr instanceof Error ? authErr.message : "401 Unauthorized: Usuário não autenticado.";
+      return NextResponse.json(
+        { error: msg },
+        { status: 401 }
+      );
+    }
+
     // 2. Receber o body da requisição
     const body = await request.json().catch(() => ({}));
     const {
       tournamentId,
       teamId,
-      totalAmount,
       teamName,
       email,
     } = body;
 
-    // Validações básicas
-    if (!totalAmount || isNaN(Number(totalAmount)) || Number(totalAmount) <= 0) {
+    if (!tournamentId || !teamId) {
       return NextResponse.json(
-        { error: "totalAmount deve ser um valor numérico positivo." },
+        { error: "tournamentId e teamId são obrigatórios." },
         { status: 400 }
       );
     }
 
-    const amount = Number(totalAmount);
+    const adminClient = getSupabaseAdmin();
+
+    // 2.1 Buscar dados da equipe e validar titularidade
+    const { data: team, error: teamErr } = await adminClient
+      .from("teams")
+      .select("id, name, tournament_id, user_id")
+      .eq("id", teamId)
+      .maybeSingle();
+
+    if (teamErr || !team) {
+      return NextResponse.json(
+        { error: "Inscrição/equipe não encontrada no banco de dados." },
+        { status: 404 }
+      );
+    }
+
+    if (team.tournament_id !== tournamentId) {
+      return NextResponse.json(
+        { error: "A equipe informada não pertence ao torneio especificado." },
+        { status: 400 }
+      );
+    }
+
+    if (team.user_id && team.user_id !== authUser.id) {
+      return NextResponse.json(
+        { error: "403 Forbidden: Você não tem permissão para gerar cobrança para esta equipe." },
+        { status: 403 }
+      );
+    }
+
+    // 2.2 Buscar entry_fee oficial do torneio no banco de dados (ignorando totalAmount do cliente)
+    const { data: tournament, error: tourErr } = await adminClient
+      .from("tournaments")
+      .select("id, name, entry_fee, status")
+      .eq("id", tournamentId)
+      .maybeSingle();
+
+    if (tourErr || !tournament) {
+      return NextResponse.json(
+        { error: "Torneio não encontrado." },
+        { status: 404 }
+      );
+    }
+
+    const officialFee = Number(tournament.entry_fee || 0);
+    if (officialFee <= 0) {
+      return NextResponse.json(
+        { error: "Este campeonato possui inscrição gratuita e não requer pagamento Pix." },
+        { status: 400 }
+      );
+    }
+
+    const amount = Math.round(officialFee * 100) / 100;
     const payerEmail =
       email && typeof email === "string" && email.includes("@")
         ? email.trim()
-        : "atleta@sportconnect.com.br";
-    const paymentDescription = `Inscrição SportConnect - ${teamName || "Equipe"}`;
+        : authUser.email || "atleta@sportconnect.com.br";
+    const paymentDescription = `Inscrição SportConnect - ${teamName || team.name || "Equipe"}`;
 
     // Verificação da chave de acesso do Mercado Pago
     if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
@@ -71,44 +136,42 @@ export async function POST(request: Request) {
     const qr_code_base64 = transactionData?.qr_code_base64 || "";
     const qr_code = transactionData?.qr_code || "";
 
-    // 5. Capturar o ID da transação do Mercado Pago e atualizar na tabela teams (mp_payment_id)
+    // 5. Capturar o ID da transação do Mercado Pago e atualizar na tabela teams (mp_payment_id) via adminClient
     const mpPaymentId = paymentResponse.id?.toString();
 
-    if (teamId) {
-      try {
-        const { error: updateError } = await supabase
+    try {
+      const { error: updateError } = await adminClient
+        .from("teams")
+        .update({
+          payment_status: "WAITING_PIX",
+          status: "PENDING",
+          mp_payment_id: mpPaymentId,
+          amount_paid: amount,
+        })
+        .eq("id", teamId);
+
+      if (
+        updateError &&
+        (updateError.code === "PGRST204" ||
+          updateError.code === "42703" ||
+          String(updateError.message).includes("amount_paid"))
+      ) {
+        await adminClient
           .from("teams")
           .update({
             payment_status: "WAITING_PIX",
             status: "PENDING",
             mp_payment_id: mpPaymentId,
-            amount_paid: amount,
           })
           .eq("id", teamId);
-
-        if (
-          updateError &&
-          (updateError.code === "PGRST204" ||
-            updateError.code === "42703" ||
-            String(updateError.message).includes("amount_paid"))
-        ) {
-          await supabase
-            .from("teams")
-            .update({
-              payment_status: "WAITING_PIX",
-              status: "PENDING",
-              mp_payment_id: mpPaymentId,
-            })
-            .eq("id", teamId);
-        } else if (updateError) {
-          console.warn(
-            "Aviso ao atualizar mp_payment_id e payment_status no Supabase:",
-            updateError.message
-          );
-        }
-      } catch (dbErr) {
-        console.warn("Exceção ao persistir payment_status no Supabase:", dbErr);
+      } else if (updateError) {
+        console.warn(
+          "Aviso ao atualizar mp_payment_id e payment_status no Supabase:",
+          updateError.message
+        );
       }
+    } catch (dbErr) {
+      console.warn("Exceção ao persistir payment_status no Supabase:", dbErr);
     }
 
     // 6. Calcular a divisão de 10% da taxa SportConnect

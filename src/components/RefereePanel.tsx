@@ -438,11 +438,6 @@ export default function RefereePanel({
         : (scoreA > scoreB ? team1_id : team2_id);
       const winnerId = calculatedWinnerId || matchWinnerId;
 
-      console.log("[RefereePanel] Finalizando partida no cliente:", {
-        matchId: selectedMatch.id,
-        winnerId,
-      });
-
       await onFinishMatch(selectedMatch.id, winnerId);
 
       // Sincronização do Frontend (Client-Side):

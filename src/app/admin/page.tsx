@@ -239,14 +239,9 @@ export default function AdminPage() {
       try {
         setLoading(true);
 
-        // A. Verificação de Super Admin
-        let isSuperAdmin = Boolean(
-          user.email === "admin@sportconnect.com" ||
-          user.email === "santoslorrany250@gmail.com" ||
-          user.id === "organizer-admin-session"
-        );
-
-        if (!isSuperAdmin) {
+        // A. Verificação de Super Admin estritamente via profiles.is_admin
+        let isSuperAdmin = false;
+        if (user.id) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("is_admin")
@@ -298,11 +293,12 @@ export default function AdminPage() {
           custom_registration_fields: t.custom_registration_fields,
         }));
 
-        // C. Fetch de todos os Perfis de Utilizadores
+        // C. Fetch dos Perfis de Utilizadores (Limitado aos 100 mais recentes para alta performance)
         const { data: dbProfiles, error: profilesErr } = await supabase
           .from("profiles")
-          .select("*")
-          .order("created_at", { ascending: false });
+          .select("id, full_name, email, is_admin, created_at, phone, avatar_url")
+          .order("created_at", { ascending: false })
+          .limit(100);
 
         if (profilesErr) {
           console.error("Erro ao carregar perfis de utilizadores:", profilesErr);

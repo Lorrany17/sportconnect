@@ -407,9 +407,33 @@ export async function uploadTournamentRegulationPdf(
   formData: FormData
 ): Promise<UploadRegulationResponse> {
   try {
+    const authUser = await requireAuthenticatedUser();
+    const tournamentId = formData.get("tournamentId") as string | null;
+    if (tournamentId) {
+      await requireTournamentAccess(authUser, tournamentId, ["ADMIN"]);
+    }
+
     const file = formData.get("file") as File | null;
     if (!file) {
       return { success: false, error: "Nenhum ficheiro PDF recebido para upload." };
+    }
+
+    // Validação estrita de tamanho (máximo 15MB)
+    const MAX_FILE_SIZE = 15 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return { success: false, error: "O arquivo excede o limite máximo permitido de 15MB." };
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuffer);
+
+    // Validação estrita de bytes mágicos do PDF (%PDF- / hex: 25 50 44 46 2d)
+    const magicBytes = fileBuffer.subarray(0, 5).toString("utf-8");
+    if (magicBytes !== "%PDF-") {
+      return {
+        success: false,
+        error: "Arquivo inválido: o regulamento deve ser um documento PDF autêntico.",
+      };
     }
 
     const supabaseAdmin = getSupabaseAdmin();
@@ -436,8 +460,6 @@ export async function uploadTournamentRegulationPdf(
 
     const cleanDocName = (file.name || "regulamento.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
     const uniqueDocName = `regulamento_${Date.now()}_${cleanDocName}`;
-    const arrayBuffer = await file.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
 
     // 2. Upload no bucket 'tournament-documents' via Service Role (bypass de RLS de escrita)
     const { error: uploadErr } = await supabaseAdmin.storage
@@ -566,6 +588,13 @@ export async function saveTournamentAction(
         phase_exceptions: resolvedPhaseExceptions,
       },
     };
+
+    // Forçar owner_id = usuário da sessão na criação e ignorar owner_id vindo do cliente
+    if (!tournamentId) {
+      enrichedPayload.owner_id = authUser.id;
+    } else {
+      delete enrichedPayload.owner_id;
+    }
 
     const executeWrite = async (body: Record<string, any>) => {
       if (tournamentId) {
