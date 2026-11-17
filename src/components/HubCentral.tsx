@@ -561,14 +561,14 @@ export default function HubCentral() {
   // Log de Depuração solicitado para verificar os dados reais na memória antes do retorno do JSX
   
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f0f0f] text-zinc-900 dark:text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
       {/* 1. Header de Navegação Global Uniformizado */}
       <PublicHeader activePage="hub" />
 
       {/* 2. Conteúdo Principal da Dashboard */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
         {/* Banner de Saudação e Resumo */}
-        <section className="bg-gradient-to-r from-[#18181b] via-[#141416] to-[#121214] border border-[#27272a] rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
+        <section className="bg-gradient-to-r from-white via-zinc-50 to-white dark:from-[#18181b] dark:via-[#141416] dark:to-[#121214] border border-zinc-200 dark:border-[#27272a] rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-sm dark:shadow-2xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-[#00a2ff]/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
@@ -577,10 +577,10 @@ export default function HubCentral() {
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Painel de Competições</span>
               </div>
-              <h1 className="text-2xl sm:text-4xl font-black text-white font-display tracking-tight">
+              <h1 className="text-2xl sm:text-4xl font-black text-zinc-900 dark:text-white font-display tracking-tight">
                 Olá, <span className="text-[#00a2ff]">{userName}</span>! 👋
               </h1>
-              <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 Acompanhe o andamento das suas inscrições como atleta e gerencie os campeonatos oficiais que você organizou na plataforma.
               </p>
             </div>
@@ -600,7 +600,7 @@ export default function HubCentral() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-xs font-bold text-zinc-300 hover:text-white transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
+                className="px-4 py-2.5 rounded-xl bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-[#00a2ff]" : ""}`} />
                 <span>Atualizar</span>
@@ -609,46 +609,46 @@ export default function HubCentral() {
           </div>
 
           {/* Cards de Métricas Rápidas */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-8 pt-6 border-t border-zinc-800/80">
-            <div className="bg-[#101012] border border-zinc-800/80 rounded-2xl p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800/80">
+            <div className="bg-zinc-50 dark:bg-[#101012] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between text-zinc-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Inscrições Ativas</span>
-                <Users className="h-4 w-4 text-emerald-400" />
+                <Users className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
               </div>
-              <div className="text-2xl font-black text-white font-display">
+              <div className="text-2xl font-black text-zinc-900 dark:text-white font-display">
                 {myRegistrations.length}
               </div>
               <span className="text-[10px] text-zinc-500">Como atleta ou capitão</span>
             </div>
 
-            <div className="bg-[#101012] border border-zinc-800/80 rounded-2xl p-4">
+            <div className="bg-zinc-50 dark:bg-[#101012] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between text-zinc-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Meus Campeonatos</span>
-                <Trophy className="h-4 w-4 text-blue-400" />
+                <Trophy className="h-4 w-4 text-blue-500 dark:text-blue-400" />
               </div>
-              <div className="text-2xl font-black text-white font-display">
+              <div className="text-2xl font-black text-zinc-900 dark:text-white font-display">
                 {myTournaments.length}
               </div>
               <span className="text-[10px] text-zinc-500">Torneios criados</span>
             </div>
 
-            <div className="bg-[#101012] border border-zinc-800/80 rounded-2xl p-4">
+            <div className="bg-zinc-50 dark:bg-[#101012] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between text-zinc-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Compartilhados</span>
-                <ShieldCheck className="h-4 w-4 text-purple-400" />
+                <ShieldCheck className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               </div>
-              <div className="text-2xl font-black text-white font-display">
+              <div className="text-2xl font-black text-zinc-900 dark:text-white font-display">
                 {sharedTournaments.length}
               </div>
               <span className="text-[10px] text-zinc-500">Como staff / arbitragem</span>
             </div>
 
-            <div className="col-span-2 sm:col-span-1 bg-[#101012] border border-zinc-800/80 rounded-2xl p-4">
+            <div className="col-span-2 sm:col-span-1 bg-zinc-50 dark:bg-[#101012] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between text-zinc-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Modalidades</span>
-                <Shield className="h-4 w-4 text-amber-400" />
+                <Shield className="h-4 w-4 text-amber-500 dark:text-amber-400" />
               </div>
-              <div className="text-xs font-bold text-zinc-300 flex items-center gap-2 mt-1">
+              <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-2 mt-1">
                 <span>🁓 Dominó</span>
                 <span>•</span>
                 <span>🏓 Ping Pong</span>
@@ -665,7 +665,7 @@ export default function HubCentral() {
         {loading ? (
           <div className="py-20 text-center space-y-3">
             <Loader2 className="h-8 w-8 text-[#00a2ff] animate-spin mx-auto" />
-            <p className="text-xs font-bold text-zinc-400">Carregando seus campeonatos e inscrições...</p>
+            <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Carregando seus campeonatos e inscrições...</p>
           </div>
         ) : (
           <div className="space-y-12">
@@ -673,19 +673,19 @@ export default function HubCentral() {
             {/* SEÇÃO 1: MINHAS INSCRIÇÕES (VISÃO ATLETA) */}
             {/* ======================================================== */}
             <section className="space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-[#27272a] pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                     <Users className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-white font-display tracking-tight flex items-center gap-2">
+                    <h2 className="text-xl font-black text-zinc-900 dark:text-white font-display tracking-tight flex items-center gap-2">
                       <span>Minhas Inscrições</span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black">
                         {myRegistrations.length}
                       </span>
                     </h2>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
                       Competições nas quais você inscreveu sua equipe ou dupla.
                     </p>
                   </div>
@@ -694,7 +694,7 @@ export default function HubCentral() {
                 {myRegistrations.length > 0 && (
                   <Link
                     href="/explorar"
-                    className="text-xs font-bold text-[#00a2ff] hover:text-blue-400 flex items-center gap-1 self-start sm:self-auto transition-colors"
+                    className="text-xs font-bold text-[#00a2ff] hover:text-blue-500 flex items-center gap-1 self-start sm:self-auto transition-colors"
                   >
                     <span>Inscrever-se em outro campeonato</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -704,15 +704,15 @@ export default function HubCentral() {
 
               {/* Renderização de Inscrições ou Empty State */}
               {myRegistrations.length === 0 ? (
-                <div className="border-2 border-dashed border-zinc-800 bg-[#141416]/50 rounded-3xl p-10 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-700/80 text-zinc-400 flex items-center justify-center mx-auto shadow-md">
-                    <Compass className="h-7 w-7 text-emerald-400" />
+                <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-800 bg-white/50 dark:bg-[#141416]/50 rounded-3xl p-10 text-center space-y-4 shadow-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/80 text-zinc-400 flex items-center justify-center mx-auto shadow-sm">
+                    <Compass className="h-7 w-7 text-emerald-500 dark:text-emerald-400" />
                   </div>
                   <div className="space-y-1 max-w-md mx-auto">
-                    <h3 className="text-base font-bold text-white">
+                    <h3 className="text-base font-bold text-zinc-900 dark:text-white">
                       Ainda não estás a participar em nenhum campeonato.
                     </h3>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                       Explore as arenas com inscrições abertas, encontre sua modalidade favorita e coloque sua equipe na disputa!
                     </p>
                   </div>
@@ -775,7 +775,7 @@ export default function HubCentral() {
                         onClick={() => {
                           if (tournamentId) router.push(`/torneio/${tournamentId}`);
                         }}
-                        className="bg-[#1a1a1a] border border-[#27272a] hover:border-[#00a2ff]/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-xl hover:shadow-[#00a2ff]/10 cursor-pointer group relative overflow-hidden"
+                        className="bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#27272a] hover:border-[#00a2ff]/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-sm dark:shadow-xl hover:shadow-[#00a2ff]/10 cursor-pointer group relative overflow-hidden"
                       >
                         {/* Linha decorativa superior sutil */}
                         <div
@@ -797,49 +797,49 @@ export default function HubCentral() {
                         <div className="space-y-3.5">
                           {/* Topo do Mini Card: Modalidade & Status do Pagamento */}
                           <div className="flex items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#121214] border border-zinc-800 text-[11px] font-bold text-zinc-300">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
                               <span>{sportInfo.icon}</span>
                               <span>{sportInfo.label}</span>
                             </span>
 
                             {/* Badge de Status no Topo do Card (Precedência Estrita) */}
                             {isCancellationRequested ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-wider">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider">
                                 <Clock className="h-3 w-3 animate-pulse" />
                                 <span>Estorno Solicitado</span>
                               </span>
                             ) : reg.cancellation_status === "REFUNDED" ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400 text-[10px] font-black uppercase tracking-wider">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-wider">
                                 <Ban className="h-3 w-3" />
                                 <span>Cancelado / Estornado</span>
                               </span>
                             ) : isTournamentCompletedStatus(tournStatus) ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-black uppercase tracking-wider">
-                                <Trophy className="h-3 w-3 text-amber-400" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-[10px] font-black uppercase tracking-wider">
+                                <Trophy className="h-3 w-3 text-amber-500 dark:text-amber-400" />
                                 <span>Torneio Finalizado</span>
                               </span>
                             ) : isApproved && isTournamentInProgress ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-blue-500 text-blue-400 bg-blue-500/10 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(59,130,246,0.3)] animate-pulse">
-                                <PlayCircle className="w-4 h-4 mr-1 text-blue-400 shrink-0" />
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(59,130,246,0.3)] animate-pulse">
+                                <PlayCircle className="w-4 h-4 mr-1 text-blue-500 dark:text-blue-400 shrink-0" />
                                 <span>CAMPEONATO EM ANDAMENTO</span>
                               </span>
                             ) : isApproved ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500 text-emerald-400 bg-emerald-500/15 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.25)]">
-                                <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-400 shrink-0" />
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 text-[11px] font-black uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                                <CheckCircle2 className="w-4 h-4 mr-1 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                 <span>INSCRIÇÃO CONFIRMADA!</span>
                               </span>
                             ) : isWaitingApproval ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-wider">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-wider">
                                 <Clock className="h-3 w-3 animate-pulse" />
                                 <span>Em Análise</span>
                               </span>
                             ) : isWaitingPix ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/25 text-orange-400 text-[10px] font-black uppercase tracking-wider">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/25 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-wider">
                                 <Clock className="h-3 w-3 animate-pulse" />
                                 <span>Aguardando Pix</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/25 text-yellow-400 text-[10px] font-black uppercase tracking-wider">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/25 text-yellow-600 dark:text-yellow-400 text-[10px] font-black uppercase tracking-wider">
                                 <AlertCircle className="h-3 w-3" />
                                 <span>Pendente</span>
                               </span>
@@ -848,12 +848,12 @@ export default function HubCentral() {
 
                           {/* Nome do Torneio */}
                           <div>
-                            <h3 className="text-base font-black text-white font-display tracking-tight group-hover:text-[#00a2ff] transition-colors line-clamp-1">
+                            <h3 className="text-base font-black text-zinc-900 dark:text-white font-display tracking-tight group-hover:text-[#00a2ff] transition-colors line-clamp-1">
                               {reg.tournament?.name || "Campeonato Oficial"}
                             </h3>
                             {reg.tournament?.location && (
-                              <p className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5">
-                                <MapPin className="h-3 w-3 text-zinc-500 shrink-0" />
+                              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1 mt-0.5">
+                                <MapPin className="h-3 w-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
                                 <span className="truncate">{reg.tournament.location}</span>
                               </p>
                             )}
@@ -861,45 +861,42 @@ export default function HubCentral() {
 
                           {/* Mensagem / Alerta de Status Central (Precedência Estrita) */}
                           {isCancellationRequested ? (
-                            /* Prioridade 1 (Maior): Se cancel_requested for true ou status for CANCELLATION_REQUESTED */
-                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-medium flex items-center gap-2 shadow-sm animate-fadeIn">
-                              <Clock className="h-4 w-4 shrink-0 text-amber-400 animate-pulse" />
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-medium flex items-center gap-2 shadow-sm animate-fadeIn">
+                              <Clock className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400 animate-pulse" />
                               <span>Aguardando confirmação e estorno por parte do organizador.</span>
                             </div>
                           ) : isApproved && isTournamentInProgress ? (
-                            /* Prioridade 2: Se tournament.status === 'IN_PROGRESS' e APPROVED */
-                            <div className="bg-blue-500/10 text-blue-400 border border-blue-500/20 p-3 rounded-xl flex items-center text-xs font-semibold shadow-sm animate-fadeIn">
-                              <Trophy className="w-5 h-5 mr-2 text-blue-400 shrink-0" />
+                            <div className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 p-3 rounded-xl flex items-center text-xs font-semibold shadow-sm animate-fadeIn">
+                              <Trophy className="w-5 h-5 mr-2 text-blue-500 dark:text-blue-400 shrink-0" />
                               <span>As partidas já começaram! Acompanhe o chaveamento.</span>
                             </div>
                           ) : isApproved ? (
-                            /* Prioridade 3: Se APPROVED */
-                            <div className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-3 rounded-xl flex items-center text-xs font-semibold shadow-sm animate-fadeIn">
-                              <CheckCircle2 className="w-5 h-5 mr-2 text-emerald-400 shrink-0" />
+                            <div className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 p-3 rounded-xl flex items-center text-xs font-semibold shadow-sm animate-fadeIn">
+                              <CheckCircle2 className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400 shrink-0" />
                               <span>Vaga confirmada! Você está oficialmente no torneio.</span>
                             </div>
                           ) : isWaitingApproval ? (
-                            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] font-medium flex items-center gap-2 shadow-sm">
-                              <Clock className="h-3.5 w-3.5 text-blue-400 shrink-0 animate-pulse" />
+                            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] font-medium flex items-center gap-2 shadow-sm">
+                              <Clock className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400 shrink-0 animate-pulse" />
                               <span>Comprovante em análise • O organizador foi notificado.</span>
                             </div>
                           ) : isWaitingPix || isPending ? (
-                            <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-[11px] font-medium flex items-center gap-2 shadow-sm">
-                              <Clock className="h-3.5 w-3.5 text-orange-400 shrink-0 animate-pulse" />
+                            <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-700 dark:text-orange-300 text-[11px] font-medium flex items-center gap-2 shadow-sm">
+                              <Clock className="h-3.5 w-3.5 text-orange-500 dark:text-orange-400 shrink-0 animate-pulse" />
                               <span>Inscrição pendente de pagamento Pix.</span>
                             </div>
                           ) : null}
 
                           {/* Dados da Equipe / Dupla Registrada */}
-                          <div className="p-3 rounded-xl bg-[#121214] border border-zinc-800/80 space-y-1">
+                          <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 space-y-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
                               Minha Equipe / Dupla
                             </span>
-                            <div className="text-xs font-bold text-zinc-100 truncate">
+                            <div className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate">
                               {reg.name}
                             </div>
                             {(reg.player1 || reg.player2) && (
-                              <div className="text-[10px] text-zinc-400 truncate">
+                              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
                                 {[reg.player1, reg.player2].filter(Boolean).join(" • ")}
                               </div>
                             )}
@@ -908,7 +905,6 @@ export default function HubCentral() {
                           {/* Seção de Botões de Ação (Com UM ÚNICO botão de WhatsApp) */}
                           <div className="pt-1 space-y-2">
                             {isCancellationRequested ? (
-                              /* Prioridade 1: Renderiza APENAS UM botão de Falar com o Organizador */
                               <a
                                 href={organizerPhone ? `https://wa.me/${organizerPhone}` : "#"}
                                 target="_blank"
@@ -926,7 +922,6 @@ export default function HubCentral() {
                                 <span>Falar com o Organizador</span>
                               </a>
                             ) : (
-                              /* Demais Casos: Ações contextuais + UM botão de Falar com o Organizador */
                               <>
                                 {/* Botão de Finalizar Pagamento se pendente */}
                                 {(isWaitingPix || isPending) && !isWaitingApproval && (
@@ -952,10 +947,10 @@ export default function HubCentral() {
                                       e.stopPropagation();
                                       handleRequestCancellation(reg);
                                     }}
-                                    className="w-full py-2 px-3 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                                    className="w-full py-2 px-3 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
                                     title="Solicitar cancelamento da inscrição"
                                   >
-                                    <Ban className="h-3.5 w-3.5 text-red-400" />
+                                    <Ban className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
                                     <span>Cancelar Minha Inscrição</span>
                                   </button>
                                 )}
@@ -971,10 +966,10 @@ export default function HubCentral() {
                                       alert("Telefone do organizador não disponível.");
                                     }
                                   }}
-                                  className="w-full py-2 px-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                                  className="w-full py-2 px-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
                                   title="Falar com o organizador via WhatsApp"
                                 >
-                                  <MessageCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                  <MessageCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                   <span>Falar com o Organizador</span>
                                 </a>
                               </>
@@ -983,7 +978,7 @@ export default function HubCentral() {
                         </div>
 
                         {/* Rodapé do Mini Card */}
-                        <div className="pt-3 mt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs font-bold text-zinc-400 group-hover:text-white transition-colors">
+                        <div className="pt-3 mt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs font-bold text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
                           <span className="text-[11px] text-zinc-500">
                             {reg.tournament?.start_date
                               ? formatTournamentDate(reg.tournament.start_date, reg.tournament.end_date, reg.tournament.start_time)
@@ -1005,19 +1000,19 @@ export default function HubCentral() {
             {/* SEÇÃO 2: MEUS CAMPEONATOS (VISÃO ORGANIZADOR) */}
             {/* ======================================================== */}
             <section className="space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-[#27272a] pb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-[#00a2ff]/10 border border-[#00a2ff]/20 text-[#00a2ff]">
                     <Trophy className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-white font-display tracking-tight flex items-center gap-2">
+                    <h2 className="text-xl font-black text-zinc-900 dark:text-white font-display tracking-tight flex items-center gap-2">
                       <span>Meus Campeonatos</span>
                       <span className="px-2 py-0.5 rounded-full bg-[#00a2ff]/10 text-[#00a2ff] border border-[#00a2ff]/20 text-[10px] font-black">
                         {myTournaments.length}
                       </span>
                     </h2>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
                       Torneios criados e administrados por você com controle total de súmula e chaveamento.
                     </p>
                   </div>
@@ -1026,7 +1021,7 @@ export default function HubCentral() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-xs font-bold text-zinc-200 hover:text-white transition-all self-start sm:self-auto cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white transition-all self-start sm:self-auto cursor-pointer shadow-sm"
                 >
                   <Plus className="h-3.5 w-3.5 text-[#00a2ff]" />
                   <span>Novo Campeonato</span>
@@ -1035,15 +1030,15 @@ export default function HubCentral() {
 
               {/* Renderização de Campeonatos Criados ou Empty State */}
               {myTournaments.length === 0 ? (
-                <div className="border-2 border-dashed border-zinc-800 bg-[#141416]/50 rounded-3xl p-10 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-700/80 text-zinc-400 flex items-center justify-center mx-auto shadow-md">
+                <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-800 bg-white/50 dark:bg-[#141416]/50 rounded-3xl p-10 text-center space-y-4 shadow-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/80 text-zinc-400 flex items-center justify-center mx-auto shadow-sm">
                     <Trophy className="h-7 w-7 text-[#00a2ff]" />
                   </div>
                   <div className="space-y-1 max-w-md mx-auto">
-                    <h3 className="text-base font-bold text-white">
+                    <h3 className="text-base font-bold text-zinc-900 dark:text-white">
                       Você ainda não criou nenhum campeonato.
                     </h3>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                       Monte seu torneio personalizado em minutos com chaveamento mata-mata automático, súmula digital e pagamentos via Pix.
                     </p>
                   </div>
@@ -1072,14 +1067,14 @@ export default function HubCentral() {
                   return (
                     <div className="space-y-5">
                       {/* Abas de Segregação: Ativos vs Histórico / Finalizados */}
-                      <div className="flex flex-wrap items-center gap-2 bg-[#141416] p-1.5 rounded-2xl border border-[#27272a] w-fit">
+                      <div className="flex flex-wrap items-center gap-2 bg-zinc-100 dark:bg-[#141416] p-1.5 rounded-2xl border border-zinc-200 dark:border-[#27272a] w-fit shadow-sm">
                         <button
                           type="button"
                           onClick={() => setTournamentTab("ACTIVE")}
                           className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                             tournamentTab === "ACTIVE"
                               ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
-                              : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+                              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60"
                           }`}
                         >
                           <span>Torneios Ativos</span>
@@ -1087,7 +1082,7 @@ export default function HubCentral() {
                             className={`px-1.5 py-0.5 rounded-md text-[10px] ${
                               tournamentTab === "ACTIVE"
                                 ? "bg-white/20 text-white"
-                                : "bg-zinc-800 text-zinc-400"
+                                : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                             }`}
                           >
                             {activeMyTournaments.length}
@@ -1100,7 +1095,7 @@ export default function HubCentral() {
                           className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                             tournamentTab === "COMPLETED"
                               ? "bg-zinc-700 text-white shadow-md"
-                              : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+                              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60"
                           }`}
                         >
                           <span>Histórico / Finalizados</span>
@@ -1108,7 +1103,7 @@ export default function HubCentral() {
                             className={`px-1.5 py-0.5 rounded-md text-[10px] ${
                               tournamentTab === "COMPLETED"
                                 ? "bg-white/20 text-white"
-                                : "bg-zinc-800 text-zinc-400"
+                                : "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                             }`}
                           >
                             {completedMyTournaments.length}
@@ -1117,9 +1112,9 @@ export default function HubCentral() {
                       </div>
 
                       {displayedTournaments.length === 0 ? (
-                        <div className="border border-dashed border-zinc-800 bg-[#141416]/40 rounded-2xl p-8 text-center space-y-2">
-                          <Trophy className="h-8 w-8 text-zinc-600 mx-auto" />
-                          <h3 className="text-sm font-bold text-zinc-300">
+                        <div className="border border-dashed border-zinc-300 dark:border-zinc-800 bg-white/40 dark:bg-[#141416]/40 rounded-2xl p-8 text-center space-y-2 shadow-sm">
+                          <Trophy className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
+                          <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-300">
                             {tournamentTab === "ACTIVE"
                               ? "Nenhum torneio ativo no momento"
                               : "Nenhum torneio finalizado no histórico ainda"}
@@ -1151,13 +1146,13 @@ export default function HubCentral() {
                                   setCurrentTournamentId(tourn.id);
                                   router.push(`/dashboard/${tourn.id}`);
                                 }}
-                                className="bg-[#1a1a1a] border border-[#27272a] hover:border-[#00a2ff]/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-xl hover:shadow-[#00a2ff]/10 cursor-pointer group relative overflow-hidden"
+                                className="bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#27272a] hover:border-[#00a2ff]/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-sm dark:shadow-xl hover:shadow-[#00a2ff]/10 cursor-pointer group relative overflow-hidden"
                               >
                                 {/* Linha decorativa superior azul */}
                                 <div
                                   className={`absolute top-0 left-0 right-0 h-1 ${
                                     isFinalizado
-                                      ? "bg-zinc-600"
+                                      ? "bg-zinc-400 dark:bg-zinc-600"
                                       : "bg-gradient-to-r from-[#00a2ff] to-indigo-500"
                                   }`}
                                 />
@@ -1165,24 +1160,24 @@ export default function HubCentral() {
                                 <div className="space-y-4">
                                   {/* Topo do Card: Modalidade & Status do Torneio */}
                                   <div className="flex items-center justify-between gap-2">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#121214] border border-zinc-800 text-[11px] font-bold text-zinc-300">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
                                       <span>{sportInfo.icon}</span>
                                       <span>{sportInfo.label}</span>
                                       {tourn.format && (
                                         <>
-                                          <span className="text-zinc-600">•</span>
-                                          <span className="text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
+                                          <span className="text-zinc-400 dark:text-zinc-600">•</span>
+                                          <span className="text-zinc-500 dark:text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
                                         </>
                                       )}
                                     </span>
 
                                     <div className="flex items-center gap-1.5">
                                       {isFinalizado ? (
-                                        <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 text-[10px] font-black uppercase tracking-wider">
+                                        <span className="px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 text-[10px] font-black uppercase tracking-wider">
                                           FINALIZADO
                                         </span>
                                       ) : isCancelado ? (
-                                        <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/25 text-[10px] font-black uppercase tracking-wider">
+                                        <span className="px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25 text-[10px] font-black uppercase tracking-wider">
                                           CANCELADO
                                         </span>
                                       ) : String(tourn.status || "").toUpperCase() === "IN_PROGRESS" ||
@@ -1193,8 +1188,8 @@ export default function HubCentral() {
                                           <span>EM ANDAMENTO</span>
                                         </span>
                                       ) : (
-                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black uppercase tracking-wider">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                                           <span>Ativo</span>
                                         </span>
                                       )}
@@ -1203,17 +1198,17 @@ export default function HubCentral() {
 
                           {/* Nome do Torneio */}
                           <div>
-                            <h3 className="text-base font-black text-white font-display tracking-tight group-hover:text-[#00a2ff] transition-colors line-clamp-1">
+                            <h3 className="text-base font-black text-zinc-900 dark:text-white font-display tracking-tight group-hover:text-[#00a2ff] transition-colors line-clamp-1">
                               {tourn.name}
                             </h3>
-                            <div className="flex items-center gap-3 text-[11px] text-zinc-400 mt-1">
+                            <div className="flex items-center gap-3 text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
                               <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-zinc-500 shrink-0" />
+                                <Calendar className="h-3 w-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
                                 <span>{formatTournamentDate(tourn.start_date, tourn.end_date, tourn.start_time)}</span>
                               </span>
                               {tourn.location && (
                                 <span className="flex items-center gap-1 truncate max-w-[130px]">
-                                  <MapPin className="h-3 w-3 text-zinc-500 shrink-0" />
+                                  <MapPin className="h-3 w-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
                                   <span className="truncate">{tourn.location}</span>
                                 </span>
                               )}
@@ -1221,25 +1216,25 @@ export default function HubCentral() {
                           </div>
 
                           {/* Estatísticas Rápidas: Vagas Preenchidas & Taxa */}
-                          <div className="p-3 rounded-xl bg-[#121214] border border-zinc-800/80 space-y-2">
+                          <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 space-y-2">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-zinc-500 font-medium">Vagas Ocupadas:</span>
-                              <span className="font-bold text-white">
+                              <span className="font-bold text-zinc-900 dark:text-white">
                                 <strong className="text-[#00a2ff]">{preenchidas}</strong> / {maxVagas} equipes
                               </span>
                             </div>
 
                             {/* Barra de Progresso de Ocupação */}
-                            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-gradient-to-r from-[#00a2ff] to-blue-500 rounded-full transition-all duration-500"
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
 
-                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/50">
+                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-200 dark:border-zinc-800/50">
                               <span className="text-zinc-500">Inscrição:</span>
-                              <span className="font-bold text-emerald-400">
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400">
                                 {tourn.entry_fee && tourn.entry_fee > 0
                                   ? `R$ ${tourn.entry_fee.toFixed(2).replace(".", ",")}`
                                   : "Gratuito"}
@@ -1249,10 +1244,10 @@ export default function HubCentral() {
                         </div>
 
                         {/* Botão de Ação / Rodapé */}
-                        <div className="pt-3 mt-4 border-t border-zinc-800/80">
+                        <div className="pt-3 mt-4 border-t border-zinc-100 dark:border-zinc-800/80">
                           <button
                             type="button"
-                            className="w-full py-2 px-3 rounded-xl bg-zinc-900 group-hover:bg-[#00a2ff] text-zinc-300 group-hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            className="w-full py-2 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 group-hover:bg-[#00a2ff] text-zinc-700 dark:text-zinc-300 group-hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                           >
                             <LayoutDashboard className="h-3.5 w-3.5" />
                             <span>Gerenciar Painel</span>
@@ -1274,19 +1269,19 @@ export default function HubCentral() {
             {/* SEÇÃO 3: TORNEIOS COMPARTILHADOS COMIGO (EQUIPE / STAFF) */}
             {/* ======================================================== */}
             <section className="space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-[#27272a] pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400">
                     <ShieldCheck className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-white font-display tracking-tight flex items-center gap-2">
+                    <h2 className="text-xl font-black text-zinc-900 dark:text-white font-display tracking-tight flex items-center gap-2">
                       <span>Torneios Compartilhados Comigo</span>
-                      <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-black">
+                      <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-[10px] font-black">
                         {sharedTournaments.length}
                       </span>
                     </h2>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
                       Competições nas quais você faz parte da comissão técnica ou arbitragem (Administrador, Árbitro ou Mesário).
                     </p>
                   </div>
@@ -1294,11 +1289,11 @@ export default function HubCentral() {
               </div>
 
               {sharedTournaments.length === 0 ? (
-                <div className="border border-dashed border-zinc-800/80 bg-[#141416]/30 rounded-2xl p-6 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 flex items-center justify-center mx-auto">
-                    <Shield className="h-5 w-5 text-purple-400/60" />
+                <div className="border border-dashed border-zinc-300 dark:border-zinc-800/80 bg-white/30 dark:bg-[#141416]/30 rounded-2xl p-6 text-center space-y-2 shadow-sm">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 flex items-center justify-center mx-auto shadow-sm">
+                    <Shield className="h-5 w-5 text-purple-500 dark:text-purple-400/60" />
                   </div>
-                  <h3 className="text-xs font-bold text-zinc-300">
+                  <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-300">
                     Nenhum torneio compartilhado com você no momento
                   </h3>
                   <p className="text-[11px] text-zinc-500 max-w-sm mx-auto leading-relaxed">
@@ -1322,7 +1317,7 @@ export default function HubCentral() {
                           setCurrentTournamentId(tourn.id);
                           router.push(`/dashboard/${tourn.id}`);
                         }}
-                        className="bg-[#1a1a1a] border border-[#27272a] hover:border-purple-500/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-xl hover:shadow-purple-500/10 cursor-pointer group relative overflow-hidden"
+                        className="bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#27272a] hover:border-purple-500/60 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 shadow-sm dark:shadow-xl hover:shadow-purple-500/10 cursor-pointer group relative overflow-hidden"
                       >
                         {/* Linha decorativa superior roxo/indigo */}
                         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-[#00a2ff]" />
@@ -1330,13 +1325,13 @@ export default function HubCentral() {
                         <div className="space-y-4">
                           {/* Topo do Card: Modalidade & Cargo de Staff */}
                           <div className="flex items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#121214] border border-zinc-800 text-[11px] font-bold text-zinc-300">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold text-zinc-700 dark:text-zinc-300">
                               <span>{sportInfo.icon}</span>
                               <span>{sportInfo.label}</span>
                               {tourn.format && (
                                 <>
-                                  <span className="text-zinc-600">•</span>
-                                  <span className="text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
+                                  <span className="text-zinc-400 dark:text-zinc-600">•</span>
+                                  <span className="text-zinc-500 dark:text-zinc-400">{translateTournamentFormat(tourn.format)}</span>
                                 </>
                               )}
                             </span>
@@ -1345,10 +1340,10 @@ export default function HubCentral() {
                             <span
                               className={`px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
                                 tourn.staffRole === "ADMIN"
-                                  ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
+                                  ? "bg-purple-500/15 border-purple-500/30 text-purple-700 dark:text-purple-300"
                                   : tourn.staffRole === "REFEREE"
-                                  ? "bg-blue-500/15 border-blue-500/30 text-blue-300"
-                                  : "bg-amber-500/15 border-amber-500/30 text-amber-300"
+                                  ? "bg-blue-500/15 border-blue-500/30 text-blue-700 dark:text-blue-300"
+                                  : "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300"
                               }`}
                             >
                               {tourn.staffRole === "ADMIN" ? (
@@ -1373,7 +1368,7 @@ export default function HubCentral() {
                           {/* Nome do Torneio */}
                           <div>
                             <div className="flex items-center justify-between gap-2">
-                              <h3 className="text-base font-black text-white font-display tracking-tight group-hover:text-purple-400 transition-colors line-clamp-1">
+                              <h3 className="text-base font-black text-zinc-900 dark:text-white font-display tracking-tight group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors line-clamp-1">
                                 {tourn.name}
                               </h3>
                               {String(tourn.status || "").toUpperCase() === "IN_PROGRESS" ||
@@ -1384,19 +1379,19 @@ export default function HubCentral() {
                                   <span>Ao Vivo</span>
                                 </span>
                               ) : isFinalizado ? (
-                                <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                                <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold uppercase tracking-wider shrink-0">
                                   Finalizado
                                 </span>
                               ) : null}
                             </div>
-                            <div className="flex items-center gap-3 text-[11px] text-zinc-400 mt-1">
+                            <div className="flex items-center gap-3 text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
                               <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-zinc-500 shrink-0" />
+                                <Calendar className="h-3 w-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
                                 <span>{formatTournamentDate(tourn.start_date, tourn.end_date, tourn.start_time)}</span>
                               </span>
                               {tourn.location && (
                                 <span className="flex items-center gap-1 truncate max-w-[130px]">
-                                  <MapPin className="h-3 w-3 text-zinc-500 shrink-0" />
+                                  <MapPin className="h-3 w-3 text-zinc-400 dark:text-zinc-500 shrink-0" />
                                   <span className="truncate">{tourn.location}</span>
                                 </span>
                               )}
@@ -1404,25 +1399,25 @@ export default function HubCentral() {
                           </div>
 
                           {/* Estatísticas Rápidas: Vagas Preenchidas */}
-                          <div className="p-3 rounded-xl bg-[#121214] border border-zinc-800/80 space-y-2">
+                          <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 space-y-2">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-zinc-500 font-medium">Vagas Ocupadas:</span>
-                              <span className="font-bold text-white">
-                                <strong className="text-purple-400">{preenchidas}</strong> / {maxVagas} equipes
+                              <span className="font-bold text-zinc-900 dark:text-white">
+                                <strong className="text-purple-600 dark:text-purple-400">{preenchidas}</strong> / {maxVagas} equipes
                               </span>
                             </div>
 
                             {/* Barra de Progresso de Ocupação */}
-                            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500"
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
 
-                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/50">
+                            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-200 dark:border-zinc-800/50">
                               <span className="text-zinc-500">Inscrição:</span>
-                              <span className="font-bold text-emerald-400">
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400">
                                 {tourn.entry_fee && tourn.entry_fee > 0
                                   ? `R$ ${tourn.entry_fee.toFixed(2).replace(".", ",")}`
                                   : "Gratuito"}
@@ -1432,10 +1427,10 @@ export default function HubCentral() {
                         </div>
 
                         {/* Botão de Ação / Rodapé */}
-                        <div className="pt-3 mt-4 border-t border-zinc-800/80">
+                        <div className="pt-3 mt-4 border-t border-zinc-100 dark:border-zinc-800/80">
                           <button
                             type="button"
-                            className="w-full py-2 px-3 rounded-xl bg-zinc-900 group-hover:bg-purple-600 text-zinc-300 group-hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                            className="w-full py-2 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 group-hover:bg-purple-600 text-zinc-700 dark:text-zinc-300 group-hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                           >
                             <LayoutDashboard className="h-3.5 w-3.5" />
                             <span>
@@ -1459,7 +1454,7 @@ export default function HubCentral() {
       </main>
 
       {/* 3. Rodapé Minimalista */}
-      <footer className="border-t border-[#27272a] py-6 text-center text-xs text-zinc-500 bg-[#141416]/50">
+      <footer className="border-t border-zinc-200 dark:border-[#27272a] py-6 text-center text-xs text-zinc-500 bg-white/50 dark:bg-[#141416]/50">
         <div>SportConnect Hub • Plataforma de Gestão Esportiva Multimodal</div>
       </footer>
 
@@ -1496,21 +1491,21 @@ export default function HubCentral() {
 
       {/* MODAL DE AVISO: CANCELAMENTO PÓS-PAGAMENTO */}
       {cancellingPaidReg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="bg-[#141416] border border-red-500/40 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl relative space-y-5 animate-scaleUp">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#141416] border border-red-500/30 dark:border-red-500/40 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl relative space-y-5 animate-scaleUp">
             {/* Linha superior vermelha de aviso */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-500 rounded-t-3xl" />
 
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-500 dark:text-red-400 flex items-center justify-center shrink-0">
                   <AlertTriangle className="h-6 w-6" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-black font-display text-white">
+                  <h3 className="text-lg font-black font-display text-zinc-900 dark:text-white">
                     Aviso de Cancelamento
                   </h3>
-                  <p className="text-xs text-zinc-400 truncate max-w-[240px]">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-[240px]">
                     {cancellingPaidReg.tournament?.name || "Campeonato Oficial"} • {cancellingPaidReg.name}
                   </p>
                 </div>
@@ -1518,17 +1513,17 @@ export default function HubCentral() {
               <button
                 type="button"
                 onClick={() => setCancellingPaidReg(null)}
-                className="text-zinc-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-red-950/30 border border-red-900/40 text-xs text-zinc-200 leading-relaxed space-y-2.5">
-              <p className="font-semibold text-red-300">
+            <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed space-y-2.5">
+              <p className="font-semibold text-red-700 dark:text-red-300">
                 O seu pagamento já foi processado e transferido para o organizador.
               </p>
-              <p className="text-zinc-300">
+              <p className="text-zinc-600 dark:text-zinc-300">
                 Ao cancelar, a sua vaga será perdida. O reembolso deve ser negociado diretamente com a organização do evento.
               </p>
             </div>
@@ -1537,7 +1532,7 @@ export default function HubCentral() {
               <button
                 type="button"
                 onClick={() => setCancellingPaidReg(null)}
-                className="py-2.5 px-4 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-zinc-800/80 text-xs font-bold text-zinc-300 hover:text-white transition-all cursor-pointer"
+                className="py-2.5 px-4 rounded-xl border border-zinc-300 dark:border-zinc-700 hover:border-zinc-500 bg-white dark:bg-zinc-800/80 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer shadow-sm"
               >
                 Voltar / Manter Vaga
               </button>

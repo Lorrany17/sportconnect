@@ -984,7 +984,7 @@ export default function PerfilPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#0a0a0c] text-[#e4e4e7] flex flex-col selection:bg-amber-500/30 selection:text-white">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0a0a0c] text-zinc-900 dark:text-[#e4e4e7] flex flex-col selection:bg-amber-500/30 selection:text-white">
         <PublicHeader />
 
         {/* Notificação Toast */}
@@ -999,7 +999,7 @@ export default function PerfilPage() {
           {/* ========================================================= */}
           {/* 1. HEADER DO PERFIL GAMIFICADO (MOCKUP ESTILO ESPORTS) */}
           {/* ========================================================= */}
-          <section className="relative rounded-3xl bg-gradient-to-br from-[#18181b] via-[#121214] to-[#0c0c0e] border border-[#27272a] p-6 sm:p-8 overflow-hidden shadow-2xl">
+          <section className="relative rounded-3xl bg-gradient-to-br from-white via-zinc-50 to-white dark:from-[#18181b] dark:via-[#121214] dark:to-[#0c0c0e] border border-zinc-200 dark:border-[#27272a] p-6 sm:p-8 overflow-hidden shadow-sm dark:shadow-2xl">
             {/* Brilhos de Fundo */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20" />
@@ -1009,11 +1009,11 @@ export default function PerfilPage() {
               <div className="flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-5 text-center sm:text-left">
                 {/* Foto em Destaque com Moldura Dourada & Badge Nível */}
                 <div className="relative group shrink-0">
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-[#1e1e24] p-1 border-2 border-amber-400/60 shadow-xl shadow-amber-500/10 overflow-hidden relative flex items-center justify-center">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-zinc-100 dark:bg-[#1e1e24] p-1 border-2 border-amber-400/60 shadow-md dark:shadow-xl shadow-amber-500/10 overflow-hidden relative flex items-center justify-center">
                     {displayAvatar &&
                       !displayAvatar.startsWith("http") &&
                       !displayAvatar.startsWith("data:") ? (
-                      <div className="w-full h-full rounded-2xl bg-gradient-to-br from-[#24242c] via-[#1a1a20] to-amber-950/20 flex items-center justify-center select-none shadow-inner">
+                      <div className="w-full h-full rounded-2xl bg-gradient-to-br from-zinc-200 via-zinc-100 to-amber-100 dark:from-[#24242c] dark:via-[#1a1a20] dark:to-amber-950/20 flex items-center justify-center select-none shadow-inner">
                         <span className="text-5xl sm:text-6xl transition-transform group-hover:scale-110">
                           {displayAvatar}
                         </span>
@@ -1040,7 +1040,7 @@ export default function PerfilPage() {
                 {/* Detalhes do Usuário */}
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                    <h1 className="text-2xl sm:text-3xl font-black text-white font-display tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white font-display tracking-tight">
                       {displayName}
                     </h1>
 
@@ -1140,9 +1140,9 @@ export default function PerfilPage() {
                 <button
                   type="button"
                   onClick={openEditModal}
-                  className="px-5 py-3 rounded-2xl bg-[#1e1e24] hover:bg-zinc-800 border border-[#27272a] hover:border-amber-400/40 text-xs font-black uppercase tracking-wider text-white transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer group"
+                  className="px-5 py-3 rounded-2xl bg-white dark:bg-[#1e1e24] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-[#27272a] hover:border-amber-400/40 text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-white transition-all shadow-sm dark:shadow-md active:scale-95 flex items-center gap-2 cursor-pointer group"
                 >
-                  <Pencil className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                  <Pencil className="h-4 w-4 text-amber-500 dark:text-amber-400 group-hover:scale-110 transition-transform" />
                   <span>Editar Perfil</span>
                 </button>
               </div>
@@ -1151,11 +1151,11 @@ export default function PerfilPage() {
             {/* ========================================================= */}
             {/* 2. BARRA DE PROGRESSO & GAMIFICAÇÃO (NÍVEL DINÂMICO XP) */}
             {/* ========================================================= */}
-            <div className="mt-8 pt-6 border-t border-[#27272a]/70 space-y-3">
+            <div className="mt-8 pt-6 border-t border-zinc-200 dark:border-[#27272a]/70 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="font-black text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                    <Award className="h-4 w-4 text-amber-400" />
+                  <span className="font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                    <Award className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                     <span>Nível {xpData.currentLevel} • {getAthleteRankTitle(xpData.currentLevel)}</span>
                   </span>
                   <span className="text-[11px] text-zinc-500 font-bold hidden sm:inline">
@@ -1163,8 +1163,8 @@ export default function PerfilPage() {
                   </span>
                 </div>
 
-                <div className="text-xs text-zinc-400 font-mono">
-                  <span className="text-amber-300 font-bold">{xpData.totalXP}</span> /{" "}
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                  <span className="text-amber-600 dark:text-amber-300 font-bold">{xpData.totalXP}</span> /{" "}
                   {xpData.currentLevel * 100} XP{" "}
                   <span className="text-zinc-500">
                     ({Math.round(xpData.progressPercentage)}%)
@@ -1173,7 +1173,7 @@ export default function PerfilPage() {
               </div>
 
               {/* Barra Amarela de XP com Efeito Glow */}
-              <div className="w-full h-3.5 bg-zinc-900/90 rounded-full border border-zinc-800 p-0.5 overflow-hidden shadow-inner relative">
+              <div className="w-full h-3.5 bg-zinc-200 dark:bg-zinc-900/90 rounded-full border border-zinc-300 dark:border-zinc-800 p-0.5 overflow-hidden shadow-inner relative">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-400 shadow-md shadow-amber-500/40 transition-all duration-700"
                   style={{
@@ -1193,48 +1193,48 @@ export default function PerfilPage() {
           {/* STATS RÁPIDAS DO ATLETA (KPIs Gamificados) */}
           {/* ========================================================= */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] space-y-1 shadow-sm dark:shadow-md">
               <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold block">
                 Times Inscritos
               </span>
-              <div className="text-2xl font-black text-white font-display">
+              <div className="text-2xl font-black text-zinc-900 dark:text-white font-display">
                 {athleteStats.tournamentsCount}
               </div>
               <span className="text-[10px] text-zinc-500 block">Equipes vinculadas</span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] space-y-1 shadow-sm dark:shadow-md">
               <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold block">
                 Títulos & Vitórias
               </span>
-              <div className="text-2xl font-black text-amber-400 font-display">
+              <div className="text-2xl font-black text-amber-500 dark:text-amber-400 font-display">
                 {athleteStats.winsCount}
               </div>
-              <span className="text-[10px] text-amber-400/70 block">
+              <span className="text-[10px] text-amber-600 dark:text-amber-400/70 block">
                 {athleteStats.winsCount === 1 ? "1 Vitória registrada" : `${athleteStats.winsCount} Vitórias registradas`}
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] space-y-1 shadow-sm dark:shadow-md">
               <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold block">
                 Taxa de Vitória
               </span>
-              <div className="text-2xl font-black text-emerald-400 font-display">
+              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-display">
                 {athleteStats.winRate}%
               </div>
-              <span className="text-[10px] text-emerald-400/70 block">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400/70 block">
                 {recentMatches.length > 0 ? "Aproveitamento geral" : "Sem partidas"}
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] space-y-1 shadow-sm dark:shadow-md">
               <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold block">
                 Sequência Atual
               </span>
-              <div className="text-2xl font-black text-orange-400 font-display">
+              <div className="text-2xl font-black text-orange-500 dark:text-orange-400 font-display">
                 {athleteStats.streak > 0 ? `🔥 ${athleteStats.streak}W` : "0W"}
               </div>
-              <span className="text-[10px] text-orange-400/70 block">
+              <span className="text-[10px] text-orange-600 dark:text-orange-400/70 block">
                 {athleteStats.streak > 0 ? "Vitórias consecutivas" : "Inicie uma sequência"}
               </span>
             </div>
@@ -1247,19 +1247,19 @@ export default function PerfilPage() {
             {/* 3.1 Seção: Conquistas (Achievements) */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-amber-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                   <span>Conquistas e Emblemas ({achievements.length})</span>
                 </h3>
                 <span
                   className={`text-[11px] font-bold flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${unlockedAchievementsCount > 0
-                    ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/35"
-                    : "text-zinc-500 bg-zinc-900/80 border-zinc-800"
+                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/15 border-emerald-500/35"
+                    : "text-zinc-500 bg-zinc-100 dark:bg-zinc-900/80 border-zinc-200 dark:border-zinc-800"
                     }`}
                 >
                   {unlockedAchievementsCount > 0 ? (
                     <>
-                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                       <span>
                         {unlockedAchievementsCount}{" "}
                         {unlockedAchievementsCount === 1 ? "Desbloqueada" : "Desbloqueadas"}
@@ -1267,7 +1267,7 @@ export default function PerfilPage() {
                     </>
                   ) : (
                     <>
-                      <Lock className="h-3 w-3 text-zinc-500" />
+                      <Lock className="h-3 w-3 text-zinc-400 dark:text-zinc-500" />
                       <span>0 Desbloqueadas</span>
                     </>
                   )}
@@ -1282,9 +1282,9 @@ export default function PerfilPage() {
                   return (
                     <div
                       key={ach.id}
-                      className={`p-4 rounded-2xl bg-[#121214] border transition-all flex items-start gap-3.5 shadow-md group ${isUnlocked
-                        ? "border-purple-500/40 bg-gradient-to-br from-[#16161a] via-[#121214] to-purple-950/20 hover:border-purple-400/60 shadow-lg shadow-purple-500/5 opacity-100"
-                        : "border-[#27272a] opacity-50 grayscale hover:grayscale-0 hover:opacity-75"
+                      className={`p-4 rounded-2xl border transition-all flex items-start gap-3.5 shadow-sm dark:shadow-md group ${isUnlocked
+                        ? "border-purple-500/30 dark:border-purple-500/40 bg-gradient-to-br from-purple-50/50 via-white to-purple-50/30 dark:from-[#16161a] dark:via-[#121214] dark:to-purple-950/20 hover:border-purple-400/60 shadow-purple-500/5 opacity-100"
+                        : "bg-white dark:bg-[#121214] border-zinc-200 dark:border-[#27272a] opacity-60 dark:opacity-50 grayscale hover:grayscale-0 hover:opacity-85"
                         }`}
                     >
                       <div
@@ -1296,25 +1296,25 @@ export default function PerfilPage() {
                         <div className="flex items-center justify-between gap-1">
                           <h4
                             className={`text-xs font-bold transition-colors truncate ${isUnlocked
-                              ? "text-white group-hover:text-purple-300"
-                              : "text-white group-hover:text-amber-300"
+                              ? "text-zinc-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300"
+                              : "text-zinc-800 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300"
                               }`}
                           >
                             {ach.title}
                           </h4>
                           {isUnlocked ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
-                              <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
+                              <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500 dark:text-emerald-400" />
                               <span>Desbloqueado</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 font-bold shrink-0">
+                            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-500 font-bold shrink-0">
                               <Lock className="h-2.5 w-2.5" />
                               <span>Bloqueado</span>
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-zinc-400 leading-tight">
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">
                           {ach.description}
                         </p>
                       </div>
@@ -1326,7 +1326,7 @@ export default function PerfilPage() {
               {/* 3.2 Seção: Histórico Recente de Partidas */}
               <div className="pt-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-[#00a2ff]" />
                     <span>Histórico Recente de Partidas ({recentMatches.length})</span>
                   </h3>
@@ -1334,10 +1334,10 @@ export default function PerfilPage() {
                 </div>
 
                 {recentMatches.length === 0 ? (
-                  <div className="p-6 rounded-2xl bg-[#121214] border border-dashed border-[#27272a] text-center space-y-2">
-                    <Calendar className="h-8 w-8 text-zinc-600 mx-auto" />
-                    <p className="text-xs font-bold text-zinc-400">Nenhuma partida registrada ainda</p>
-                    <p className="text-[11px] text-zinc-600">
+                  <div className="p-6 rounded-2xl bg-white dark:bg-[#121214] border border-dashed border-zinc-200 dark:border-[#27272a] text-center space-y-2 shadow-sm">
+                    <Calendar className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
+                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-400">Nenhuma partida registrada ainda</p>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-600">
                       Suas partidas oficiais e resultados de súmula aparecerão aqui automaticamente.
                     </p>
                   </div>
@@ -1350,12 +1350,12 @@ export default function PerfilPage() {
 
                       // Badge de resultado com cor apropriada: Verde (Vitória), Vermelho (Derrota), Cinzento (Empate)
                       const badgeClass = isWin
-                        ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+                        ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
                         : isLoss
-                          ? "text-red-400 bg-red-500/10 border-red-500/30"
+                          ? "text-red-700 dark:text-red-400 bg-red-500/10 border-red-500/30"
                           : isScheduled
-                            ? "text-blue-400 bg-blue-500/10 border-blue-500/30"
-                            : "text-amber-400 bg-amber-500/10 border-amber-500/30";
+                            ? "text-blue-700 dark:text-blue-400 bg-blue-500/10 border-blue-500/30"
+                            : "text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30";
 
                       const badgeText = isWin
                         ? "Vitória 🏆"
@@ -1368,20 +1368,20 @@ export default function PerfilPage() {
                       return (
                         <div
                           key={m.id}
-                          className="p-3.5 rounded-2xl bg-[#121214] border border-[#27272a] flex items-center justify-between gap-4 shadow-sm hover:border-zinc-700 transition-all"
+                          className="p-3.5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] flex items-center justify-between gap-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
                         >
                           <div className="space-y-0.5 min-w-0">
-                            <span className="text-xs font-bold text-white block truncate">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-white block truncate">
                               {m.tournamentName}
                             </span>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
                               <span className="text-[#00a2ff] font-semibold">{m.phase}</span>
                               <span>•</span>
-                              <span className="text-zinc-300 truncate">vs {m.opponentName}</span>
+                              <span className="text-zinc-700 dark:text-zinc-300 truncate">vs {m.opponentName}</span>
                               {m.sportType && (
                                 <>
-                                  <span className="text-zinc-600">•</span>
-                                  <span className="text-zinc-400 font-medium">
+                                  <span className="text-zinc-400 dark:text-zinc-600">•</span>
+                                  <span className="text-zinc-600 dark:text-zinc-400 font-medium">
                                     {formatSportLabel(m.sportType)}
                                   </span>
                                 </>
@@ -1391,7 +1391,7 @@ export default function PerfilPage() {
 
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <span className="text-sm font-black text-white font-mono block">
+                              <span className="text-sm font-black text-zinc-900 dark:text-white font-mono block">
                                 {m.scoreDisplay}
                               </span>
                               <span
@@ -1400,7 +1400,7 @@ export default function PerfilPage() {
                                 {badgeText}
                               </span>
                             </div>
-                            <span className="text-[10px] text-zinc-500 hidden sm:inline">
+                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 hidden sm:inline">
                               {m.date}
                             </span>
                           </div>
@@ -1439,11 +1439,11 @@ export default function PerfilPage() {
                     return finalM.result === "WIN"
                       ? {
                           label: "🥇 1º Lugar • Campeão",
-                          badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/35",
+                          badgeClass: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/35",
                         }
                       : {
                           label: "🥈 2º Lugar • Vice",
-                          badgeClass: "bg-zinc-700/70 text-zinc-200 border-zinc-500/40",
+                          badgeClass: "bg-zinc-200 dark:bg-zinc-700/70 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-500/40",
                         };
                   }
                   const thirdM = teamMatches.find((m) => {
@@ -1453,7 +1453,7 @@ export default function PerfilPage() {
                   if (thirdM && thirdM.result === "WIN") {
                     return {
                       label: "🥉 3º Lugar • Bronze",
-                      badgeClass: "bg-amber-900/30 text-amber-400 border-amber-700/40",
+                      badgeClass: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 border-amber-300 dark:border-amber-700/40",
                     };
                   }
                   const semiM = teamMatches.find((m) =>
@@ -1462,7 +1462,7 @@ export default function PerfilPage() {
                   if (semiM) {
                     return {
                       label: "Semifinalista",
-                      badgeClass: "bg-blue-500/10 text-blue-300 border-blue-500/25",
+                      badgeClass: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/25",
                     };
                   }
                   const qfM = teamMatches.find((m) =>
@@ -1471,12 +1471,12 @@ export default function PerfilPage() {
                   if (qfM) {
                     return {
                       label: "Quartas de Final",
-                      badgeClass: "bg-indigo-500/10 text-indigo-300 border-indigo-500/25",
+                      badgeClass: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
                     };
                   }
                   return {
                     label: "Torneio Finalizado",
-                    badgeClass: "bg-zinc-800 text-zinc-400 border-zinc-700",
+                    badgeClass: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700",
                   };
                 };
 
@@ -1485,8 +1485,8 @@ export default function PerfilPage() {
                     {/* Times Atuais */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2">
-                          <Users className="h-4 w-4 text-emerald-400" />
+                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                          <Users className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
                           <span>Times Atuais ({activeTeams.length})</span>
                         </h3>
                         <Link
@@ -1498,12 +1498,12 @@ export default function PerfilPage() {
                       </div>
 
                       {activeTeams.length === 0 ? (
-                        <div className="p-6 rounded-2xl bg-[#121214] border border-dashed border-[#27272a] text-center space-y-2">
-                          <Users className="h-8 w-8 text-zinc-600 mx-auto" />
-                          <p className="text-xs font-bold text-zinc-400">
+                        <div className="p-6 rounded-2xl bg-white dark:bg-[#121214] border border-dashed border-zinc-200 dark:border-[#27272a] text-center space-y-2 shadow-sm">
+                          <Users className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto" />
+                          <p className="text-xs font-bold text-zinc-700 dark:text-zinc-400">
                             Nenhum time ativo no momento.
                           </p>
-                          <p className="text-[11px] text-zinc-600">
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-600">
                             Explore os campeonatos disponíveis e inscreva sua dupla ou equipe oficial.
                           </p>
                           <Link
@@ -1518,19 +1518,19 @@ export default function PerfilPage() {
                           {activeTeams.map((team) => (
                             <div
                               key={team.id}
-                              className="p-4 rounded-2xl bg-[#121214] border border-[#27272a] space-y-2.5 hover:border-zinc-700 transition-all shadow-sm"
+                              className="p-4 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] space-y-2.5 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-sm"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="space-y-1">
-                                  <h4 className="text-xs font-black text-white">{team.name}</h4>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                                    <Trophy className="h-3 w-3 text-amber-400 shrink-0" />
-                                    <span className="font-semibold text-zinc-300">
+                                  <h4 className="text-xs font-black text-zinc-900 dark:text-white">{team.name}</h4>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                    <Trophy className="h-3 w-3 text-amber-500 dark:text-amber-400 shrink-0" />
+                                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">
                                       {team.tournamentName || "Torneio"}
                                     </span>
                                     {team.sportType && (
                                       <>
-                                        <span className="text-zinc-600">•</span>
+                                        <span className="text-zinc-400 dark:text-zinc-600">•</span>
                                         <span className="text-[#00a2ff] font-medium">
                                           {formatSportLabel(team.sportType)}
                                         </span>
@@ -1538,7 +1538,7 @@ export default function PerfilPage() {
                                     )}
                                   </div>
                                   {team.category && (
-                                    <span className="text-[10px] text-zinc-500 block">
+                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block">
                                       Categoria: {team.category}
                                     </span>
                                   )}
@@ -1546,26 +1546,26 @@ export default function PerfilPage() {
                                 {["IN_PROGRESS", "CLOSED", "EM_ANDAMENTO", "LIVE"].includes(
                                   String(team.tournamentStatus || "").toUpperCase()
                                 ) ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-blue-500 bg-blue-500/15 text-blue-400 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
-                                    <PlayCircle className="h-3 w-3 text-blue-400" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
+                                    <PlayCircle className="h-3 w-3 text-blue-500 dark:text-blue-400" />
                                     <span>CAMPEONATO EM ANDAMENTO</span>
                                   </span>
                                 ) : team.status === "PAID" ||
                                   team.payment_status === "PAID" ||
                                   team.status === "APPROVED" ||
                                   team.payment_status === "APPROVED" ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border border-emerald-500 bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
-                                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                                     <span>Inscrição Confirmada!</span>
                                   </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0">
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0">
                                     {team.status || "Ativo"}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="pt-2 border-t border-[#27272a]/60 flex items-center justify-between text-[11px] text-zinc-500">
+                              <div className="pt-2 border-t border-zinc-100 dark:border-[#27272a]/60 flex items-center justify-between text-[11px] text-zinc-500">
                                 <span>
                                   {team.players?.[0] && `Capitão: ${team.players[0]}`}
                                 </span>
@@ -1586,20 +1586,20 @@ export default function PerfilPage() {
                     </div>
 
                     {/* Seção: Histórico de Competições */}
-                    <div className="space-y-4 pt-2 border-t border-[#27272a]">
+                    <div className="space-y-4 pt-2 border-t border-zinc-200 dark:border-[#27272a]">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2">
-                          <Trophy className="h-4 w-4 text-amber-400" />
+                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                           <span>Histórico de Competições ({completedTeams.length})</span>
                         </h3>
                       </div>
 
                       {completedTeams.length === 0 ? (
-                        <div className="p-5 rounded-2xl bg-[#121214] border border-dashed border-[#27272a] text-center space-y-1.5">
-                          <p className="text-xs font-bold text-zinc-400">
+                        <div className="p-5 rounded-2xl bg-white dark:bg-[#121214] border border-dashed border-zinc-200 dark:border-[#27272a] text-center space-y-1.5 shadow-sm">
+                          <p className="text-xs font-bold text-zinc-700 dark:text-zinc-400">
                             Nenhum torneio finalizado no seu histórico.
                           </p>
-                          <p className="text-[11px] text-zinc-600">
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-600">
                             Quando um campeonato em que você participou for encerrado, ele aparecerá aqui com sua colocação.
                           </p>
                         </div>
@@ -1617,18 +1617,18 @@ export default function PerfilPage() {
                               <Link
                                 key={team.id}
                                 href={`/torneio/${team.tournamentId}`}
-                                className="block p-4 rounded-2xl bg-[#121214] border border-[#27272a] hover:border-amber-500/40 transition-all shadow-sm group"
+                                className="block p-4 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] hover:border-amber-500/40 transition-all shadow-sm group"
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="space-y-1 min-w-0">
-                                    <h4 className="text-xs font-black text-white group-hover:text-amber-300 transition-colors truncate">
+                                    <h4 className="text-xs font-black text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors truncate">
                                       {team.tournamentName || "Torneio Oficial"}
                                     </h4>
-                                    <div className="flex items-center gap-2 text-[11px] text-zinc-400">
-                                      <span className="truncate font-semibold text-zinc-300">
+                                    <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                      <span className="truncate font-semibold text-zinc-700 dark:text-zinc-300">
                                         {team.name}
                                       </span>
-                                      <span className="text-zinc-600">•</span>
+                                      <span className="text-zinc-400 dark:text-zinc-600">•</span>
                                       <span>{formattedDate}</span>
                                     </div>
                                   </div>
@@ -1640,7 +1640,7 @@ export default function PerfilPage() {
                                   </span>
                                 </div>
 
-                                <div className="pt-2.5 mt-2.5 border-t border-[#27272a]/60 flex items-center justify-between text-[11px] text-zinc-500">
+                                <div className="pt-2.5 mt-2.5 border-t border-zinc-100 dark:border-[#27272a]/60 flex items-center justify-between text-[11px] text-zinc-500">
                                   <span>{formatSportLabel(team.sportType || "DOMINO")}</span>
                                   <span className="text-[#00a2ff] group-hover:underline flex items-center gap-0.5 font-semibold">
                                     <span>Ver Pódio e Chaveamento</span>
@@ -1664,44 +1664,44 @@ export default function PerfilPage() {
         {/* MODAL DE EDIÇÃO DE PERFIL COM LÓGICA TRIPLA DE AVATAR */}
         {/* ========================================================= */}
         {isEditModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
-            <div className="bg-[#121214] border border-[#27272a] rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl relative max-h-[92vh] overflow-y-auto selection:bg-amber-500/30">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
+            <div className="bg-white dark:bg-[#121214] border border-zinc-200 dark:border-[#27272a] rounded-3xl p-6 sm:p-8 max-w-xl w-full text-zinc-900 dark:text-white shadow-2xl relative max-h-[92vh] overflow-y-auto selection:bg-amber-500/30">
               {/* Fechar */}
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 title="Fechar"
               >
                 <X className="h-5 w-5" />
               </button>
 
               <div className="space-y-1 mb-6">
-                <h3 className="text-xl font-black font-display uppercase tracking-tight text-white flex items-center gap-2">
-                  <Pencil className="h-5 w-5 text-amber-400" />
+                <h3 className="text-xl font-black font-display uppercase tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
+                  <Pencil className="h-5 w-5 text-amber-500 dark:text-amber-400" />
                   <span>Editar Perfil do Atleta</span>
                 </h3>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Atualize suas informações pessoais e personalize sua foto de perfil.
                 </p>
               </div>
 
               {errorMessage && (
-                <div className="p-3.5 mb-5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium">
+                <div className="p-3.5 mb-5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-medium">
                   {errorMessage}
                 </div>
               )}
 
               <form onSubmit={handleSaveProfile} className="space-y-5">
                 {/* 1. SELEÇÃO DA FOTO DE PERFIL (LÓGICA TRIPLA) */}
-                <div className="p-4 rounded-2xl bg-[#0a0a0c] border border-[#27272a] space-y-4">
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#0a0a0c] border border-zinc-200 dark:border-[#27272a] space-y-4">
                   <div className="flex items-center gap-3">
                     {/* Prévia da Foto */}
-                    <div className="w-16 h-16 rounded-2xl bg-zinc-900 border-2 border-amber-400/80 p-0.5 shadow-lg shrink-0 overflow-hidden flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border-2 border-amber-400/80 p-0.5 shadow-md shrink-0 overflow-hidden flex items-center justify-center">
                       {selectedAvatarUrl &&
                         !selectedAvatarUrl.startsWith("http") &&
                         !selectedAvatarUrl.startsWith("data:") ? (
-                        <div className="w-full h-full rounded-xl bg-gradient-to-br from-[#24242c] via-[#1a1a20] to-amber-950/30 flex items-center justify-center select-none">
+                        <div className="w-full h-full rounded-xl bg-gradient-to-br from-zinc-200 via-zinc-100 to-amber-100 dark:from-[#24242c] dark:via-[#1a1a20] dark:to-amber-950/30 flex items-center justify-center select-none">
                           <span className="text-3xl">{selectedAvatarUrl}</span>
                         </div>
                       ) : (
@@ -1713,23 +1713,23 @@ export default function PerfilPage() {
                       )}
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-white block">
+                      <span className="text-xs font-bold text-zinc-900 dark:text-white block">
                         Foto de Perfil do Atleta
                       </span>
-                      <span className="text-[11px] text-zinc-400 block">
+                      <span className="text-[11px] text-zinc-500 dark:text-zinc-400 block">
                         Escolha como deseja definir sua foto de perfil:
                       </span>
                     </div>
                   </div>
 
                   {/* Tabs / Seletores da Foto de Perfil */}
-                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[#18181b] border border-[#27272a]">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-zinc-100 dark:bg-[#18181b] border border-zinc-200 dark:border-[#27272a]">
                     <button
                       type="button"
                       onClick={() => setAvatarTab("upload")}
                       className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${avatarTab === "upload"
                         ? "bg-amber-500 text-black shadow-md font-black"
-                        : "text-zinc-400 hover:text-white"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                         }`}
                     >
                       <UploadCloud className="h-3.5 w-3.5" />
@@ -1741,7 +1741,7 @@ export default function PerfilPage() {
                       onClick={() => setAvatarTab("url")}
                       className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${avatarTab === "url"
                         ? "bg-amber-500 text-black shadow-md font-black"
-                        : "text-zinc-400 hover:text-white"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                         }`}
                     >
                       <LinkIcon className="h-3.5 w-3.5" />
@@ -1753,7 +1753,7 @@ export default function PerfilPage() {
                       onClick={() => setAvatarTab("presets")}
                       className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${avatarTab === "presets"
                         ? "bg-amber-500 text-black shadow-md font-black"
-                        : "text-zinc-400 hover:text-white"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                         }`}
                     >
                       <Sparkles className="h-3.5 w-3.5" />
@@ -1773,10 +1773,10 @@ export default function PerfilPage() {
                       />
                       <div
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-4 rounded-xl border border-dashed border-zinc-700 hover:border-amber-400/60 bg-[#121214] hover:bg-zinc-900 text-center cursor-pointer transition-all space-y-1.5"
+                        className="p-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-amber-500 dark:hover:border-amber-400/60 bg-white dark:bg-[#121214] hover:bg-zinc-50 dark:hover:bg-zinc-900 text-center cursor-pointer transition-all space-y-1.5"
                       >
-                        <Camera className="h-6 w-6 text-amber-400 mx-auto" />
-                        <p className="text-xs font-bold text-white">
+                        <Camera className="h-6 w-6 text-amber-500 dark:text-amber-400 mx-auto" />
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white">
                           {uploadFile ? uploadFile.name : "Clique para selecionar uma foto do seu dispositivo"}
                         </p>
                         <p className="text-[11px] text-zinc-500">
@@ -1789,7 +1789,7 @@ export default function PerfilPage() {
                   {/* Conteúdo da Tab 2: Usar Link da Web */}
                   {avatarTab === "url" && (
                     <div className="space-y-2 animate-fadeIn">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
                         URL Direta da Imagem
                       </label>
                       <input
@@ -1802,7 +1802,7 @@ export default function PerfilPage() {
                           }
                         }}
                         placeholder="https://exemplo.com/sua-foto.jpg"
-                        className="w-full px-3.5 py-2.5 bg-[#141416] border border-[#27272a] focus:border-amber-400 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all"
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-[#141416] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all"
                       />
                       <p className="text-[10px] text-zinc-500">
                         Cole uma URL de imagem pública. A prévia atualizará automaticamente.
@@ -1813,7 +1813,7 @@ export default function PerfilPage() {
                   {/* Conteúdo da Tab 3: Avatares do Sistema (Emojis) */}
                   {avatarTab === "presets" && (
                     <div className="space-y-2 animate-fadeIn">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
                         Escolha um Emoji de Avatar
                       </label>
                       <div className="grid grid-cols-6 gap-2">
@@ -1824,9 +1824,9 @@ export default function PerfilPage() {
                               type="button"
                               key={emoji}
                               onClick={() => setSelectedAvatarUrl(emoji)}
-                              className={`aspect-square rounded-2xl border-2 transition-all cursor-pointer relative bg-zinc-900/90 hover:bg-zinc-800 flex items-center justify-center select-none text-4xl ${isSelected
+                              className={`aspect-square rounded-2xl border-2 transition-all cursor-pointer relative bg-zinc-100 dark:bg-zinc-900/90 hover:bg-zinc-200 dark:hover:bg-zinc-800 flex items-center justify-center select-none text-4xl ${isSelected
                                 ? "border-amber-400 bg-amber-500/10 ring-2 ring-amber-400/40 scale-105"
-                                : "border-zinc-800 hover:border-zinc-600"
+                                : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
                                 }`}
                               title={`Avatar ${emoji}`}
                             >
@@ -1847,8 +1847,8 @@ export default function PerfilPage() {
                 {/* 2. DADOS BÁSICOS (NOME, TELEFONE, LOCALIZAÇÃO) */}
                 <div className="space-y-3.5">
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
-                      Nome Completo <span className="text-amber-400">*</span>
+                    <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
+                      Nome Completo <span className="text-amber-500 dark:text-amber-400">*</span>
                     </label>
                     <input
                       type="text"
@@ -1856,14 +1856,14 @@ export default function PerfilPage() {
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder="Seu nome oficial de atleta"
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                      className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
-                        Telefone / WhatsApp <span className="text-amber-400">*</span>
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
+                        Telefone / WhatsApp <span className="text-amber-500 dark:text-amber-400">*</span>
                       </label>
                       <input
                         type="tel"
@@ -1873,12 +1873,12 @@ export default function PerfilPage() {
                         value={formPhone}
                         onChange={(e) => setFormPhone(formatPhoneBR(e.target.value))}
                         placeholder="(89) 99999-9999"
-                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Localização (Cidade, UF)
                       </label>
                       <input
@@ -1886,14 +1886,14 @@ export default function PerfilPage() {
                         value={formLocation}
                         onChange={(e) => setFormLocation(e.target.value)}
                         placeholder="Ex: Picos, PI"
-                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                       />
                     </div>
 
                     {/* Toggle Switch estilo iOS para privacidade do Telefone (LGPD) */}
-                    <div className="sm:col-span-2 flex items-center justify-between p-3.5 rounded-xl bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 transition-colors">
+                    <div className="sm:col-span-2 flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
                       <div className="flex flex-col pr-3">
-                        <span className="text-xs font-bold text-zinc-200">
+                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
                           Mostrar meu telefone publicamente no perfil
                         </span>
                         <span className="text-[11px] text-zinc-500">
@@ -1907,11 +1907,11 @@ export default function PerfilPage() {
                         role="switch"
                         aria-checked={formShowPhone}
                         onClick={() => setFormShowPhone((prev) => !prev)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formShowPhone ? "bg-amber-400" : "bg-zinc-700"
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formShowPhone ? "bg-amber-400" : "bg-zinc-300 dark:bg-zinc-700"
                           }`}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out ${formShowPhone ? "translate-x-5 bg-black" : "translate-x-0 bg-zinc-300"
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out ${formShowPhone ? "translate-x-5 bg-black" : "translate-x-0 bg-white dark:bg-zinc-300"
                             }`}
                         />
                       </button>
@@ -1920,7 +1920,7 @@ export default function PerfilPage() {
 
                   {/* Campo Esporte Favorito (Dropdown) */}
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block flex items-center justify-between">
+                    <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block flex items-center justify-between">
                       <span>Esporte Favorito</span>
                       <span className="text-[10px] text-zinc-500 font-normal">
                         Destaque temático no seu perfil
@@ -1929,7 +1929,7 @@ export default function PerfilPage() {
                     <select
                       value={formFavoriteSport}
                       onChange={(e) => setFormFavoriteSport(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-100 outline-none transition-all shadow-inner cursor-pointer"
+                      className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all shadow-inner cursor-pointer"
                     >
                       <option value="Nenhum">Nenhum</option>
                       <option value="Ping Pong">🏓 Ping Pong</option>
@@ -1940,7 +1940,7 @@ export default function PerfilPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                    <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                       Biografia / Sobre o Atleta
                     </label>
                     <textarea
@@ -1948,21 +1948,21 @@ export default function PerfilPage() {
                       value={formBio}
                       onChange={(e) => setFormBio(e.target.value)}
                       placeholder="Conte um pouco sobre sua trajetória esportiva, títulos ou modalidade favorita..."
-                      className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all resize-y shadow-inner"
+                      className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all resize-y shadow-inner"
                     />
                   </div>
 
                   {/* Redes Sociais: Instagram & TikTok */}
-                  <div className="pt-2 border-t border-[#27272a]/70 space-y-3">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 block flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <div className="pt-2 border-t border-zinc-200 dark:border-[#27272a]/70 space-y-3">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
                       <span>Redes Sociais (Opcional)</span>
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                          <InstagramIcon className="h-3.5 w-3.5 text-pink-400" />
+                        <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                          <InstagramIcon className="h-3.5 w-3.5 text-pink-500 dark:text-pink-400" />
                           <span>Instagram</span>
                         </label>
                         <input
@@ -1970,13 +1970,13 @@ export default function PerfilPage() {
                           value={formInstagram}
                           onChange={(e) => setFormInstagram(e.target.value)}
                           placeholder="@seuarroba ou https://instagram.com/seuarroba"
-                          className="w-full px-4 py-2.5 bg-[#0f0f0f] border border-[#27272a] focus:border-amber-400 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full px-4 py-2.5 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                         />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                          <TikTokIcon className="h-3.5 w-3.5 text-cyan-400" />
+                        <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                          <TikTokIcon className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-400" />
                           <span>TikTok</span>
                         </label>
                         <input
@@ -1984,7 +1984,7 @@ export default function PerfilPage() {
                           value={formTiktok}
                           onChange={(e) => setFormTiktok(e.target.value)}
                           placeholder="@seuarroba ou https://tiktok.com/@seuarroba"
-                          className="w-full px-4 py-2.5 bg-[#0f0f0f] border border-[#27272a] focus:border-amber-400 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full px-4 py-2.5 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-amber-400 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                         />
                       </div>
                     </div>
@@ -1996,7 +1996,7 @@ export default function PerfilPage() {
                   <button
                     type="button"
                     onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-3 rounded-xl border border-[#27272a] text-xs font-bold text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                    className="px-4 py-3 rounded-xl border border-zinc-300 dark:border-[#27272a] text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                   >
                     Cancelar
                   </button>
