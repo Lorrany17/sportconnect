@@ -38,7 +38,10 @@ export interface AuthContextType {
     challengeId: string,
     code: string
   ) => Promise<{ data: any; error: AuthError | null }>;
-  sendEmailOtp: (email: string) => Promise<{ error: AuthError | null }>;
+  sendEmailOtp: (
+    email: string,
+    type?: "email" | "signup"
+  ) => Promise<{ error: AuthError | null }>;
   cancelOtp: () => void;
   signOut: () => Promise<{ error: AuthError | null }>;
   resetPassword: (email: string) => Promise<{ data: any; error: AuthError | null }>;
@@ -303,6 +306,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { data: null, error: result.error, requiresOtp: false };
       }
 
+      // Detecção de "User repeated signup": quando o e-mail já existe no Supabase,
+      // a API do GoTrue retorna status 200 com result.data.user.identities vazio ([]).
+      if (
+        result.data?.user &&
+        Array.isArray(result.data.user.identities) &&
+        result.data.user.identities.length === 0
+      ) {
+        isPending2faRef.current = false;
+        return {
+          data: null,
+          error: new AuthError(
+            "Este e-mail já está cadastrado. Alterne para a aba 'Entrar' para fazer login ou clique em 'Esqueci minha senha' para recuperar seu acesso.",
+            400,
+            "user_already_exists"
+          ),
+          requiresOtp: false,
+        };
+      }
+
       // Se o Supabase auto-confirmou a sessão no signUp, efetiva a sessão e atualiza o perfil
       if (result.data?.session && result.data?.user) {
         if (phone) {
@@ -345,9 +367,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const sendEmailOtp = async (email: string) => {
+  const sendEmailOtp = async (email: string, type: "email" | "signup" = "email") => {
+    const cleanEmail = email.trim();
+    if (type === "signup") {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: cleanEmail,
+      });
+      return { error };
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: cleanEmail,
       options: { shouldCreateUser: false },
     });
     return { error };
