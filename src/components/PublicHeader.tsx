@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthProvider";
 import { useTournament } from "@/context/TournamentContext";
 import { supabase } from "@/lib/supabase";
 import NotificationBell from "@/components/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface PublicHeaderProps {
   activePage?: "hub" | "explorar" | "torneio" | "chaveamento";
@@ -89,7 +90,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
   );
 
   return (
-    <header className="w-full border-b border-[#27272a] bg-[#141416]/95 backdrop-blur-md sticky top-0 z-40 transition-all">
+    <header className="w-full border-b border-zinc-200 dark:border-[#27272a] bg-white/90 dark:bg-[#141416]/95 backdrop-blur-md sticky top-0 z-40 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
         {/* Lado Esquerdo: Logotipo + Tipografia SportConnect */}
         <div className="flex items-center gap-3 shrink-0">
@@ -105,7 +106,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
               priority
               className="h-9 w-auto object-contain group-hover:opacity-90 transition-opacity"
             />
-            <span className="font-display font-black text-lg sm:text-xl tracking-tight text-white">
+            <span className="font-display font-black text-lg sm:text-xl tracking-tight text-zinc-900 dark:text-white">
               Sport<span className="text-[#00a2ff]">Connect</span>
             </span>
           </Link>
@@ -118,8 +119,8 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
               href="/hub"
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                 isHubActive
-                  ? "bg-[#1e1e1e] text-white border border-[#27272a] shadow-sm"
-                  : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
+                  ? "bg-zinc-100 dark:bg-[#1e1e1e] text-zinc-900 dark:text-white border border-zinc-200 dark:border-[#27272a] shadow-sm"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#1a1a1a]"
               }`}
             >
               <Sparkles className="h-4 w-4 text-[#00a2ff]" />
@@ -131,8 +132,8 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
             href="/explorar"
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               isExplorarActive
-                ? "bg-[#1e1e1e] text-white border border-[#27272a] shadow-sm"
-                : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
+                ? "bg-zinc-100 dark:bg-[#1e1e1e] text-zinc-900 dark:text-white border border-zinc-200 dark:border-[#27272a] shadow-sm"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#1a1a1a]"
             }`}
           >
             <Compass className="h-4 w-4 text-[#00a2ff]" />
@@ -140,8 +141,9 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
           </Link>
         </nav>
 
-        {/* Lado Direito: Ações de Usuário / Menu Drop-down */}
+        {/* Lado Direito: Alternador de Tema + Ações de Usuário / Menu Drop-down */}
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <ThemeToggle />
           {user && <NotificationBell />}
           {!user ? (
             <Link
@@ -157,7 +159,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
               <button
                 type="button"
                 onClick={() => setUserDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2.5 p-1.5 pr-2.5 rounded-2xl hover:bg-zinc-800/80 border border-transparent hover:border-zinc-700/60 transition-all cursor-pointer group"
+                className="flex items-center gap-2.5 p-1.5 pr-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800/80 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700/60 transition-all cursor-pointer group"
                 title="Menu do usuário"
               >
                 <div className="w-8 h-8 rounded-full overflow-hidden border border-zinc-700/80 shadow-inner shrink-0 flex items-center justify-center">
@@ -267,7 +269,11 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
 
       {/* Menu Gaveta Mobile */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-[#27272a] bg-[#141416] p-4 space-y-2 animate-fadeIn">
+        <div className="md:hidden border-t border-zinc-200 dark:border-[#27272a] bg-white dark:bg-[#141416] p-4 space-y-2 animate-fadeIn">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-100 dark:border-zinc-800">
+            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Modo de Exibição</span>
+            <ThemeToggle />
+          </div>
           {user && (
             <Link
               href="/hub"

@@ -51,3 +51,4 @@ CREATE POLICY "matches_update_owner_or_staff"
       WHERE p.id = auth.uid() AND p.is_admin = true
     )
   );
+

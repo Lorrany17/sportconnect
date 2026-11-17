@@ -37,3 +37,4 @@ CREATE TRIGGER tr_protect_profile_admin
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.check_profile_admin_elevation();
+

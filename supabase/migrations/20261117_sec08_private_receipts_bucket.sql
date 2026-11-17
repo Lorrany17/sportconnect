@@ -80,3 +80,4 @@ CREATE POLICY "receipts_update_delete_policy"
       )
     )
   );
+

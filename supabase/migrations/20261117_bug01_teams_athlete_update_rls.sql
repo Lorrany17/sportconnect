@@ -34,3 +34,4 @@ CREATE POLICY "teams_athlete_rollback_delete"
     auth.uid() = user_id
     AND (payment_status IS NULL OR payment_status IN ('PENDING', 'WAITING_APPROVAL'))
   );
+

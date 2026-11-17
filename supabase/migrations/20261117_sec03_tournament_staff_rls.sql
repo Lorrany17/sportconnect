@@ -90,3 +90,4 @@ CREATE POLICY "tournament_staff_delete_policy"
       WHERE p.id = auth.uid() AND p.is_admin = true
     )
   );
+
