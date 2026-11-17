@@ -120,15 +120,21 @@ export default function PixCheckoutForm({
       setLoading(true);
       setError(null);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const reqHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        reqHeaders["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch("/api/checkout/pix", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: reqHeaders,
         body: JSON.stringify({
           tournamentId,
           teamId: currentTeamId || teamId || "",
-          totalAmount,
           teamName,
           email,
         }),

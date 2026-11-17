@@ -225,9 +225,7 @@ export async function generateLeagueMatches(
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournament_id) {
-      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
-    }
+    await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     // 1. Verifica se já existem partidas criadas e se alguma já iniciou
@@ -402,9 +400,7 @@ export async function generateGroupStage(
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournament_id) {
-      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
-    }
+    await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     // 1. Verifica se já existem partidas criadas e se alguma já iniciou
@@ -687,9 +683,7 @@ export async function generateKnockoutFromGroups(
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournament_id) {
-      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
-    }
+    await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     const { data: tournamentRow } = await supabase
@@ -1620,9 +1614,7 @@ export async function generateBracket(
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournament_id) {
-      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
-    }
+    await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     // 1. Verifica se já existem partidas criadas e se alguma já iniciou
@@ -1948,9 +1940,7 @@ export async function startTournamentAction(
   }
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournament_id) {
-      await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
-    }
+    await requireTournamentAccess(authUser, tournament_id, ["ADMIN"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
     await setTournamentStatusInProgress(supabase, tournament_id);
     return {
@@ -2020,9 +2010,13 @@ export async function completeMatchAction(
       };
     }
 
-    if (match.tournament_id) {
-      await requireTournamentAccess(authUser, match.tournament_id, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
+    if (!match.tournament_id) {
+      return {
+        success: false,
+        error: "Partida inválida: o confronto não possui vínculo com nenhum campeonato.",
+      };
     }
+    await requireTournamentAccess(authUser, match.tournament_id, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
 
     const team1_id = match.team1_id || match.team_a_id;
     const team2_id = match.team2_id || match.team_b_id;
@@ -2875,9 +2869,7 @@ export async function updateMatchParticipants(
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournamentId) {
-      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
-    }
+    await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
     const adminClient = getSupabaseAdmin() || supabase;
 
@@ -2962,9 +2954,7 @@ export async function swapTeams(
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournamentId) {
-      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
-    }
+    await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
     const adminClient = getSupabaseAdmin() || supabase;
 
@@ -3116,15 +3106,13 @@ export async function updateMatchScoreAction(
     userAuthToken,
   } = params;
 
-  if (!matchId) {
-    return { success: false, error: "ID da partida não informado." };
+  if (!matchId || !tournamentId) {
+    return { success: false, error: "ID da partida e ID do torneio são obrigatórios." };
   }
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournamentId) {
-      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
-    }
+    await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     const updatePayload: Record<string, any> = {
@@ -3206,15 +3194,13 @@ export async function resetMatchAction(
 ): Promise<{ success: boolean; error?: string }> {
   const { matchId, tournamentId, userAuthToken } = params;
 
-  if (!matchId) {
-    return { success: false, error: "ID da partida não informado." };
+  if (!matchId || !tournamentId) {
+    return { success: false, error: "ID da partida e ID do torneio são obrigatórios." };
   }
 
   try {
     const authUser = await requireAuthenticatedUser(userAuthToken);
-    if (tournamentId) {
-      await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
-    }
+    await requireTournamentAccess(authUser, tournamentId, ["ADMIN", "REFEREE", "SCOREKEEPER"]);
     const supabase = await createAuthenticatedSupabase(userAuthToken);
 
     const resetPayload: Record<string, any> = {
