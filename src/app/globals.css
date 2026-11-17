@@ -144,12 +144,6 @@ input, select, textarea {
   -webkit-backdrop-filter: blur(12px);
   box-shadow: none;
 }
-  background: #1c1c1c !important;
-  border: 1px solid #262626 !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: none;
-}
 
 .text-gradient-electric {
   background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
