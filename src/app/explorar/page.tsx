@@ -135,7 +135,7 @@ export default function ExplorarPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f0f0f] text-zinc-900 dark:text-[#e4e4e7] flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
       <div>
         <PublicHeader activePage="explorar" />
 
@@ -146,10 +146,10 @@ export default function ExplorarPage() {
               <Compass className="h-3.5 w-3.5" />
               <span>Explorador de Torneios</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl font-black text-white font-display tracking-tight">
+            <h1 className="text-3xl sm:text-5xl font-black text-zinc-900 dark:text-white font-display tracking-tight">
               Encontre Sua Arena
             </h1>
-            <p className="text-sm sm:text-base text-zinc-400 mt-3 leading-relaxed">
+            <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 mt-3 leading-relaxed">
               Participe de competições e acompanhe sua ascensão rumo à glória.
             </p>
             <div className="mt-2.5">
@@ -164,7 +164,7 @@ export default function ExplorarPage() {
         <div className="space-y-5 mb-10 max-w-2xl mx-auto">
           {/* Barra de Pesquisa */}
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-500">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-400">
               <Search className="h-4 w-4" />
             </div>
             <input
@@ -172,7 +172,7 @@ export default function ExplorarPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar campeonato por nome ou local..."
-              className="w-full pl-11 pr-4 py-3.5 bg-[#18181b] border border-zinc-800 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-2xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all shadow-inner"
+              className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-2xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none transition-all shadow-sm dark:shadow-inner"
             />
           </div>
 
@@ -188,7 +188,7 @@ export default function ExplorarPage() {
                   className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm ${
                     isActive
                       ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25 scale-105"
-                      : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                      : "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700"
                   }`}
                 >
                   {cat.label}
@@ -200,17 +200,17 @@ export default function ExplorarPage() {
 
         {/* 3. Lista de Cards (Grid) */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-8 bg-[#18181b] border border-zinc-800 rounded-2xl max-w-xl mx-auto w-full">
+          <div className="flex flex-col items-center justify-center min-h-[300px] text-center p-8 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-xl mx-auto w-full shadow-sm">
             <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-3" />
-            <p className="text-sm font-bold text-zinc-300">Carregando competições...</p>
+            <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Carregando competições...</p>
           </div>
         ) : filteredTournaments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[320px] text-center p-8 bg-[#18181b] border border-zinc-800 rounded-2xl max-w-xl mx-auto w-full">
-            <Trophy className="h-12 w-12 text-zinc-600 mb-3" />
-            <h3 className="text-lg font-black text-white mb-1 uppercase tracking-wide font-display">
+          <div className="flex flex-col items-center justify-center min-h-[320px] text-center p-8 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-xl mx-auto w-full shadow-sm">
+            <Trophy className="h-12 w-12 text-zinc-400 dark:text-zinc-600 mb-3" />
+            <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-1 uppercase tracking-wide font-display">
               Nenhuma arena encontrada
             </h3>
-            <p className="text-xs text-zinc-400 max-w-sm leading-relaxed mb-4">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm leading-relaxed mb-4">
               Não encontramos nenhum campeonato com os filtros selecionados. Tente ajustar o esporte ou os termos de busca.
             </p>
             {(selectedSport !== "TODOS" || searchQuery) && (
@@ -237,7 +237,7 @@ export default function ExplorarPage() {
       </div>
 
       {/* Rodapé da Página */}
-      <footer className="border-t border-[#27272a] py-6 text-center text-xs text-zinc-500 bg-[#141416]/50">
+      <footer className="border-t border-zinc-200 dark:border-[#27272a] py-6 text-center text-xs text-zinc-500 bg-white/70 dark:bg-[#141416]/50">
         <div>SportConnect • Portal de Competições Esportivas</div>
       </footer>
     </div>

@@ -328,7 +328,7 @@ export default function AuthModal({
   };
 
   const content = (
-    <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative overflow-hidden text-[#e4e4e7] animate-fadeIn">
+    <div className="bg-white dark:bg-[#1e1e1e] border border-zinc-200 dark:border-[#27272a] rounded-2xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative overflow-hidden text-zinc-800 dark:text-[#e4e4e7] animate-fadeIn">
       {/* Faixa decorativa superior em gradiente azul SportConnect */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-blue-500 to-indigo-500" />
 
@@ -336,7 +336,7 @@ export default function AuthModal({
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer"
           title="Fechar"
         >
           <X className="h-5 w-5" />
@@ -353,14 +353,14 @@ export default function AuthModal({
           priority
           className="h-9 w-auto object-contain mb-4"
         />
-        <h2 className="font-display font-black text-white text-lg tracking-wide uppercase">
+        <h2 className="font-display font-black text-zinc-900 dark:text-white text-lg tracking-wide uppercase">
           {step === "otp"
             ? "Verificação de Segurança"
             : activeTab === "login"
             ? "Acessar Plataforma"
             : "Criar Nova Conta"}
         </h2>
-        <p className="text-xs text-zinc-400 mt-1">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
           {step === "otp"
             ? `Digite o código de verificação enviado para ${email}`
             : activeTab === "login"
@@ -371,17 +371,17 @@ export default function AuthModal({
 
       {step === "otp" ? (
         <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fadeIn">
-          <div className="p-4 rounded-2xl bg-[#00a2ff]/10 border border-[#00a2ff]/25 flex items-center gap-3">
+          <div className="p-4 rounded-2xl bg-blue-50 dark:bg-[#00a2ff]/10 border border-blue-200 dark:border-[#00a2ff]/25 flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00a2ff]/20 text-[#00a2ff] shrink-0">
               <ShieldCheck className="h-5 w-5" />
             </div>
-            <p className="text-xs text-zinc-300 leading-relaxed">
+            <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
               Autenticação em duas etapas ativada. Verifique sua caixa de entrada (ou spam) e insira o código numérico abaixo.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
               <KeyRound className="h-3.5 w-3.5 text-[#00a2ff]" />
               <span>Código de Verificação (8 dígitos)</span>
             </label>
@@ -393,20 +393,20 @@ export default function AuthModal({
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
               placeholder="00000000"
-              className="w-full px-4 py-3.5 bg-[#0f0f0f] border border-[#27272a] focus:border-[#00a2ff] rounded-xl text-center font-mono text-2xl font-black tracking-[0.35em] text-white placeholder:text-zinc-700 outline-none transition-all shadow-inner"
+              className="w-full px-4 py-3.5 bg-zinc-50 dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] focus:border-[#00a2ff] rounded-xl text-center font-mono text-2xl font-black tracking-[0.35em] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-700 outline-none transition-all shadow-inner"
               autoFocus
             />
           </div>
 
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs font-medium flex items-start gap-2">
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-500 dark:text-red-400 text-xs font-medium flex items-start gap-2">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium flex items-start gap-2">
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{successMessage}</span>
             </div>
@@ -434,7 +434,7 @@ export default function AuthModal({
             <button
               type="button"
               onClick={handleBackFromOtp}
-              className="inline-flex items-center gap-1 text-zinc-400 hover:text-white font-semibold cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-semibold cursor-pointer transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Voltar</span>
@@ -444,7 +444,7 @@ export default function AuthModal({
               type="button"
               disabled={isResendingOtp || resendCooldown > 0}
               onClick={handleResendOtp}
-              className="text-[#00a2ff] hover:text-blue-400 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="text-[#00a2ff] hover:text-blue-500 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isResendingOtp
                 ? "Reenviando..."
@@ -457,14 +457,14 @@ export default function AuthModal({
       ) : (
         <>
           {/* Seletor de Abas (Tabs: Entrar / Criar Conta) */}
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#0f0f0f] border border-[#27272a] rounded-xl mb-6">
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-100 dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a] rounded-xl mb-6">
             <button
               type="button"
               onClick={() => handleTabChange("login")}
               className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === "login"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/25"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-900/60"
               }`}
             >
               <LogIn className="h-3.5 w-3.5" />
@@ -476,7 +476,7 @@ export default function AuthModal({
               className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === "signup"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/25"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-900/60"
               }`}
             >
               <UserPlus className="h-3.5 w-3.5" />
@@ -489,11 +489,11 @@ export default function AuthModal({
         {/* Campo Nome Completo (Apenas na aba de Cadastro) */}
         {activeTab === "signup" && (
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block pl-1">
+            <label className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider block pl-1">
               Nome Completo
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
                 <User className="h-4 w-4" />
               </div>
               <input
@@ -506,7 +506,7 @@ export default function AuthModal({
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="Ex: Carlos Eduardo Silva"
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 transition-all"
               />
             </div>
           </div>
@@ -515,11 +515,11 @@ export default function AuthModal({
         {/* Campo Telefone / WhatsApp (Apenas na aba de Cadastro) */}
         {activeTab === "signup" && (
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block pl-1">
-              Telefone / WhatsApp <span className="text-red-400">*</span>
+            <label className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider block pl-1">
+              Telefone / WhatsApp <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
                 <Phone className="h-4 w-4" />
               </div>
               <input
@@ -532,7 +532,7 @@ export default function AuthModal({
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="(XX) XXXXX-XXXX"
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 transition-all"
               />
             </div>
           </div>
@@ -540,11 +540,11 @@ export default function AuthModal({
 
         {/* Campo E-mail */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block pl-1">
+          <label className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider block pl-1">
             E-mail
           </label>
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
               <Mail className="h-4 w-4" />
             </div>
             <input
@@ -557,18 +557,18 @@ export default function AuthModal({
                 if (successMessage) setSuccessMessage("");
               }}
               placeholder="seu@email.com"
-              className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 transition-all"
             />
           </div>
         </div>
 
         {/* Campo Senha */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block pl-1">
+          <label className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider block pl-1">
             Senha
           </label>
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
               <Lock className="h-4 w-4" />
             </div>
             <input
@@ -581,12 +581,12 @@ export default function AuthModal({
                 if (successMessage) setSuccessMessage("");
               }}
               placeholder={activeTab === "signup" ? "Mínimo 6 caracteres" : "Sua senha de acesso"}
-              className="w-full pl-10 pr-11 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
+              className="w-full pl-10 pr-11 py-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors cursor-pointer"
               title={showPassword ? "Ocultar senha" : "Exibir senha"}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -600,7 +600,7 @@ export default function AuthModal({
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={isResetting}
-                className="text-xs text-zinc-400 hover:text-blue-500 transition-colors bg-transparent border-0 p-0 cursor-pointer disabled:opacity-50"
+                className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-[#00a2ff] transition-colors bg-transparent border-0 p-0 cursor-pointer disabled:opacity-50"
               >
                 {isResetting ? "Enviando..." : "Esqueci minha senha"}
               </button>
@@ -610,14 +610,14 @@ export default function AuthModal({
 
         {/* Mensagem de Erro com cor vermelha e fonte pequena */}
         {errorMessage && (
-          <p className="text-red-500 text-sm text-center font-medium animate-fadeIn">
+          <p className="text-red-500 dark:text-red-400 text-sm text-center font-medium animate-fadeIn">
             {errorMessage}
           </p>
         )}
 
         {/* Mensagem de Sucesso Verde */}
         {successMessage && (
-          <p className="text-emerald-400 text-sm text-center font-medium animate-fadeIn">
+          <p className="text-emerald-600 dark:text-emerald-400 text-sm text-center font-medium animate-fadeIn">
             {successMessage}
           </p>
         )}

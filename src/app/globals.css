@@ -23,8 +23,8 @@
   --color-canvas: var(--bg-canvas);
   --color-surface: var(--bg-surface);
   --color-surface-elevated: var(--bg-surface-elevated);
-  --color-border-subtle: var(--border-subtle);
-  --color-border-strong: var(--border-strong);
+  --color-subtle: var(--border-subtle);
+  --color-strong: var(--border-strong);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
@@ -57,20 +57,20 @@
 }
 
 body {
-  background-color: #f2ece0; /* bg-[#f2ece0] (canvas) */
-  background-image: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.08) 0%, rgba(0, 0, 0, 0) 60%);
+  background-color: var(--bg-canvas);
+  background-image: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.06) 0%, rgba(0, 0, 0, 0) 60%);
   background-attachment: fixed;
-  color: #3b342e; /* text-[#3b342e] (comfortable chumbo/marrom) */
+  color: var(--text-primary);
   font-family: var(--font-sport);
   overflow-x: hidden;
   transition: background-color 0.3s, color 0.3s;
 }
 
 .dark body {
-  background-color: #0a0a0a; /* dark:bg-neutral-950 */
+  background-color: #0a0a0a;
   background-image: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.15) 0%, rgba(0, 0, 0, 0) 60%),
                     radial-gradient(circle at 0% 100%, rgba(245, 158, 11, 0.05) 0%, rgba(0, 0, 0, 0) 40%);
-  color: #fafafa; /* dark:text-neutral-50 */
+  color: #fafafa;
 }
 
 /* Custom Scrollbars */
@@ -80,7 +80,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f2ece0;
+  background: var(--bg-canvas);
 }
 
 .dark ::-webkit-scrollbar-track {
@@ -88,7 +88,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e5e5e5;
+  background: var(--border-strong);
   border-radius: 3px;
 }
 
@@ -97,18 +97,28 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #d4d4d4;
+  background: var(--text-muted);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #404040;
 }
 
+/* Form controls & accessibility defaults */
+input, select, textarea {
+  color-scheme: light dark;
+}
+
+::selection {
+  background-color: rgba(0, 162, 255, 0.25);
+  color: inherit;
+}
+
 /* Glassmorphism helpers */
 .glass-panel {
-  background: #e6ddca; /* bg-[#e6ddca] (surfaces) */
-  border: 1px solid #d8ccb4; /* border-[#d8ccb4] */
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* shadow-sm */
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
   transition: background 0.3s, border-color 0.3s;
 }
 
@@ -121,13 +131,19 @@ body {
 }
 
 .glass-panel-neon {
-  background: #e6ddca; /* bg-[#e6ddca] (surfaces) */
+  background: var(--bg-surface);
   border: 1px solid rgba(245, 158, 11, 0.3);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* shadow-sm */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
   transition: background 0.3s, border-color 0.3s;
 }
 
 .dark .glass-panel-neon {
+  background: #1c1c1c !important;
+  border: 1px solid #262626 !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: none;
+}
   background: #1c1c1c !important;
   border: 1px solid #262626 !important;
   backdrop-filter: blur(12px);

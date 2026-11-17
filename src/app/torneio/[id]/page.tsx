@@ -761,18 +761,18 @@ export default function DetalhesTorneioPage() {
   const isOpenForEnrollment = tournament.status === "OPEN" && vagasRestantes > 0;
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] selection:bg-[#00a2ff]/30 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f0f0f] text-zinc-900 dark:text-[#e4e4e7] selection:bg-[#00a2ff]/30 selection:text-white flex flex-col justify-between">
       <div>
         {/* Header Global Público Padronizado */}
         <PublicHeader activePage="torneio" />
 
         {/* Sub-barra de Navegação e Status */}
         {!isGenerating && (
-          <div className="w-full border-b border-[#27272a] bg-[#141416]/50">
+          <div className="w-full border-b border-zinc-200 dark:border-[#27272a] bg-white/70 dark:bg-[#141416]/50">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2 min-h-14 flex flex-wrap items-center justify-between gap-3">
               <Link
                 href="/explorar"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#1e1e1e] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-[#27272a] text-xs font-bold text-zinc-700 dark:text-[#e4e4e7] hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 <ArrowLeft className="h-4 w-4 text-[#00a2ff]" />
                 <span>Voltar às Arenas</span>
@@ -833,8 +833,8 @@ export default function DetalhesTorneioPage() {
           }
           className={
             isGenerating
-              ? "bg-[#09090b] w-[1080px] min-w-[1080px] max-w-[1080px] min-h-[1080px] m-0 border border-zinc-800 shadow-2xl flex flex-col justify-between"
-              : "bg-[#0f0f0f]"
+              ? "bg-[#09090b] text-white w-[1080px] min-w-[1080px] max-w-[1080px] min-h-[1080px] m-0 border border-zinc-800 shadow-2xl flex flex-col justify-between"
+              : "bg-slate-50 dark:bg-[#0f0f0f]"
           }
         >
           {/* 1. Hero Section (Foto de Capa Grande + Nome Sobreposto) */}
@@ -851,7 +851,7 @@ export default function DetalhesTorneioPage() {
             <div
               className={`absolute inset-0 ${isGenerating
                 ? "bg-gradient-to-t from-[#09090b] via-[#09090b]/85 to-black/50"
-                : "bg-gradient-to-t from-[#0f0f0f] via-[#0f0f0f]/70 to-black/40"
+                : "bg-gradient-to-t from-slate-50/90 dark:from-[#0f0f0f] via-black/40 to-black/60"
                 }`}
             />
 
@@ -948,11 +948,11 @@ export default function DetalhesTorneioPage() {
                   className={
                     isGenerating
                       ? "bg-[#121215] border-2 border-zinc-700 rounded-3xl p-6 shadow-2xl space-y-4"
-                      : "bg-[#18181b] border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4"
+                      : "bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm dark:shadow-xl space-y-4"
                   }
                 >
                   <h2
-                    className={`${isGenerating ? "text-lg gap-2.5 text-white" : "text-sm gap-2 text-zinc-300"
+                    className={`${isGenerating ? "text-lg gap-2.5 text-white" : "text-sm gap-2 text-zinc-900 dark:text-zinc-300"
                       } font-black uppercase tracking-wider flex items-center`}
                   >
                     <Trophy className={isGenerating ? "h-5 w-5 text-blue-400" : "h-4 w-4 text-blue-500"} />
@@ -967,7 +967,7 @@ export default function DetalhesTorneioPage() {
                       className={
                         isGenerating
                           ? "bg-[#09090b] border-2 border-zinc-700/90 rounded-2xl p-4"
-                          : "bg-[#121214] border border-zinc-800/80 rounded-xl p-3.5"
+                          : "bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-3.5"
                       }
                     >
                       <span
@@ -981,7 +981,7 @@ export default function DetalhesTorneioPage() {
                       </span>
                       <span
                         className={`${isGenerating ? "text-xl gap-2" : "text-sm gap-1.5"
-                          } font-black text-white flex items-center`}
+                          } font-black text-zinc-900 dark:text-white flex items-center`}
                       >
                         <span>{sportMeta?.icon}</span>
                         <span>{sportMeta?.label || sportType}</span>
@@ -992,7 +992,7 @@ export default function DetalhesTorneioPage() {
                       className={
                         isGenerating
                           ? "bg-[#09090b] border-2 border-zinc-700/90 rounded-2xl p-4"
-                          : "bg-[#121214] border border-zinc-800/80 rounded-xl p-3.5"
+                          : "bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-3.5"
                       }
                     >
                       <span
@@ -1004,7 +1004,7 @@ export default function DetalhesTorneioPage() {
                       >
                         Formato
                       </span>
-                      <span className={`${isGenerating ? "text-xl" : "text-sm"} font-black text-white block`}>
+                      <span className={`${isGenerating ? "text-xl" : "text-sm"} font-black text-zinc-900 dark:text-white block`}>
                         {translateTournamentFormat(tournament.tournament_format || tournament.format)}
                       </span>
                     </div>
@@ -1013,7 +1013,7 @@ export default function DetalhesTorneioPage() {
                       className={
                         isGenerating
                           ? "bg-[#09090b] border-2 border-emerald-500/40 rounded-2xl p-4"
-                          : "bg-[#121214] border border-zinc-800/80 rounded-xl p-3.5"
+                          : "bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-3.5"
                       }
                     >
                       <span
@@ -1025,7 +1025,7 @@ export default function DetalhesTorneioPage() {
                       >
                         Inscrição
                       </span>
-                      <span className={`${isGenerating ? "text-xl" : "text-sm"} font-black text-emerald-400 block`}>
+                      <span className={`${isGenerating ? "text-xl" : "text-sm"} font-black text-emerald-600 dark:text-emerald-400 block`}>
                         {formatFee(tournament.entry_fee)}
                       </span>
                     </div>
@@ -1034,7 +1034,7 @@ export default function DetalhesTorneioPage() {
                       className={
                         isGenerating
                           ? "bg-[#09090b] border-2 border-zinc-700/90 rounded-2xl p-4"
-                          : "bg-[#121214] border border-zinc-800/80 rounded-xl p-3.5"
+                          : "bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-3.5"
                       }
                     >
                       <span
@@ -1257,18 +1257,18 @@ export default function DetalhesTorneioPage() {
 
                 {/* Localização & Mapa Reativo com Google Maps Iframe (Oculta Iframe durante geração do cartaz) */}
                 {!isGenerating && (
-                  <div className="bg-[#18181b] border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
-                    <h2 className="text-sm font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                  <div className="bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm dark:shadow-xl space-y-4">
+                    <h2 className="text-sm font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-300 flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-blue-500" />
                       <span>Localização do Evento</span>
                     </h2>
 
-                    <p className="text-sm text-zinc-300">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
                       {tournament.location || "O endereço exato será divulgado pela comissão organizadora."}
                     </p>
 
                     {tournament.location ? (
-                      <div className="relative rounded-xl overflow-hidden border border-zinc-700 bg-zinc-900 shadow-md">
+                      <div className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 shadow-md">
                         <iframe
                           width="100%"
                           height="240"
@@ -1283,8 +1283,8 @@ export default function DetalhesTorneioPage() {
                         />
                       </div>
                     ) : (
-                      <div className="h-[140px] w-full rounded-xl border border-zinc-800 bg-[#121214] flex flex-col items-center justify-center p-4 text-center">
-                        <MapPin className="h-6 w-6 text-zinc-600 mb-2" />
+                      <div className="h-[140px] w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#121214] flex flex-col items-center justify-center p-4 text-center">
+                        <MapPin className="h-6 w-6 text-zinc-400 dark:text-zinc-600 mb-2" />
                         <p className="text-xs text-zinc-500 font-medium">
                           Mapa indisponível até o endereço ser confirmado
                         </p>
@@ -1305,9 +1305,9 @@ export default function DetalhesTorneioPage() {
                       tournament.regulation_url ||
                       tournament.rulebook_url
                   ) && (
-                    <div className="bg-[#18181b] border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
-                      <h2 className="text-sm font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-                        <ShieldAlert className="h-4 w-4 text-amber-400" />
+                    <div className="bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm dark:shadow-xl space-y-4">
+                      <h2 className="text-sm font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-300 flex items-center gap-2">
+                        <ShieldAlert className="h-4 w-4 text-amber-500" />
                         <span>Regras e Regulamento Oficial</span>
                       </h2>
 
@@ -1321,7 +1321,7 @@ export default function DetalhesTorneioPage() {
                       ) && (
                         <div className="space-y-3">
                           <div
-                            className={`p-4 rounded-xl bg-[#121214] border border-zinc-800 text-sm text-zinc-300 whitespace-pre-line leading-relaxed transition-all ${
+                            className={`p-4 rounded-xl bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-line leading-relaxed transition-all ${
                               !isRulebookExpanded ? "relative max-h-64 overflow-hidden" : ""
                             }`}
                           >
@@ -1332,14 +1332,14 @@ export default function DetalhesTorneioPage() {
                               ""
                             ).trim()}
                             {!isRulebookExpanded && (
-                              <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-[#121214] to-transparent pointer-events-none" />
+                              <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-zinc-50 dark:from-[#121214] to-transparent pointer-events-none" />
                             )}
                           </div>
 
                           <button
                             type="button"
                             onClick={() => setIsRulebookExpanded(!isRulebookExpanded)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-[#00a2ff] hover:text-blue-300 transition-all cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-xs font-bold text-[#00a2ff] hover:text-blue-500 transition-all cursor-pointer"
                           >
                             <span>{isRulebookExpanded ? "Ler menos" : "Ler mais do regulamento"}</span>
                           </button>
@@ -1365,10 +1365,10 @@ export default function DetalhesTorneioPage() {
 
                 {/* Equipes e Atletas Inscritos */}
                 {!isGenerating && (
-                  <div className="bg-[#18181b] border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+                  <div className="bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm dark:shadow-xl space-y-4">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-                        <Users className="h-4 w-4 text-emerald-400" />
+                      <h2 className="text-sm font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-300 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-emerald-500" />
                         <span>Equipes e Atletas Inscritos ({tournamentTeams.length})</span>
                       </h2>
                       <span className="text-[11px] text-zinc-500">
@@ -1377,38 +1377,38 @@ export default function DetalhesTorneioPage() {
                     </div>
 
                     {tournamentTeams.length === 0 ? (
-                      <div className="p-6 rounded-xl bg-[#121214] border border-dashed border-zinc-800 text-center space-y-1">
-                        <Users className="h-8 w-8 text-zinc-600 mx-auto mb-1" />
-                        <p className="text-xs font-bold text-zinc-400">Nenhuma equipe confirmada ainda</p>
-                        <p className="text-[11px] text-zinc-600">Seja o primeiro a inscrever sua equipe neste campeonato!</p>
+                      <div className="p-6 rounded-xl bg-zinc-50 dark:bg-[#121214] border border-dashed border-zinc-200 dark:border-zinc-800 text-center space-y-1">
+                        <Users className="h-8 w-8 text-zinc-400 dark:text-zinc-600 mx-auto mb-1" />
+                        <p className="text-xs font-bold text-zinc-700 dark:text-zinc-400">Nenhuma equipe confirmada ainda</p>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-600">Seja o primeiro a inscrever sua equipe neste campeonato!</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                         {tournamentTeams.map((team, idx) => (
                           <div
                             key={team.id}
-                            className="p-3.5 rounded-xl bg-[#121214] border border-zinc-800/80 hover:border-zinc-700 transition-all flex items-start gap-3"
+                            className="p-3.5 rounded-xl bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 hover:border-blue-400 dark:hover:border-zinc-700 transition-all flex items-start gap-3"
                           >
                             {team.user_id ? (
                               <Link
                                 href={`/atleta/${team.user_id}`}
                                 title="Ver perfil do atleta"
-                                className="w-9 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-sm font-black text-amber-400 shrink-0 shadow-inner group transition-transform hover:scale-105"
+                                className="w-9 h-9 rounded-xl bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-sm font-black text-amber-600 dark:text-amber-400 shrink-0 shadow-inner group transition-transform hover:scale-105"
                               >
                                 <span>#{idx + 1}</span>
                               </Link>
                             ) : (
-                              <div className="w-9 h-9 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm font-black text-zinc-400 shrink-0 shadow-inner">
+                              <div className="w-9 h-9 rounded-xl bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-sm font-black text-zinc-500 dark:text-zinc-400 shrink-0 shadow-inner">
                                 <span>#{idx + 1}</span>
                               </div>
                             )}
                             <div className="space-y-0.5 min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-1">
-                                <h4 className="text-xs font-bold text-white truncate">
+                                <h4 className="text-xs font-bold text-zinc-900 dark:text-white truncate">
                                   {team.user_id ? (
                                     <Link
                                       href={`/atleta/${team.user_id}`}
-                                      className="hover:text-amber-400 hover:underline transition-colors"
+                                      className="hover:text-amber-500 hover:underline transition-colors"
                                       title="Ver perfil do atleta"
                                     >
                                       {team.name}
@@ -1418,17 +1418,17 @@ export default function DetalhesTorneioPage() {
                                   )}
                                 </h4>
                               </div>
-                              <div className="text-[11px] text-zinc-400 truncate flex items-center gap-1.5">
+                              <div className="text-[11px] text-zinc-600 dark:text-zinc-400 truncate flex items-center gap-1.5">
                                 <span>Capitão:</span>
                                 {team.user_id ? (
                                   <Link
                                     href={`/atleta/${team.user_id}`}
-                                    className="font-semibold text-zinc-300 hover:text-amber-400 hover:underline"
+                                    className="font-semibold text-zinc-700 dark:text-zinc-300 hover:text-amber-500 hover:underline"
                                   >
                                     {team.players[0]}
                                   </Link>
                                 ) : (
-                                  <span className="font-semibold text-zinc-300">{team.players[0]}</span>
+                                  <span className="font-semibold text-zinc-700 dark:text-zinc-300">{team.players[0]}</span>
                                 )}
                                 {team.players[1] && (
                                   <span className="text-zinc-500">• {team.players[1]}</span>
@@ -1446,15 +1446,15 @@ export default function DetalhesTorneioPage() {
               {/* Coluna Direita: Box de Inscrição e Ações (Oculto durante geração do cartaz) */}
               {!isGenerating && (
                 <div className="space-y-6">
-                  <div className="bg-[#18181b] border border-zinc-800 rounded-2xl p-6 shadow-2xl space-y-5 sticky top-24">
+                  <div className="bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xl dark:shadow-2xl space-y-5 sticky top-24">
                     <div className="space-y-2">
                       <span className="text-xs uppercase font-bold text-zinc-500">
                         Taxa de Inscrição
                       </span>
-                      <div className="text-3xl font-black text-white font-display text-emerald-400">
+                      <div className="text-3xl font-black font-display text-emerald-600 dark:text-emerald-400">
                         {formatFee(tournament.entry_fee)}
                       </div>
-                      <p className="text-xs text-zinc-400">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
                         Garante vaga oficial na tabela e acesso a toda a infraestrutura da arena.
                       </p>
                     </div>

@@ -117,11 +117,11 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
   return (
     <Link
       href={`/torneio/${tournament.id}`}
-      className="group block bg-[#1a1a1a] border border-zinc-800 rounded-2xl overflow-hidden hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-900/20 hover:border-zinc-700 transition-all duration-300 flex flex-col justify-between"
+      className="group block bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-900/10 dark:hover:shadow-blue-900/20 hover:border-blue-400 dark:hover:border-zinc-700 transition-all duration-300 flex flex-col justify-between shadow-sm"
     >
       <div>
         {/* Imagem de Capa (Metade Superior) */}
-        <div className="relative h-48 w-full overflow-hidden bg-zinc-900">
+        <div className="relative h-48 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
           <Image
             src={coverImage}
             alt={tournament.name}
@@ -131,7 +131,7 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
             unoptimized={coverImage.startsWith("data:") || coverImage.startsWith("blob:")}
           />
           {/* Overlay gradiente escuro para legibilidade */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-black/50" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
 
           {/* Grupo de Tags Superiores (Modalidade, Formato, Status) */}
           <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center gap-2">
@@ -151,11 +151,11 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
 
         {/* Corpo do Card */}
         <div className="p-5 space-y-3">
-          <h3 className="font-display font-black text-lg text-white group-hover:text-[#00a2ff] transition-colors line-clamp-1">
+          <h3 className="font-display font-black text-lg text-zinc-900 dark:text-white group-hover:text-[#00a2ff] transition-colors line-clamp-1">
             {tournament.name}
           </h3>
 
-          <div className="space-y-1.5 text-xs text-zinc-400">
+          <div className="space-y-1.5 text-xs text-zinc-600 dark:text-zinc-400">
             {/* Localização */}
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-[#00a2ff] shrink-0" />
@@ -172,7 +172,7 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
 
             {/* Formato */}
             <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-400 shrink-0" />
+              <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
               <span>{translateTournamentFormat(tournament.tournament_format || tournament.format)}</span>
             </div>
           </div>
@@ -180,12 +180,12 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
       </div>
 
       {/* Rodapé do Card */}
-      <div className="px-5 py-4 border-t border-zinc-800/80 bg-[#161616] flex items-center justify-between text-xs">
+      <div className="px-5 py-4 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#161616] flex items-center justify-between text-xs">
         <div>
           <span className="text-[10px] uppercase font-bold text-zinc-500 block">
             Inscrição
           </span>
-          <span className="font-black text-white text-sm text-emerald-400">
+          <span className="font-black text-sm text-emerald-600 dark:text-emerald-400">
             {formatFee(tournament.entry_fee)}
           </span>
         </div>
@@ -195,13 +195,13 @@ export default function TournamentCard({ tournament }: TournamentCardProps) {
             <span className="text-[10px] uppercase font-bold text-zinc-500 block">
               Vagas
             </span>
-            <span className="font-bold text-zinc-300 flex items-center gap-1 justify-end">
-              <Users className="h-3.5 w-3.5 text-zinc-400" />
+            <span className="font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1 justify-end">
+              <Users className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" />
               <span>{getCapacityLabel()}</span>
             </span>
           </div>
 
-          <div className="w-8 h-8 rounded-lg bg-zinc-800 group-hover:bg-blue-600 group-hover:text-white text-zinc-400 flex items-center justify-center transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 group-hover:bg-blue-600 group-hover:text-white text-zinc-500 dark:text-zinc-400 flex items-center justify-center transition-colors">
             <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>

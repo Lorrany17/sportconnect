@@ -185,7 +185,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                   )}
                 </div>
                 <div className="hidden lg:flex flex-col text-left">
-                  <span className="text-xs font-bold text-white group-hover:text-[#00a2ff] transition-colors truncate max-w-[120px] leading-tight">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-[#00a2ff] transition-colors truncate max-w-[120px] leading-tight">
                     {userName}
                   </span>
                   <span className="text-[10px] text-zinc-500 truncate max-w-[120px]">
@@ -193,7 +193,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                   </span>
                 </div>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-zinc-400 group-hover:text-white transition-transform ${
+                  className={`h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-transform ${
                     userDropdownOpen ? "rotate-180" : ""
                   }`}
                 />
@@ -206,10 +206,10 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                     className="fixed inset-0 z-40"
                     onClick={() => setUserDropdownOpen(false)}
                   />
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-[#18181b] border border-zinc-800 rounded-2xl p-2 shadow-2xl z-50 animate-fadeIn space-y-1">
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-2 shadow-xl z-50 animate-fadeIn space-y-1">
                     {/* Header do Menu */}
-                    <div className="px-3 py-2 border-b border-zinc-800/80">
-                      <p className="text-xs font-bold text-white truncate">{userName}</p>
+                    <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800/80">
+                      <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{userName}</p>
                       <p className="text-[11px] text-zinc-500 truncate">{user.email}</p>
                     </div>
 
@@ -217,7 +217,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                     <Link
                       href="/perfil"
                       onClick={() => setUserDropdownOpen(false)}
-                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-zinc-300 hover:text-white hover:bg-zinc-800/80 flex items-center gap-2.5 transition-all cursor-pointer"
+                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 flex items-center gap-2.5 transition-all cursor-pointer"
                     >
                       <User className="h-4 w-4 text-[#00a2ff]" />
                       <span>Meu Perfil</span>
@@ -228,14 +228,14 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                       <Link
                         href="/admin"
                         onClick={() => setUserDropdownOpen(false)}
-                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-purple-300 hover:text-purple-200 hover:bg-purple-600/15 border border-purple-500/25 flex items-center gap-2.5 transition-all cursor-pointer shadow-sm"
+                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-200 hover:bg-purple-50 dark:hover:bg-purple-600/15 border border-purple-200 dark:border-purple-500/25 flex items-center gap-2.5 transition-all cursor-pointer shadow-sm"
                       >
-                        <ShieldCheck className="h-4 w-4 text-purple-400" />
+                        <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                         <span>⚙️ Central do Sistema</span>
                       </Link>
                     )}
 
-                    <div className="border-t border-zinc-800/80 my-1" />
+                    <div className="border-t border-zinc-100 dark:border-zinc-800/80 my-1" />
 
                     {/* Opção Sair */}
                     <button
@@ -244,9 +244,9 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                         setUserDropdownOpen(false);
                         handleLogout();
                       }}
-                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 transition-all cursor-pointer"
+                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2.5 transition-all cursor-pointer"
                     >
-                      <LogOut className="h-4 w-4 text-red-400" />
+                      <LogOut className="h-4 w-4 text-red-500 dark:text-red-400" />
                       <span>Sair</span>
                     </button>
                   </div>
@@ -259,7 +259,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            className="md:hidden p-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="md:hidden p-2 rounded-xl bg-zinc-100 dark:bg-[#1e1e1e] hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-[#27272a] text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
             title="Menu"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -280,8 +280,8 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
               onClick={() => setMobileMenuOpen(false)}
               className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
                 isHubActive
-                  ? "bg-[#1e1e1e] text-white border border-[#27272a]"
-                  : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
+                  ? "bg-zinc-100 dark:bg-[#1e1e1e] text-zinc-900 dark:text-white border border-zinc-200 dark:border-[#27272a]"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#1a1a1a]"
               }`}
             >
               <Sparkles className="h-4 w-4 text-[#00a2ff]" />
@@ -294,8 +294,8 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
             onClick={() => setMobileMenuOpen(false)}
             className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
               isExplorarActive
-                ? "bg-[#1e1e1e] text-white border border-[#27272a]"
-                : "text-zinc-400 hover:text-white hover:bg-[#1a1a1a]"
+                ? "bg-zinc-100 dark:bg-[#1e1e1e] text-zinc-900 dark:text-white border border-zinc-200 dark:border-[#27272a]"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#1a1a1a]"
             }`}
           >
             <Compass className="h-4 w-4 text-[#00a2ff]" />
@@ -307,7 +307,7 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
               <Link
                 href="/perfil"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-300 hover:text-white hover:bg-zinc-800/80 flex items-center gap-2.5 transition-all"
+                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 flex items-center gap-2.5 transition-all"
               >
                 <User className="h-4 w-4 text-[#00a2ff]" />
                 <span>Meu Perfil</span>
@@ -317,9 +317,9 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                 <Link
                   href="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full px-4 py-2.5 rounded-xl text-xs font-bold text-purple-300 bg-purple-500/10 border border-purple-500/25 flex items-center gap-2.5 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/25 flex items-center gap-2.5 transition-all"
                 >
-                  <ShieldCheck className="h-4 w-4 text-purple-400" />
+                  <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   <span>⚙️ Central do Sistema</span>
                 </Link>
               )}
@@ -330,9 +330,9 @@ export default function PublicHeader({ activePage }: PublicHeaderProps) {
                   setMobileMenuOpen(false);
                   handleLogout();
                 }}
-                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 transition-all text-left cursor-pointer"
+                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2.5 transition-all text-left cursor-pointer"
               >
-                <LogOut className="h-4 w-4 text-red-400" />
+                <LogOut className="h-4 w-4 text-red-500 dark:text-red-400" />
                 <span>Sair</span>
               </button>
             </>

@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center text-zinc-400 text-xs font-semibold uppercase tracking-widest">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0f0f0f] flex items-center justify-center text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-widest">
         Carregando...
       </div>
     );
@@ -31,7 +31,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex flex-col items-center justify-center p-4 relative overflow-hidden select-none">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f0f0f] flex flex-col items-center justify-center p-4 relative overflow-hidden select-none">
       {/* Background neon glows */}
       <div className="absolute top-1/4 left-1/4 h-[300px] w-[300px] rounded-full bg-[#00a2ff]/10 blur-3xl -z-10" />
       <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-blue-600/5 blur-3xl -z-10" />
@@ -48,14 +48,14 @@ export default function LoginPage() {
       <div className="mt-6 text-center">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-all font-semibold uppercase tracking-wider"
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-all font-semibold uppercase tracking-wider"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>Voltar ao Chaveamento Público</span>
         </Link>
       </div>
 
-      <footer className="mt-8 text-center text-[10px] text-zinc-600 uppercase tracking-widest">
+      <footer className="mt-8 text-center text-[10px] text-zinc-500 dark:text-zinc-600 uppercase tracking-widest">
         SportConnect • Tournament Engine
       </footer>
     </div>
