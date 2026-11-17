@@ -59,13 +59,13 @@ export default function ResetPasswordModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f0f0f] flex flex-col items-center justify-center p-4 relative overflow-hidden select-none animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-canvas flex flex-col items-center justify-center p-4 relative overflow-hidden select-none animate-fadeIn">
       {/* Background neon glows */}
       <div className="absolute top-1/4 left-1/4 h-[300px] w-[300px] rounded-full bg-[#00a2ff]/10 blur-3xl -z-10" />
       <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-blue-600/5 blur-3xl -z-10" />
 
       {/* Card do Formulário */}
-      <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative overflow-hidden text-[#e4e4e7]">
+      <div className="bg-surface border border-subtle rounded-2xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative overflow-hidden text-primary">
         {/* Faixa decorativa superior em gradiente azul SportConnect */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-blue-500 to-indigo-500" />
 
@@ -83,10 +83,10 @@ export default function ResetPasswordModal() {
             <KeyRound className="h-3.5 w-3.5" />
             <span>Recuperação de Acesso</span>
           </div>
-          <h2 className="font-display font-black text-white text-xl tracking-wide uppercase">
+          <h2 className="font-display font-black text-primary text-xl tracking-wide uppercase">
             Criar Nova Senha
           </h2>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-secondary mt-1">
             {user?.email
               ? `Defina uma nova senha para a conta ${user.email}`
               : "Defina sua nova senha de acesso para continuar no SportConnect"}
@@ -97,11 +97,11 @@ export default function ResetPasswordModal() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Campo Nova Senha */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block pl-1">
+            <label className="text-[11px] font-bold text-primary uppercase tracking-wider block pl-1">
               Nova Senha
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted">
                 <Lock className="h-4 w-4" />
               </div>
               <input
@@ -114,12 +114,12 @@ export default function ResetPasswordModal() {
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="Mínimo 6 caracteres"
-                className="w-full pl-10 pr-11 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+                className="w-full pl-10 pr-11 py-3 bg-canvas border border-subtle focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted hover:text-primary transition-colors cursor-pointer"
                 title={showNewPassword ? "Ocultar senha" : "Exibir senha"}
               >
                 {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -129,11 +129,11 @@ export default function ResetPasswordModal() {
 
           {/* Campo Confirmar Nova Senha */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block pl-1">
+            <label className="text-[11px] font-bold text-primary uppercase tracking-wider block pl-1">
               Confirmar Nova Senha
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted">
                 <Lock className="h-4 w-4" />
               </div>
               <input
@@ -146,12 +146,12 @@ export default function ResetPasswordModal() {
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="Repita a nova senha"
-                className="w-full pl-10 pr-11 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+                className="w-full pl-10 pr-11 py-3 bg-canvas border border-subtle focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted hover:text-primary transition-colors cursor-pointer"
                 title={showConfirmPassword ? "Ocultar senha" : "Exibir senha"}
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -168,7 +168,7 @@ export default function ResetPasswordModal() {
 
           {/* Mensagem de Sucesso Verde */}
           {successMessage && (
-            <div className="flex items-center justify-center gap-1.5 text-emerald-400 text-sm font-medium animate-fadeIn text-center">
+            <div className="flex items-center justify-center gap-1.5 text-emerald-500 dark:text-emerald-400 text-sm font-medium animate-fadeIn text-center">
               <CheckCircle2 className="h-4 w-4" />
               <span>{successMessage}</span>
             </div>
@@ -192,7 +192,7 @@ export default function ResetPasswordModal() {
         </form>
       </div>
 
-      <footer className="mt-8 text-center text-[10px] text-zinc-600 uppercase tracking-widest">
+      <footer className="mt-8 text-center text-[10px] text-muted uppercase tracking-widest">
         SportConnect • Segurança de Acesso
       </footer>
     </div>

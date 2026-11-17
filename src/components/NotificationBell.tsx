@@ -314,8 +314,8 @@ export default function NotificationBell() {
         }}
         className={`relative p-2.5 rounded-xl border transition-all cursor-pointer active:scale-95 flex items-center justify-center ${
           isOpen
-            ? "bg-zinc-800 border-[#00a2ff]/50 text-[#00a2ff]"
-            : "bg-[#1e1e1e] hover:bg-zinc-800 border-[#27272a] text-zinc-300 hover:text-white"
+            ? "bg-surface-elevated border-[#00a2ff]/50 text-[#00a2ff]"
+            : "bg-surface hover:bg-surface-elevated border-subtle text-secondary hover:text-primary"
         }`}
         title="Notificações e Alertas"
         aria-label="Notificações"
@@ -323,7 +323,7 @@ export default function NotificationBell() {
         <Bell className="h-4 w-4" />
 
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 border-2 border-[#141416] text-white text-[10px] font-black flex items-center justify-center leading-none shadow-md shadow-red-600/40 animate-pulse">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 border-2 border-surface text-white text-[10px] font-black flex items-center justify-center leading-none shadow-md shadow-red-600/40 animate-pulse">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -331,12 +331,12 @@ export default function NotificationBell() {
 
       {/* Dropdown / Popover de Notificações */}
       {isOpen && (
-        <div className="absolute right-0 mt-2.5 w-80 sm:w-96 rounded-2xl bg-[#18181b] border border-zinc-800 shadow-2xl shadow-black/80 z-50 overflow-hidden animate-fadeIn">
+        <div className="absolute right-0 mt-2.5 w-80 sm:w-96 rounded-2xl bg-surface-elevated border border-subtle shadow-2xl z-50 overflow-hidden animate-fadeIn">
           {/* Cabeçalho do Popover */}
-          <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-[#141416]">
+          <div className="px-4 py-3 border-b border-subtle flex items-center justify-between bg-surface">
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-[#00a2ff]" />
-              <span className="text-xs font-black uppercase tracking-wider text-white">
+              <span className="text-xs font-black uppercase tracking-wider text-primary">
                 Notificações
               </span>
               {unreadCount > 0 && (
@@ -350,7 +350,7 @@ export default function NotificationBell() {
               <button
                 type="button"
                 onClick={handleMarkAllAsRead}
-                className="text-[11px] font-bold text-zinc-400 hover:text-[#00a2ff] flex items-center gap-1 transition-colors cursor-pointer"
+                className="text-[11px] font-bold text-muted hover:text-[#00a2ff] flex items-center gap-1 transition-colors cursor-pointer"
                 title="Marcar todas como lidas"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
@@ -360,21 +360,21 @@ export default function NotificationBell() {
           </div>
 
           {/* Lista de Notificações */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-zinc-800/70">
+          <div className="max-h-80 overflow-y-auto divide-y divide-subtle">
             {loading && notifications.length === 0 ? (
-              <div className="py-8 px-4 flex flex-col items-center justify-center gap-2 text-zinc-400">
+              <div className="py-8 px-4 flex flex-col items-center justify-center gap-2 text-muted">
                 <Loader2 className="h-5 w-5 animate-spin text-[#00a2ff]" />
                 <span className="text-xs">Carregando alertas...</span>
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-10 px-6 text-center space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-500 flex items-center justify-center mx-auto">
+                <div className="w-10 h-10 rounded-2xl bg-canvas border border-subtle text-muted flex items-center justify-center mx-auto">
                   <Inbox className="h-5 w-5" />
                 </div>
-                <p className="text-xs font-bold text-zinc-300">
+                <p className="text-xs font-bold text-primary">
                   Nenhuma notificação no momento
                 </p>
-                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                <p className="text-[11px] text-muted leading-relaxed">
                   Você será alertado aqui sobre novas inscrições, aprovações e alterações de regulamento.
                 </p>
               </div>
@@ -387,7 +387,7 @@ export default function NotificationBell() {
                     type="button"
                     disabled={processingId === notif.id}
                     onClick={() => handleNotificationClick(notif)}
-                    className={`w-full text-left p-4 hover:bg-zinc-800/60 transition-colors flex items-start gap-3 group cursor-pointer disabled:opacity-50 relative ${
+                    className={`w-full text-left p-4 hover:bg-surface transition-colors flex items-start gap-3 group cursor-pointer disabled:opacity-50 relative ${
                       unread ? "bg-[#00a2ff]/5 font-semibold" : "opacity-85"
                     }`}
                   >
@@ -397,7 +397,7 @@ export default function NotificationBell() {
                     )}
 
                     {processingId === notif.id ? (
-                      <div className="p-2 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-400 shrink-0 mt-0.5">
+                      <div className="p-2 rounded-xl bg-surface border border-subtle text-muted shrink-0 mt-0.5">
                         <Loader2 className="h-4 w-4 animate-spin" />
                       </div>
                     ) : (
@@ -406,13 +406,13 @@ export default function NotificationBell() {
 
                     <div className="flex-1 min-w-0 space-y-1">
                       <p
-                        className={`text-xs leading-snug group-hover:text-white ${
-                          unread ? "text-zinc-100 font-bold" : "text-zinc-300"
+                        className={`text-xs leading-snug group-hover:text-primary ${
+                          unread ? "text-primary font-bold" : "text-secondary"
                         }`}
                       >
                         {notif.message}
                       </p>
-                      <div className="flex items-center justify-between text-[10px] text-zinc-500 font-semibold">
+                      <div className="flex items-center justify-between text-[10px] text-muted font-semibold">
                         <span>{formatTimeAgo(notif.created_at)}</span>
                         <span className="text-[#00a2ff] group-hover:underline flex items-center gap-0.5 font-bold">
                           <span>Ver detalhes</span>

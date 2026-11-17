@@ -268,23 +268,23 @@ export default function GroupStages({
     <div className="space-y-8">
       {/* 1. Secção Superior: Tabelas de Classificação da Fase de Grupos */}
       <div className="space-y-4">
-        <div className="bg-[#141416]/90 border border-[#27272a] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div className="bg-surface/90 border border-subtle rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#00a2ff]/10 border border-[#00a2ff]/20 text-[#00a2ff]">
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white font-display">
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-primary font-display">
                 Tabelas de Classificação • Fase de Grupos ({computedGroups.length} Grupos)
               </h2>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-secondary">
                 Vitória = 3 pts • Empate = 1 pt • Derrota = 0 pts • Os 2 melhores de cada grupo avançam ao Mata-Mata
               </p>
             </div>
           </div>
 
           {groupMatchesTotal > 0 && (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 self-start sm:self-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-elevated border border-subtle text-xs font-bold text-secondary self-start sm:self-center">
               <CheckCircle2
                 className={`h-4 w-4 ${
                   groupMatchesCompleted === groupMatchesTotal
@@ -311,19 +311,19 @@ export default function GroupStages({
             return (
               <div
                 key={group.id}
-                className="bg-[#141416]/90 border border-[#27272a] rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5 flex flex-col justify-between"
+                className="bg-surface/90 border border-subtle rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5 flex flex-col justify-between"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                  <div className="flex items-center justify-between pb-3 border-b border-subtle">
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-1 rounded-lg bg-[#00a2ff]/15 border border-[#00a2ff]/30 text-xs font-black uppercase tracking-wider text-[#00a2ff]">
                         {group.name}
                       </span>
-                      <span className="text-[11px] font-bold text-zinc-400">
+                      <span className="text-[11px] font-bold text-secondary">
                         Classificação
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold text-zinc-500">
+                    <span className="text-[11px] font-bold text-muted">
                       {rows.length} {rows.length === 1 ? "equipe" : "equipes"}
                     </span>
                   </div>
@@ -332,10 +332,10 @@ export default function GroupStages({
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-zinc-800 text-[10px] font-black uppercase text-zinc-500">
+                        <tr className="border-b border-subtle text-[10px] font-black uppercase text-muted">
                           <th className="py-2 px-2 w-12 text-center">Posição</th>
                           <th className="py-2 px-2">Equipe</th>
-                          <th className="py-2 px-2 text-center text-white" title="Pontos">
+                          <th className="py-2 px-2 text-center text-primary" title="Pontos">
                             Pts
                           </th>
                           <th className="py-2 px-2 text-center" title="Jogos">
@@ -367,7 +367,7 @@ export default function GroupStages({
                               className={
                                 qualified
                                   ? "bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors"
-                                  : "hover:bg-zinc-900/50 transition-colors"
+                                  : "hover:bg-surface-elevated/50 transition-colors"
                               }
                             >
                               <td className="py-2.5 px-2 text-center font-black">
@@ -431,13 +431,13 @@ export default function GroupStages({
 
                 {/* Cards das Partidas daquele Grupo Específico */}
                 {group.matches.length > 0 && (
-                  <div className="pt-3 border-t border-zinc-800/80 space-y-2.5">
-                    <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                  <div className="pt-3 border-t border-subtle space-y-2.5">
+                    <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-secondary">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-[#00a2ff]" />
                         <span>Partidas do {group.name}</span>
                       </span>
-                      <span className="text-zinc-500">
+                      <span className="text-muted">
                         {group.matches.length}{" "}
                         {group.matches.length === 1 ? "confronto" : "confrontos"}
                       </span>
@@ -472,41 +472,41 @@ export default function GroupStages({
                                 onSelectMatch(match);
                               }
                             }}
-                            className={`px-3 py-2.5 rounded-xl bg-[#18181b] border text-xs flex items-center justify-between gap-2 transition-all ${
+                            className={`px-3 py-2.5 rounded-xl bg-surface-elevated border text-xs flex items-center justify-between gap-2 transition-all ${
                               isLive
                                 ? "border-amber-500/50 ring-1 ring-amber-500/20"
                                 : isCompleted
-                                ? "border-zinc-800 hover:border-[#00a2ff]/40 cursor-pointer"
-                                : "border-zinc-800/60"
+                                ? "border-subtle hover:border-[#00a2ff]/40 cursor-pointer"
+                                : "border-subtle/60"
                             }`}
                           >
-                            <span className="text-[10px] font-bold text-zinc-500 shrink-0 w-12">
+                            <span className="text-[10px] font-bold text-muted shrink-0 w-12">
                               Rod. {match.round || 1}
                             </span>
 
-                            <span className="flex-1 text-right font-semibold text-zinc-200 truncate">
+                            <span className="flex-1 text-right font-semibold text-primary truncate">
                               {t1?.name || "Equipe 1"}
                             </span>
 
-                            <div className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 font-mono text-[11px] font-black text-white shrink-0">
+                            <div className="px-2.5 py-1 rounded-md bg-canvas border border-subtle font-mono text-[11px] font-black text-primary shrink-0">
                               {isCompleted ? (
                                 matchIsSets ? (
                                   <>
-                                    <span className={sets1 > sets2 ? "text-emerald-400" : "text-white"}>
+                                    <span className={sets1 > sets2 ? "text-emerald-500 dark:text-emerald-400" : "text-primary"}>
                                       {sets1}
                                     </span>
-                                    <span className="text-zinc-600 mx-1">x</span>
-                                    <span className={sets2 > sets1 ? "text-emerald-400" : "text-white"}>
+                                    <span className="text-muted mx-1">x</span>
+                                    <span className={sets2 > sets1 ? "text-emerald-500 dark:text-emerald-400" : "text-primary"}>
                                       {sets2}
                                     </span>
                                   </>
                                 ) : (
                                   <>
-                                    <span className={score1 > score2 ? "text-emerald-400" : "text-white"}>
+                                    <span className={score1 > score2 ? "text-emerald-500 dark:text-emerald-400" : "text-primary"}>
                                       {score1}
                                     </span>
-                                    <span className="text-zinc-600 mx-1">x</span>
-                                    <span className={score2 > score1 ? "text-emerald-400" : "text-white"}>
+                                    <span className="text-muted mx-1">x</span>
+                                    <span className={score2 > score1 ? "text-emerald-500 dark:text-emerald-400" : "text-primary"}>
                                       {score2}
                                     </span>
                                   </>
@@ -514,25 +514,25 @@ export default function GroupStages({
                               ) : isLive ? (
                                 matchIsSets ? (
                                   <div className="flex items-center gap-1 font-mono text-xs">
-                                    <span className="text-white font-black">{sets1}</span>
+                                    <span className="text-primary font-black">{sets1}</span>
                                     <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30">
                                       ({activePts1})
                                     </span>
-                                    <span className="text-zinc-500 mx-0.5">x</span>
+                                    <span className="text-muted mx-0.5">x</span>
                                     <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30">
                                       ({activePts2})
                                     </span>
-                                    <span className="text-white font-black">{sets2}</span>
+                                    <span className="text-primary font-black">{sets2}</span>
                                   </div>
                                 ) : (
                                   <>
-                                    <span className="text-white">{score1}</span>
-                                    <span className="text-zinc-600 mx-1">x</span>
-                                    <span className="text-white">{score2}</span>
+                                    <span className="text-primary">{score1}</span>
+                                    <span className="text-muted mx-1">x</span>
+                                    <span className="text-primary">{score2}</span>
                                   </>
                                 )
                               ) : (
-                                <span className="text-zinc-500">- x -</span>
+                                <span className="text-muted">- x -</span>
                               )}
                             </div>
 
@@ -630,31 +630,31 @@ export default function GroupStages({
                 )}
               </div>
             ) : (
-              <div className="border border-dashed border-zinc-800 bg-[#141416]/60 rounded-2xl p-6 sm:p-8 text-center space-y-3 animate-fadeIn">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
-                  <Trophy className="h-5 w-5 text-amber-400" />
+              <div className="border border-dashed border-subtle bg-surface/60 rounded-2xl p-6 sm:p-8 text-center space-y-3 animate-fadeIn">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center mx-auto">
+                  <Trophy className="h-5 w-5 text-amber-500 dark:text-amber-400" />
                 </div>
                 <div className="space-y-1">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-400">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-500 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                     <span>Fase de Grupos Concluída</span>
                   </div>
-                  <h4 className="text-sm font-bold text-zinc-200">
+                  <h4 className="text-sm font-bold text-primary">
                     Classificação Definida
                   </h4>
-                  <p className="text-xs text-zinc-400 max-w-md mx-auto italic">
+                  <p className="text-xs text-secondary max-w-md mx-auto italic">
                     Aguardando a organização oficializar os resultados e gerar as semifinais.
                   </p>
                 </div>
               </div>
             )
           ) : (
-            <div className="border border-dashed border-zinc-800 bg-[#141416]/60 rounded-2xl p-8 text-center space-y-2">
-              <Trophy className="h-7 w-7 text-amber-400/70 mx-auto" />
-              <h4 className="text-sm font-bold text-zinc-200">
+            <div className="border border-dashed border-subtle bg-surface/60 rounded-2xl p-8 text-center space-y-2">
+              <Trophy className="h-7 w-7 text-amber-500/70 dark:text-amber-400/70 mx-auto" />
+              <h4 className="text-sm font-bold text-primary">
                 Aguardando Encerramento da Fase de Grupos
               </h4>
-              <p className="text-xs text-zinc-400 max-w-lg mx-auto">
+              <p className="text-xs text-secondary max-w-lg mx-auto">
                 {groupMatchesTotal > 0
                   ? `Partidas finalizadas: ${groupMatchesCompleted} de ${groupMatchesTotal}. Assim que todos os jogos da Fase de Grupos forem finalizados, o botão para gerar o Mata-Mata será liberado aqui.`
                   : "Assim que todas as partidas da Fase de Grupos forem finalizadas, o organizador encerrará a 1ª fase e a árvore de confrontos do Mata-Mata aparecerá automaticamente aqui."}

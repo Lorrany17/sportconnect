@@ -251,7 +251,7 @@ export default function ShareTournamentModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto animate-fadeIn">
-      <div className="bg-[#18181b] border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface border border-subtle rounded-3xl p-6 sm:p-8 max-w-xl w-full text-primary shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {/* Linha decorativa superior estilo Google Docs Workspace */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-indigo-500 to-purple-500" />
 
@@ -259,7 +259,7 @@ export default function ShareTournamentModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+          className="absolute top-5 right-5 p-2 rounded-xl text-muted hover:text-primary hover:bg-surface-elevated transition-colors cursor-pointer"
           title="Fechar"
         >
           <X className="h-5 w-5" />
@@ -271,18 +271,18 @@ export default function ShareTournamentModal({
             <Users className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-xl font-black font-display tracking-tight text-white flex items-center gap-2">
+            <h3 className="text-xl font-black font-display tracking-tight text-primary flex items-center gap-2">
               <span>Compartilhar Torneio</span>
             </h3>
-            <p className="text-xs text-zinc-400 line-clamp-1">
+            <p className="text-xs text-secondary line-clamp-1">
               {tournamentName ? `Gerenciar equipe de ${tournamentName}` : "Controle de Acesso por Papéis (RBAC)"}
             </p>
           </div>
         </div>
 
         {/* Formulário de Convite */}
-        <div className="bg-[#101012] border border-zinc-800/80 rounded-2xl p-4 sm:p-5 mb-6 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-zinc-300 uppercase tracking-wider">
+        <div className="bg-surface-elevated border border-subtle rounded-2xl p-4 sm:p-5 mb-6 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
             <UserPlus className="h-4 w-4 text-[#00a2ff]" />
             <span>Adicionar Pessoas à Equipe</span>
           </div>
@@ -291,7 +291,7 @@ export default function ShareTournamentModal({
             <div className="flex flex-col sm:flex-row gap-2">
               {/* Campo E-mail */}
               <div className="relative flex-1">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted">
                   <Mail className="h-4 w-4" />
                 </div>
                 <input
@@ -300,7 +300,7 @@ export default function ShareTournamentModal({
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   placeholder="email@exemplo.com"
-                  className="w-full pl-10 pr-3 py-2.5 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-xs text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+                  className="w-full pl-10 pr-3 py-2.5 bg-canvas border border-subtle focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-xs text-primary placeholder:text-muted outline-none transition-all"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export default function ShareTournamentModal({
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value as any)}
-                  className="w-full py-2.5 px-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] rounded-xl text-xs font-bold text-zinc-200 outline-none cursor-pointer"
+                  className="w-full py-2.5 px-3 bg-canvas border border-subtle focus:border-[#00a2ff] rounded-xl text-xs font-bold text-primary outline-none cursor-pointer"
                 >
                   <option value="ADMIN">Administrador</option>
                   <option value="REFEREE">Árbitro</option>
@@ -333,7 +333,7 @@ export default function ShareTournamentModal({
             </div>
 
             {/* Descrição rápida da função selecionada */}
-            <div className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-zinc-800/50 rounded-xl p-2.5">
+            <div className="text-[11px] text-secondary bg-canvas border border-subtle rounded-xl p-2.5">
               {ROLE_OPTIONS.find((r) => r.value === selectedRole)?.description}
             </div>
 
@@ -342,8 +342,8 @@ export default function ShareTournamentModal({
               <div
                 className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 animate-fadeIn ${
                   feedbackMessage.type === "success"
-                    ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
-                    : "bg-red-500/10 border border-red-500/30 text-red-400"
+                    ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400"
+                    : "bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400"
                 }`}
               >
                 {feedbackMessage.type === "success" ? (
@@ -359,32 +359,32 @@ export default function ShareTournamentModal({
 
         {/* Listagem de Acessos Ativos */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-zinc-400 px-1">
+          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-secondary px-1">
             <span>Pessoas com Acesso</span>
             <span>{staffList.length + 1} membro(s)</span>
           </div>
 
-          <div className="divide-y divide-zinc-800/80 border border-zinc-800/80 rounded-2xl bg-[#101012] overflow-hidden">
+          <div className="divide-y divide-subtle border border-subtle rounded-2xl bg-surface-elevated overflow-hidden">
             {/* 1. Proprietário Original do Torneio */}
-            <div className="p-3.5 flex items-center justify-between gap-3 bg-zinc-900/40">
+            <div className="p-3.5 flex items-center justify-between gap-3 bg-canvas/50">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-500 dark:text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
                   <Crown className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                  <div className="text-xs font-bold text-primary truncate flex items-center gap-1.5">
                     <span>{ownerEmail || "Organizador Principal"}</span>
                     {user?.email && ownerEmail && user.email.toLowerCase() === ownerEmail.toLowerCase() && (
-                      <span className="text-[10px] text-zinc-500 font-normal">(Você)</span>
+                      <span className="text-[10px] text-muted font-normal">(Você)</span>
                     )}
                   </div>
-                  <span className="text-[10px] text-zinc-500 block truncate">
+                  <span className="text-[10px] text-muted block truncate">
                     Criador e Dono do Campeonato
                   </span>
                 </div>
               </div>
 
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-black uppercase tracking-wider shrink-0">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-[10px] font-black uppercase tracking-wider shrink-0">
                 <Crown className="h-3 w-3" />
                 <span>Proprietário</span>
               </span>
@@ -392,16 +392,16 @@ export default function ShareTournamentModal({
 
             {/* 2. Lista de Membros Staff Convidada */}
             {loadingStaff ? (
-              <div className="p-6 text-center text-xs text-zinc-500 flex items-center justify-center gap-2">
+              <div className="p-6 text-center text-xs text-muted flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-[#00a2ff]" />
                 <span>Carregando membros da equipe...</span>
               </div>
             ) : staffList.length === 0 ? (
               <div className="p-6 text-center space-y-1">
-                <p className="text-xs font-medium text-zinc-400">
+                <p className="text-xs font-medium text-secondary">
                   Nenhum co-organizador convidado ainda.
                 </p>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-muted">
                   Convide árbitros e mesários para ajudar na condução das partidas.
                 </p>
               </div>
@@ -413,20 +413,20 @@ export default function ShareTournamentModal({
                 return (
                   <div
                     key={member.id}
-                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-zinc-900/30 transition-colors"
+                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-canvas/30 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-canvas border border-subtle text-primary flex items-center justify-center font-bold text-xs uppercase shrink-0">
                         {member.email.slice(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-zinc-200 truncate flex items-center gap-1.5">
+                        <div className="text-xs font-bold text-primary truncate flex items-center gap-1.5">
                           <span>{member.email}</span>
                           {user?.email && user.email.toLowerCase() === member.email.toLowerCase() && (
-                            <span className="text-[10px] text-zinc-500 font-normal">(Você)</span>
+                            <span className="text-[10px] text-muted font-normal">(Você)</span>
                           )}
                         </div>
-                        <span className="text-[10px] text-zinc-500 block truncate">
+                        <span className="text-[10px] text-muted block truncate">
                           {member.user_id ? "Conta vinculada" : "Convite enviado • aguardando login"}
                         </span>
                       </div>
@@ -439,7 +439,7 @@ export default function ShareTournamentModal({
                           disabled={isCurrentMemberUpdating}
                           value={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as any)}
-                          className="py-1 px-2.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-lg text-[11px] font-bold text-zinc-300 outline-none cursor-pointer disabled:opacity-50"
+                          className="py-1 px-2.5 bg-canvas border border-subtle hover:border-strong rounded-lg text-[11px] font-bold text-primary outline-none cursor-pointer disabled:opacity-50"
                         >
                           <option value="ADMIN">Administrador</option>
                           <option value="REFEREE">Árbitro</option>
@@ -459,7 +459,7 @@ export default function ShareTournamentModal({
                           type="button"
                           disabled={isCurrentMemberUpdating}
                           onClick={() => handleRemoveMember(member.id, member.email)}
-                          className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                          className="p-1.5 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50"
                           title="Remover acesso"
                         >
                           {isCurrentMemberUpdating ? (
@@ -478,20 +478,20 @@ export default function ShareTournamentModal({
         </div>
 
         {/* Rodapé: Copiar Link de Acesso Público */}
-        <div className="mt-6 pt-4 border-t border-zinc-800 flex items-center justify-between text-xs">
+        <div className="mt-6 pt-4 border-t border-subtle flex items-center justify-between text-xs">
           <button
             type="button"
             onClick={handleCopyLink}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer text-xs font-bold shadow-sm"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-elevated hover:bg-surface border border-subtle text-secondary hover:text-primary transition-all cursor-pointer text-xs font-bold shadow-sm"
           >
             {copiedLink ? (
               <>
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Link Copiado!</span>
+                <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+                <span className="text-emerald-500 dark:text-emerald-400">Link Copiado!</span>
               </>
             ) : (
               <>
-                <Copy className="h-3.5 w-3.5 text-zinc-400" />
+                <Copy className="h-3.5 w-3.5 text-muted" />
                 <span>Copiar Link do Torneio</span>
               </>
             )}
@@ -500,7 +500,7 @@ export default function ShareTournamentModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-surface-elevated hover:bg-surface border border-subtle text-primary font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
           >
             Concluído
           </button>
@@ -509,22 +509,22 @@ export default function ShareTournamentModal({
         {/* Notificação Toast Flutuante */}
         {toastMessage && (
           <div
-            className={`fixed bottom-6 right-6 z-[10000] p-4 rounded-xl border text-white text-xs font-bold shadow-2xl flex items-center gap-3 animate-fadeIn ${
+            className={`fixed bottom-6 right-6 z-[10000] p-4 rounded-xl border text-primary text-xs font-bold shadow-2xl flex items-center gap-3 animate-fadeIn ${
               toastMessage.type === "success"
-                ? "bg-zinc-900 border-emerald-500/50 text-emerald-300"
-                : "bg-zinc-900 border-red-500/50 text-red-300"
+                ? "bg-surface-elevated border-emerald-500/50 text-emerald-600 dark:text-emerald-300"
+                : "bg-surface-elevated border-red-500/50 text-red-600 dark:text-red-300"
             }`}
           >
             {toastMessage.type === "success" ? (
-              <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+              <Check className="h-4 w-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
             ) : (
-              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 shrink-0" />
             )}
             <span>{toastMessage.message}</span>
             <button
               type="button"
               onClick={() => setToastMessage(null)}
-              className="p-1 text-zinc-400 hover:text-white cursor-pointer"
+              className="p-1 text-muted hover:text-primary cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
             </button>

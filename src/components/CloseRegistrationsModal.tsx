@@ -31,28 +31,28 @@ export default function CloseRegistrationsModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-[#1a1a1a] border border-zinc-800 rounded-3xl p-6 sm:p-7 max-w-md w-full text-white shadow-2xl relative space-y-5">
+      <div className="bg-surface border border-subtle rounded-3xl p-6 sm:p-7 max-w-md w-full text-primary shadow-2xl relative space-y-5">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0">
             <Lock className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-lg font-black font-display uppercase tracking-tight text-white">
+            <h3 className="text-lg font-black font-display uppercase tracking-tight text-primary">
               Encerrar Inscrições
             </h3>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-secondary">
               Bloqueio manual de novas participações
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-zinc-300 leading-relaxed">
+        <p className="text-sm text-secondary leading-relaxed">
           Tem certeza que deseja encerrar as inscrições? Nenhuma nova equipe poderá registar-se ou pagar.
         </p>
 
-        <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 flex items-center justify-between">
+        <div className="p-3.5 rounded-xl bg-surface-elevated border border-subtle text-xs text-secondary flex items-center justify-between">
           <span>Equipes confirmadas:</span>
-          <strong className="text-emerald-400 font-bold">
+          <strong className="text-emerald-500 dark:text-emerald-400 font-bold">
             {confirmedTeamsCount} de {maxSpots} vagas
           </strong>
         </div>
@@ -62,7 +62,7 @@ export default function CloseRegistrationsModal({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-300 transition-all cursor-pointer disabled:opacity-50"
+            className="px-4 py-2.5 rounded-xl bg-surface-elevated hover:bg-surface border border-subtle text-xs font-bold text-secondary hover:text-primary transition-all cursor-pointer disabled:opacity-50"
           >
             Cancelar
           </button>

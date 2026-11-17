@@ -1323,7 +1323,7 @@ export default function PublicRegistrationForm({
         </div>
       )}
 
-      <div className="bg-[#121214] border border-[#27272a] rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl relative max-h-[92vh] overflow-y-auto selection:bg-orange-500/30 selection:text-white">
+      <div className="bg-surface border border-subtle rounded-3xl p-6 sm:p-8 max-w-xl w-full text-primary shadow-2xl relative max-h-[92vh] overflow-y-auto selection:bg-orange-500/30 selection:text-white">
         {/* Linha superior decorativa */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500" />
 
@@ -1331,7 +1331,7 @@ export default function PublicRegistrationForm({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+          className="absolute top-5 right-5 p-2 rounded-xl text-muted hover:text-primary hover:bg-surface-elevated transition-colors cursor-pointer"
           title="Fechar"
         >
           <X className="h-5 w-5" />
@@ -1340,13 +1340,13 @@ export default function PublicRegistrationForm({
         {isSuccess ? (
           /* Feedback de Sucesso para Inscrição Gratuita */
           <div className="py-8 text-center space-y-4 animate-fadeIn">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-500 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
               <CheckCircle2 className="h-10 w-10 animate-bounce" />
             </div>
-            <h3 className="text-2xl font-black font-display uppercase tracking-tight text-white">
+            <h3 className="text-2xl font-black font-display uppercase tracking-tight text-primary">
               Inscrição Concluída com Sucesso!
             </h3>
-            <p className="text-sm text-zinc-300 max-w-md mx-auto leading-relaxed">
+            <p className="text-sm text-secondary max-w-md mx-auto leading-relaxed">
               Sua equipe foi confirmada na competição oficial. Boa sorte!
             </p>
             <div className="pt-4">
@@ -1371,11 +1371,11 @@ export default function PublicRegistrationForm({
                 <Sparkles className="h-3 w-3" />
                 <span>{isEditMode ? "Editar Inscrição" : "Inscrição Oficial"}</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-white">
+              <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-primary">
                 {tournament.name}
               </h2>
-              <p className="text-xs text-zinc-400 mt-1">
-                Modalidade: <strong className="text-zinc-200">{sportType}</strong>
+              <p className="text-xs text-secondary mt-1">
+                Modalidade: <strong className="text-primary">{sportType}</strong>
                 {tournament.format ? ` • Formato: ${tournament.format}` : ""}
               </p>
             </div>
@@ -1389,20 +1389,20 @@ export default function PublicRegistrationForm({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
                   {ageRestrictionText && (
-                    <div className="flex items-center gap-2.5 bg-[#18181b] p-2.5 rounded-xl border border-purple-500/25">
+                    <div className="flex items-center gap-2.5 bg-surface-elevated p-2.5 rounded-xl border border-purple-500/25">
                       <span className="text-base select-none">🎂</span>
                       <div>
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase block">Idade Permitida</span>
-                        <span className="font-bold text-zinc-100">{ageRestrictionText}</span>
+                        <span className="text-[10px] text-muted font-bold uppercase block">Idade Permitida</span>
+                        <span className="font-bold text-primary">{ageRestrictionText}</span>
                       </div>
                     </div>
                   )}
                   {squadRestrictionText && (
-                    <div className="flex items-center gap-2.5 bg-[#18181b] p-2.5 rounded-xl border border-cyan-500/25">
+                    <div className="flex items-center gap-2.5 bg-surface-elevated p-2.5 rounded-xl border border-cyan-500/25">
                       <span className="text-base select-none">👥</span>
                       <div>
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase block">Tamanho do Elenco</span>
-                        <span className="font-bold text-zinc-100">{squadRestrictionText}</span>
+                        <span className="text-[10px] text-muted font-bold uppercase block">Tamanho do Elenco</span>
+                        <span className="font-bold text-primary">{squadRestrictionText}</span>
                       </div>
                     </div>
                   )}
@@ -1420,7 +1420,7 @@ export default function PublicRegistrationForm({
                 <button
                   type="button"
                   onClick={handleClearDraft}
-                  className="text-[11px] font-bold underline hover:text-white transition-colors cursor-pointer"
+                  className="text-[11px] font-bold underline hover:text-primary transition-colors cursor-pointer"
                 >
                   Limpar
                 </button>
@@ -1438,7 +1438,7 @@ export default function PublicRegistrationForm({
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* 1. Campos Dinâmicos (Adaptação ao Esporte) */}
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2 border-b border-[#27272a] pb-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2 border-b border-subtle pb-2">
                   <Users className="h-4 w-4 text-orange-500" />
                   <span>Dados dos Participantes</span>
                 </h3>
@@ -1447,7 +1447,7 @@ export default function PublicRegistrationForm({
                 {isPingPongSolo && (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary block">
                         Nome do Jogador <span className="text-orange-500">*</span>
                       </label>
                       <input
@@ -1456,12 +1456,12 @@ export default function PublicRegistrationForm({
                         value={captainName}
                         onChange={(e) => setCaptainName(e.target.value)}
                         placeholder="Ex: Carlos Augusto"
-                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                       />
                     </div>
 
                     <div className={requireCpf ? "space-y-1.5" : "hidden"}>
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary block">
                         CPF do Atleta <span className="text-orange-500">*</span>
                       </label>
                       <input
@@ -1471,23 +1471,23 @@ export default function PublicRegistrationForm({
                         value={captainCpf}
                         onChange={(e) => setCaptainCpf(formatCpfMask(e.target.value))}
                         placeholder="000.000.000-00"
-                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary block">
                         Contato (WhatsApp) <span className="text-orange-500">*</span>
                       </label>
                       <div className="relative">
-                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
                         <input
                           type="text"
                           required
                           value={contact}
                           onChange={(e) => setContact(e.target.value)}
                           placeholder="(89) 99999-9999"
-                          className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full pl-10 pr-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                         />
                       </div>
                     </div>
@@ -1498,7 +1498,7 @@ export default function PublicRegistrationForm({
                 {isDuplasSport && (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary block">
                         Nome da Dupla <span className="text-orange-500">*</span>
                       </label>
                       <input
@@ -1507,13 +1507,13 @@ export default function PublicRegistrationForm({
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
                         placeholder="Ex: Os Carrascos do Carroça"
-                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        <label className="text-xs font-black uppercase tracking-wider text-primary block">
                           Nome do Capitão <span className="text-orange-500">*</span>
                         </label>
                         <input
@@ -1522,12 +1522,12 @@ export default function PublicRegistrationForm({
                           value={captainName}
                           onChange={(e) => setCaptainName(e.target.value)}
                           placeholder="Capitão da Dupla"
-                          className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        <label className="text-xs font-black uppercase tracking-wider text-primary block">
                           Nome do Parceiro <span className="text-orange-500">*</span>
                         </label>
                         <input
@@ -1536,7 +1536,7 @@ export default function PublicRegistrationForm({
                           value={partnerName}
                           onChange={(e) => setPartnerName(e.target.value)}
                           placeholder="Jogador 2"
-                          className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                         />
                       </div>
                     </div>
@@ -1544,21 +1544,21 @@ export default function PublicRegistrationForm({
                     {/* E-mail do Parceiro para vínculo automático de perfil */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        <label className="text-xs font-black uppercase tracking-wider text-primary block">
                           E-mail do Parceiro
                         </label>
-                        <span className="text-[10px] text-zinc-500">
+                        <span className="text-[10px] text-muted">
                           Vincula estatísticas automaticamente
                         </span>
                       </div>
                       <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
                         <input
                           type="email"
                           value={partnerEmail}
                           onChange={(e) => setPartnerEmail(e.target.value)}
                           placeholder="parceiro@exemplo.com (caso possua conta)"
-                          className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full pl-10 pr-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                         />
                       </div>
                     </div>
@@ -1566,7 +1566,7 @@ export default function PublicRegistrationForm({
                     {requireCpf && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                          <label className="text-xs font-black uppercase tracking-wider text-primary block">
                             CPF do Capitão <span className="text-orange-500">*</span>
                           </label>
                           <input
@@ -1576,11 +1576,11 @@ export default function PublicRegistrationForm({
                             value={captainCpf}
                             onChange={(e) => setCaptainCpf(formatCpfMask(e.target.value))}
                             placeholder="000.000.000-00"
-                            className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                            className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                          <label className="text-xs font-black uppercase tracking-wider text-primary block">
                             CPF do Parceiro <span className="text-orange-500">*</span>
                           </label>
                           <input
@@ -1590,18 +1590,18 @@ export default function PublicRegistrationForm({
                             value={partnerCpf}
                             onChange={(e) => setPartnerCpf(formatCpfMask(e.target.value))}
                             placeholder="000.000.000-00"
-                            className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                            className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                           />
                         </div>
                       </div>
                     )}
 
                     <div className={requirePhone ? "space-y-1.5" : "hidden"}>
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary block">
                         Telefone / WhatsApp do Parceiro <span className="text-orange-500">*</span>
                       </label>
                       <div className="relative">
-                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
                         <input
                           type="text"
                           required={requirePhone}
@@ -1609,24 +1609,24 @@ export default function PublicRegistrationForm({
                           value={partnerPhone}
                           onChange={(e) => setPartnerPhone(formatPhoneMask(e.target.value))}
                           placeholder="(89) 99999-9999"
-                          className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full pl-10 pr-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary block">
                         Contato do Capitão (WhatsApp) <span className="text-orange-500">*</span>
                       </label>
                       <div className="relative">
-                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
                         <input
                           type="text"
                           required
                           value={contact}
                           onChange={(e) => setContact(e.target.value)}
                           placeholder="(89) 99999-9999"
-                          className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full pl-10 pr-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                         />
                       </div>
                     </div>
@@ -1637,7 +1637,7 @@ export default function PublicRegistrationForm({
                 {isTeamSport && (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary block">
                         Nome da Equipe <span className="text-orange-500">*</span>
                       </label>
                       <input
@@ -1646,13 +1646,13 @@ export default function PublicRegistrationForm({
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
                         placeholder="Ex: Falcões Futsal Clube"
-                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        <label className="text-xs font-black uppercase tracking-wider text-primary block">
                           Nome do Responsável / Capitão <span className="text-orange-500">*</span>
                         </label>
                         <input
@@ -1661,23 +1661,23 @@ export default function PublicRegistrationForm({
                           value={captainName}
                           onChange={(e) => setCaptainName(e.target.value)}
                           placeholder="Responsável pelo time"
-                          className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                        <label className="text-xs font-black uppercase tracking-wider text-primary block">
                           Contato do Responsável (WhatsApp) <span className="text-orange-500">*</span>
                         </label>
                         <div className="relative">
-                          <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                          <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
                           <input
                             type="text"
                             required
                             value={contact}
                             onChange={(e) => setContact(e.target.value)}
                             placeholder="(89) 99999-9999"
-                            className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                            className="w-full pl-10 pr-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                           />
                         </div>
                       </div>
@@ -1687,10 +1687,10 @@ export default function PublicRegistrationForm({
                     <div className="pt-2 space-y-2">
                       <div className="flex items-center justify-between">
                         <div>
-                          <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                          <label className="text-xs font-black uppercase tracking-wider text-primary block">
                             Elenco da Equipe ({athletes.length + 1} no total)
                           </label>
-                          <p className="text-[10px] text-zinc-500">
+                          <p className="text-[10px] text-muted">
                             Informe os e-mails para vincular automaticamente às contas dos atletas
                           </p>
                         </div>
@@ -1703,7 +1703,7 @@ export default function PublicRegistrationForm({
                               ? `Limite máximo de ${tournament.max_players} atletas atingido`
                               : "Adicionar membro ao elenco"
                           }
-                          className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:text-zinc-500 disabled:hover:text-zinc-500 disabled:cursor-not-allowed transition-opacity"
+                          className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:text-muted disabled:hover:text-muted disabled:cursor-not-allowed transition-opacity"
                         >
                           <Plus className="h-3.5 w-3.5" />
                           <span>Adicionar Membro</span>
@@ -1711,18 +1711,18 @@ export default function PublicRegistrationForm({
                       </div>
 
                       <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-surface-elevated border border-subtle">
                           <input
                             type="text"
                             disabled
                             value={`Capitão: ${captainName || "Responsável"}`}
-                            className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 rounded-lg cursor-not-allowed"
+                            className="flex-1 px-3 py-1.5 bg-canvas border border-subtle text-xs text-muted rounded-lg cursor-not-allowed"
                           />
                           <input
                             type="text"
                             disabled
                             value={user?.email || "Email autenticado"}
-                            className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 rounded-lg cursor-not-allowed"
+                            className="flex-1 px-3 py-1.5 bg-canvas border border-subtle text-xs text-muted rounded-lg cursor-not-allowed"
                           />
                           {requireCpf && (
                             <input
@@ -1732,7 +1732,7 @@ export default function PublicRegistrationForm({
                               value={captainCpf}
                               onChange={(e) => setCaptainCpf(formatCpfMask(e.target.value))}
                               placeholder="CPF do Capitão (000.000.000-00) *"
-                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-500 rounded-lg outline-none"
+                              className="flex-1 px-3 py-1.5 bg-canvas border border-subtle focus:border-orange-500 text-xs text-primary placeholder:text-muted rounded-lg outline-none"
                             />
                           )}
                           {requirePhone && (
@@ -1743,12 +1743,12 @@ export default function PublicRegistrationForm({
                               value={contact}
                               onChange={(e) => setContact(formatPhoneMask(e.target.value))}
                               placeholder="WhatsApp (00) 00000-0000 *"
-                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-500 rounded-lg outline-none"
+                              className="flex-1 px-3 py-1.5 bg-canvas border border-subtle focus:border-orange-500 text-xs text-primary placeholder:text-muted rounded-lg outline-none"
                             />
                           )}
                           <input
                             type="hidden"
-                            className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 rounded-lg cursor-not-allowed"
+                            className="flex-1 px-3 py-1.5 bg-canvas border border-subtle text-xs text-muted rounded-lg cursor-not-allowed"
                           />
                           <span className="text-[10px] text-orange-400 font-bold px-2 py-1 bg-orange-500/10 border border-orange-500/20 rounded-lg self-start sm:self-center">
                             Capitão
@@ -1756,20 +1756,20 @@ export default function PublicRegistrationForm({
                         </div>
 
                         {athletes.map((ath, idx) => (
-                          <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-[#0f0f0f] border border-[#27272a] animate-fadeIn">
+                          <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-surface-elevated border border-subtle animate-fadeIn">
                             <input
                               type="text"
                               value={ath.name}
                               onChange={(e) => handleUpdateAthlete(idx, "name", e.target.value)}
                               placeholder={`Nome do Membro #${idx + 2}`}
-                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-600 rounded-lg outline-none"
+                              className="flex-1 px-3 py-1.5 bg-canvas border border-subtle focus:border-orange-500 text-xs text-primary placeholder:text-muted rounded-lg outline-none"
                             />
                             <input
                               type="email"
                               value={ath.email}
                               onChange={(e) => handleUpdateAthlete(idx, "email", e.target.value)}
                               placeholder="E-mail (para vincular perfil)"
-                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-600 rounded-lg outline-none"
+                              className="flex-1 px-3 py-1.5 bg-canvas border border-subtle focus:border-orange-500 text-xs text-primary placeholder:text-muted rounded-lg outline-none"
                             />
                             {requireCpf && (
                               <input
@@ -1781,7 +1781,7 @@ export default function PublicRegistrationForm({
                                   handleUpdateAthlete(idx, "cpf", formatCpfMask(e.target.value))
                                 }
                                 placeholder="CPF (000.000.000-00) *"
-                                className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-600 rounded-lg outline-none"
+                                className="flex-1 px-3 py-1.5 bg-canvas border border-subtle focus:border-orange-500 text-xs text-primary placeholder:text-muted rounded-lg outline-none"
                               />
                             )}
                             <input
@@ -1793,12 +1793,12 @@ export default function PublicRegistrationForm({
                                 handleUpdateAthlete(idx, "phone", formatPhoneMask(e.target.value))
                               }
                               placeholder="WhatsApp (00) 00000-0000 *"
-                              className="flex-1 px-3 py-1.5 bg-[#141416] border border-[#27272a] focus:border-orange-500 text-xs text-zinc-100 placeholder:text-zinc-600 rounded-lg outline-none"
+                              className="flex-1 px-3 py-1.5 bg-canvas border border-subtle focus:border-orange-500 text-xs text-primary placeholder:text-muted rounded-lg outline-none"
                             />
                             <button
                               type="button"
                               onClick={() => handleRemoveAthlete(idx)}
-                              className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer self-end sm:self-center"
+                              className="p-1.5 text-muted hover:text-red-400 transition-colors cursor-pointer self-end sm:self-center"
                               title="Remover membro"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1814,7 +1814,7 @@ export default function PublicRegistrationForm({
               {/* Renderização Dinâmica dos Campos Personalizados (Configurados pelo Organizador) */}
               {isAllSkillLevels && (
                 <div className="pt-1 space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                  <label className="text-xs font-black uppercase tracking-wider text-primary block">
                     {isPingPongSolo
                       ? "Qual o seu nível de jogo?"
                       : "Qual o nível técnico da equipe?"}{" "}
@@ -1825,22 +1825,22 @@ export default function PublicRegistrationForm({
                       required
                       value={declaredSkillLevel}
                       onChange={(e) => setDeclaredSkillLevel(e.target.value)}
-                      className="w-full pl-4 pr-10 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer shadow-inner"
+                      className="w-full pl-4 pr-10 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary outline-none transition-all appearance-none cursor-pointer shadow-inner"
                     >
-                      <option value="" className="bg-[#121214] text-zinc-500">
+                      <option value="" className="bg-surface text-muted">
                         Selecione o nível técnico...
                       </option>
-                      <option value="BEGINNER" className="bg-[#121214] text-zinc-100">
+                      <option value="BEGINNER" className="bg-surface text-primary">
                         Iniciante
                       </option>
-                      <option value="INTERMEDIATE" className="bg-[#121214] text-zinc-100">
+                      <option value="INTERMEDIATE" className="bg-surface text-primary">
                         Intermediário
                       </option>
-                      <option value="ADVANCED" className="bg-[#121214] text-zinc-100">
+                      <option value="ADVANCED" className="bg-surface text-primary">
                         Avançado
                       </option>
                     </select>
-                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
+                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
                   </div>
                 </div>
               )}
@@ -1848,7 +1848,7 @@ export default function PublicRegistrationForm({
               {/* Renderização Dinâmica dos Campos Personalizados (Configurados pelo Organizador) */}
               {customFields.length > 0 && (
                 <div className="pt-2 space-y-3">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2 border-b border-[#27272a] pb-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2 border-b border-subtle pb-2">
                     <FileText className="h-4 w-4 text-orange-400" />
                     <span>Perguntas da Inscrição</span>
                   </h3>
@@ -1860,7 +1860,7 @@ export default function PublicRegistrationForm({
                       if (field.type === "text") {
                         return (
                           <div key={field.id} className="space-y-1.5">
-                            <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                            <label className="text-xs font-black uppercase tracking-wider text-primary block">
                               {field.label} {field.required && <span className="text-orange-500">*</span>}
                             </label>
                             <input
@@ -1869,7 +1869,7 @@ export default function PublicRegistrationForm({
                               value={value}
                               onChange={(e) => handleCustomAnswerChange(field.label, e.target.value)}
                               placeholder={`Sua resposta para ${field.label}`}
-                              className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                              className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all shadow-inner"
                             />
                           </div>
                         );
@@ -1878,7 +1878,7 @@ export default function PublicRegistrationForm({
                       if (field.type === "textarea") {
                         return (
                           <div key={field.id} className="space-y-1.5">
-                            <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                            <label className="text-xs font-black uppercase tracking-wider text-primary block">
                               {field.label} {field.required && <span className="text-orange-500">*</span>}
                             </label>
                             <textarea
@@ -1887,7 +1887,7 @@ export default function PublicRegistrationForm({
                               value={value}
                               onChange={(e) => handleCustomAnswerChange(field.label, e.target.value)}
                               placeholder={`Sua resposta para ${field.label}`}
-                              className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all resize-y shadow-inner"
+                              className="w-full px-4 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary placeholder:text-muted outline-none transition-all resize-y shadow-inner"
                             />
                           </div>
                         );
@@ -1896,7 +1896,7 @@ export default function PublicRegistrationForm({
                       if (field.type === "select") {
                         return (
                           <div key={field.id} className="space-y-1.5">
-                            <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                            <label className="text-xs font-black uppercase tracking-wider text-primary block">
                               {field.label} {field.required && <span className="text-orange-500">*</span>}
                             </label>
                             <div className="relative">
@@ -1904,18 +1904,18 @@ export default function PublicRegistrationForm({
                                 required={field.required}
                                 value={value}
                                 onChange={(e) => handleCustomAnswerChange(field.label, e.target.value)}
-                                className="w-full pl-4 pr-10 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer"
+                                className="w-full pl-4 pr-10 py-3 bg-canvas border border-subtle focus:border-orange-500 rounded-xl text-sm text-primary outline-none transition-all appearance-none cursor-pointer"
                               >
-                                <option value="" className="bg-[#121214] text-zinc-500">
+                                <option value="" className="bg-surface text-muted">
                                   Selecione uma opção...
                                 </option>
                                 {(field.options || []).map((opt, i) => (
-                                  <option key={i} value={opt} className="bg-[#121214] text-zinc-100">
+                                  <option key={i} value={opt} className="bg-surface text-primary">
                                     {opt}
                                   </option>
                                 ))}
                               </select>
-                              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
+                              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
                             </div>
                           </div>
                         );
@@ -1927,19 +1927,19 @@ export default function PublicRegistrationForm({
                           <div
                             key={field.id}
                             onClick={() => handleCustomAnswerChange(field.label, isChecked ? "Não" : "Sim")}
-                            className="flex items-center gap-3 p-3.5 bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 rounded-xl cursor-pointer transition-all select-none"
+                            className="flex items-center gap-3 p-3.5 bg-canvas border border-subtle hover:border-strong rounded-xl cursor-pointer transition-all select-none"
                           >
                             <input
                               type="checkbox"
                               id={`cb-${field.id}`}
                               checked={isChecked}
                               onChange={(e) => handleCustomAnswerChange(field.label, e.target.checked ? "Sim" : "Não")}
-                              className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                              className="w-4 h-4 rounded border-subtle bg-canvas text-orange-500 focus:ring-orange-500 cursor-pointer"
                               onClick={(e) => e.stopPropagation()}
                             />
                             <label
                               htmlFor={`cb-${field.id}`}
-                              className="text-sm font-medium text-zinc-200 cursor-pointer flex-1"
+                              className="text-sm font-medium text-primary cursor-pointer flex-1"
                             >
                               {field.label} {field.required && <span className="text-orange-500">*</span>}
                             </label>
@@ -1955,30 +1955,30 @@ export default function PublicRegistrationForm({
 
               {/* 2. Informações de Pagamento e Taxa Oficial */}
               <div className="pt-2 space-y-3">
-                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2 border-b border-[#27272a] pb-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2 border-b border-subtle pb-2">
                   <Shield className="h-4 w-4 text-orange-400" />
                   <span>Taxa de Inscrição</span>
                 </h3>
 
                 {entryFee > 0 ? (
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-[#18181b] via-[#121214] to-zinc-900 border border-orange-500/25 space-y-3 shadow-lg">
+                  <div className="p-4 rounded-2xl bg-surface-elevated border border-orange-500/25 space-y-3 shadow-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/30 text-orange-400 text-[10px] font-black uppercase tracking-wider">
                           Pix Dinâmico
                         </span>
-                        <span className="text-xs text-zinc-400">Pagamento Automatizado</span>
+                        <span className="text-xs text-secondary">Pagamento Automatizado</span>
                       </div>
-                      <div className="text-lg font-black text-white font-display">
+                      <div className="text-lg font-black text-primary font-display">
                         R$ {entryFee.toFixed(2).replace(".", ",")}
                       </div>
                     </div>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    <p className="text-[11px] text-secondary leading-relaxed">
                       Ao prosseguir, você visualizará o <strong>QR Code Pix Oficial</strong> e a chave <strong>Pix Copia e Cola</strong> com confirmação integrada.
                     </p>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-2">
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span>Inscrição Gratuita • Não há cobrança financeira para este torneio.</span>
                   </div>
@@ -1988,12 +1988,12 @@ export default function PublicRegistrationForm({
               {/* 3. Seção de Comprovante de Pagamento (Anexo Opcional/Recomendado para Torneios Pagos) */}
               {entryFee > 0 && (
                 <div className="pt-2 space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                  <div className="flex items-center justify-between border-b border-subtle pb-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
                       <Upload className="h-4 w-4 text-orange-400" />
                       <span>Comprovante de Pagamento</span>
                     </h3>
-                    <span className="text-[10px] text-zinc-400">
+                    <span className="text-[10px] text-muted">
                       PNG, JPG ou PDF (máx. 5MB)
                     </span>
                   </div>
@@ -2010,26 +2010,26 @@ export default function PublicRegistrationForm({
                   {!receiptFile ? (
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-[#27272a] hover:border-orange-500/50 rounded-2xl cursor-pointer bg-zinc-900/30 hover:bg-zinc-900/60 transition-all group"
+                      className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-subtle hover:border-orange-500/50 rounded-2xl cursor-pointer bg-surface hover:bg-surface-elevated transition-all group"
                     >
                       <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
                         <Upload className="h-5 w-5" />
                       </div>
-                      <p className="text-xs font-bold text-zinc-200 text-center">
+                      <p className="text-xs font-bold text-primary text-center">
                         Anexar Comprovante de Pagamento Pix
                       </p>
-                      <p className="text-[10px] text-zinc-500 text-center mt-1">
+                      <p className="text-[10px] text-muted text-center mt-1">
                         Se você já efetuou o pagamento, anexe o comprovante aqui antes de concluir.
                       </p>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-elevated border border-subtle">
                       <div className="flex items-center gap-3 min-w-0">
                         {receiptPreview ? (
                           <img
                             src={receiptPreview}
                             alt="Pré-visualização do comprovante"
-                            className="w-10 h-10 rounded-lg object-cover border border-zinc-700 shrink-0"
+                            className="w-10 h-10 rounded-lg object-cover border border-subtle shrink-0"
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
@@ -2037,10 +2037,10 @@ export default function PublicRegistrationForm({
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-zinc-200 truncate">
+                          <p className="text-xs font-bold text-primary truncate">
                             {receiptFile.name}
                           </p>
-                          <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                          <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold flex items-center gap-1">
                             <CheckCircle2 className="h-3 w-3" />
                             <span>Comprovante pronto para envio ({(receiptFile.size / 1024 / 1024).toFixed(2)} MB)</span>
                           </p>
@@ -2051,14 +2051,14 @@ export default function PublicRegistrationForm({
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-primary text-xs font-bold transition-colors cursor-pointer"
                         >
                           Trocar
                         </button>
                         <button
                           type="button"
                           onClick={handleRemoveReceipt}
-                          className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                           title="Remover comprovante"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -2105,7 +2105,7 @@ export default function PublicRegistrationForm({
                   )}
                 </button>
 
-                <p className="text-[11px] text-zinc-500 text-center mt-3">
+                <p className="text-[11px] text-muted text-center mt-3">
                   Ao se inscrever, você declara concordar com o regulamento do campeonato.
                 </p>
               </div>

@@ -717,10 +717,10 @@ export default function AdminPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col items-center justify-center p-6">
+        <div className="min-h-screen bg-canvas text-primary flex flex-col items-center justify-center p-6">
           <Loader2 className="h-10 w-10 text-purple-500 animate-spin mb-4" />
-          <h2 className="text-base font-bold text-white">Carregando Painel Super Admin...</h2>
-          <p className="text-xs text-zinc-500 mt-1">Sincronizando banco de dados global do SaaS.</p>
+          <h2 className="text-base font-bold text-primary">Carregando Painel Super Admin...</h2>
+          <p className="text-xs text-muted mt-1">Sincronizando banco de dados global do SaaS.</p>
         </div>
       </ProtectedRoute>
     );
@@ -728,11 +728,11 @@ export default function AdminPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#0a0a0c] text-[#e4e4e7] flex flex-col selection:bg-purple-500/30 selection:text-white">
+      <div className="min-h-screen bg-canvas text-primary flex flex-col selection:bg-purple-500/30 selection:text-white">
         {/* ========================================================= */}
         {/* HEADER SUPER ADMIN */}
         {/* ========================================================= */}
-        <header className="w-full border-b border-[#27272a] bg-[#121214]/95 backdrop-blur-md sticky top-0 z-40">
+        <header className="w-full border-b border-subtle bg-surface/95 backdrop-blur-md sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
@@ -785,12 +785,12 @@ export default function AdminPage() {
                   </>
                 ) : wsStatus === "CONNECTING" ? (
                   <>
-                    <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-400" />
                     <span>Conectando WS...</span>
                   </>
                 ) : (
                   <>
-                    <WifiOff className="h-3 w-3 text-red-400" />
+                    <WifiOff className="h-3.5 w-3.5 text-red-400" />
                     <span>WS Desconectado</span>
                   </>
                 )}
@@ -800,7 +800,7 @@ export default function AdminPage() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-surface-elevated hover:bg-surface border border-subtle text-xs font-bold text-secondary hover:text-primary transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
                 title="Atualizar dados"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-purple-400" : ""}`} />
@@ -809,7 +809,7 @@ export default function AdminPage() {
 
               <Link
                 href="/hub"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-zinc-200 hover:text-white transition-all shadow-sm active:scale-95"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-elevated hover:bg-surface border border-subtle text-xs font-bold text-secondary hover:text-primary transition-all shadow-sm active:scale-95"
               >
                 <ArrowLeft className="h-4 w-4 text-purple-400" />
                 <span>Voltar ao Hub</span>
@@ -823,7 +823,7 @@ export default function AdminPage() {
         {/* ========================================================= */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 animate-fadeIn">
           {/* Banner Hero */}
-          <section className="bg-gradient-to-r from-[#16121f] via-[#121216] to-[#0f0f12] border border-purple-500/20 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
+          <section className="bg-surface border border-purple-500/20 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
             <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
@@ -832,16 +832,16 @@ export default function AdminPage() {
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Painel Master do Ecossistema</span>
                 </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-white font-display tracking-tight">
+                <h1 className="text-2xl sm:text-4xl font-black text-primary font-display tracking-tight">
                   Painel de Controle SaaS
                 </h1>
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                <p className="text-xs sm:text-sm text-secondary leading-relaxed">
                   Gerencie utilizadores, atletas, equipes e campeonatos cadastrados no SportConnect com permissões irrestritas de administração.
                 </p>
               </div>
 
-              <div className="px-5 py-4 rounded-2xl bg-zinc-900/80 border border-purple-500/30 text-right shrink-0">
-                <span className="text-[11px] text-zinc-400 uppercase tracking-wider block font-bold">
+              <div className="px-5 py-4 rounded-2xl bg-surface-elevated border border-purple-500/30 text-right shrink-0">
+                <span className="text-[11px] text-secondary uppercase tracking-wider block font-bold">
                   Sessão Super Admin
                 </span>
                 <span className="text-sm font-bold text-purple-300 truncate max-w-[200px] block">
@@ -859,57 +859,57 @@ export default function AdminPage() {
           {/* ========================================================= */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* KPI 1: Total de Utilizadores */}
-            <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md hover:border-purple-500/40 transition-all">
-              <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-1 shadow-md hover:border-purple-500/40 transition-all">
+              <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <Users className="h-4 w-4 text-purple-400" />
                 <span>Total de Utilizadores</span>
               </span>
-              <div className="text-3xl font-black text-white font-display">
+              <div className="text-3xl font-black text-primary font-display">
                 {kpis.totalUsers}
               </div>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-muted">
                 Atletas cadastrados • {kpis.adminUsers} {kpis.adminUsers === 1 ? "Admin" : "Admins"}
               </p>
             </div>
 
             {/* KPI 2: Total de Campeonatos */}
-            <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md hover:border-amber-500/40 transition-all">
-              <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-1 shadow-md hover:border-amber-500/40 transition-all">
+              <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <Trophy className="h-4 w-4 text-amber-400" />
                 <span>Total de Campeonatos</span>
               </span>
-              <div className="text-3xl font-black text-amber-400 font-display">
+              <div className="text-3xl font-black text-amber-500 dark:text-amber-400 font-display">
                 {kpis.totalTournaments}
               </div>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-muted">
                 {kpis.activeTournaments} Ativos • {kpis.completedTournaments} Finalizados
               </p>
             </div>
 
             {/* KPI 3: Total de Equipas Inscritas */}
-            <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md hover:border-emerald-500/40 transition-all">
-              <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-1 shadow-md hover:border-emerald-500/40 transition-all">
+              <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <Activity className="h-4 w-4 text-emerald-400" />
                 <span>Equipas Inscritas</span>
               </span>
-              <div className="text-3xl font-black text-emerald-400 font-display">
+              <div className="text-3xl font-black text-emerald-500 dark:text-emerald-400 font-display">
                 {kpis.totalTeams}
               </div>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-muted">
                 Volume de participações ativas
               </p>
             </div>
 
             {/* KPI 4: Vagas Oferecidas */}
-            <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-1 shadow-md hover:border-blue-500/40 transition-all">
-              <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-1 shadow-md hover:border-blue-500/40 transition-all">
+              <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="h-4 w-4 text-blue-400" />
                 <span>Vagas Totais</span>
               </span>
-              <div className="text-3xl font-black text-blue-400 font-display">
+              <div className="text-3xl font-black text-blue-500 dark:text-blue-400 font-display">
                 {kpis.totalSpots}
               </div>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-muted">
                 Capacidade nos campeonatos
               </p>
             </div>
@@ -918,14 +918,14 @@ export default function AdminPage() {
           {/* ========================================================= */}
           {/* 2. NAVEGAÇÃO POR ABAS (TABS) */}
           {/* ========================================================= */}
-          <div className="border-b border-[#27272a] flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="border-b border-subtle flex items-center gap-2 overflow-x-auto pb-1">
             <button
               type="button"
               onClick={() => setActiveTab("overview")}
               className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === "overview"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
-                  : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
+                  : "bg-surface text-secondary hover:text-primary hover:bg-surface-elevated border border-subtle"
               }`}
             >
               <BarChart3 className="h-4 w-4" />
@@ -938,7 +938,7 @@ export default function AdminPage() {
               className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === "tournaments"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
-                  : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
+                  : "bg-surface text-secondary hover:text-primary hover:bg-surface-elevated border border-subtle"
               }`}
             >
               <Trophy className="h-4 w-4" />
@@ -951,7 +951,7 @@ export default function AdminPage() {
               className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === "users"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
-                  : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
+                  : "bg-surface text-secondary hover:text-primary hover:bg-surface-elevated border border-subtle"
               }`}
             >
               <Users className="h-4 w-4" />
@@ -964,7 +964,7 @@ export default function AdminPage() {
               className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap relative ${
                 activeTab === "websocket"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
-                  : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
+                  : "bg-surface text-secondary hover:text-primary hover:bg-surface-elevated border border-subtle"
               }`}
             >
               <Radio className="h-4 w-4 text-emerald-400" />
@@ -982,20 +982,20 @@ export default function AdminPage() {
             <div className="space-y-6 animate-fadeIn">
               {/* Alerta de Repasses Manuais Pendentes (Split Pix Falhou) */}
               {failedPayouts.length > 0 && (
-                <div className="bg-gradient-to-r from-amber-950/40 via-red-950/30 to-[#121214] border border-amber-500/40 rounded-3xl p-6 shadow-xl space-y-4">
+                <div className="bg-surface border border-amber-500/40 rounded-3xl p-6 shadow-xl space-y-4">
                   <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-amber-400" />
-                      <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                      <AlertCircle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+                      <h3 className="text-sm font-black uppercase tracking-wider text-primary">
                         Repasses Pix com Falha ({failedPayouts.length}) • Ação Manual Necessária
                       </h3>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-black text-amber-300 uppercase">
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-black text-amber-600 dark:text-amber-300 uppercase">
                       Split 90% Organizador
                     </span>
                   </div>
 
-                  <p className="text-xs text-zinc-300 leading-relaxed">
+                  <p className="text-xs text-secondary leading-relaxed">
                     Os seguintes atletas pagaram a inscrição com sucesso via Pix, mas a transferência automática dos 90% para o organizador falhou (chave Pix inexistente ou recusada pelo Mercado Pago). Efetue a transferência manual e marque como concluído:
                   </p>
 
@@ -1006,29 +1006,29 @@ export default function AdminPage() {
                       return (
                         <div
                           key={fp.id}
-                          className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                          className="p-4 rounded-2xl bg-surface-elevated border border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                         >
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-white">{fp.name}</span>
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">
+                              <span className="text-xs font-black text-primary">{fp.name}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-600 dark:text-blue-300 font-bold">
                                 {tourney?.name || "Torneio"}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
+                            <div className="flex items-center gap-2 text-xs text-secondary">
                               <span>Chave Pix Organizador:</span>
-                              <code className="px-2 py-0.5 bg-black/60 rounded text-amber-300 font-mono text-xs">
+                              <code className="px-2 py-0.5 bg-canvas rounded text-amber-600 dark:text-amber-300 font-mono text-xs border border-subtle">
                                 {pixKey}
                               </code>
                               {pixKey !== "Não cadastrada" && (
                                 <button
                                   type="button"
                                   onClick={(e) => handleCopy(pixKey, e)}
-                                  className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                  className="text-muted hover:text-primary transition-colors cursor-pointer"
                                   title="Copiar Chave Pix"
                                 >
                                   {copiedText === pixKey ? (
-                                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                    <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
                                   ) : (
                                     <Copy className="h-3.5 w-3.5" />
                                   )}
@@ -1036,7 +1036,7 @@ export default function AdminPage() {
                               )}
                             </div>
                             {fp.payout_amount && (
-                              <p className="text-xs font-bold text-emerald-400">
+                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                                 Valor a Repassar (90%): R$ {Number(fp.payout_amount).toFixed(2)}
                               </p>
                             )}
@@ -1059,9 +1059,9 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Box de Campeonatos Recentes */}
-                <div className="bg-[#121214] border border-[#27272a] rounded-3xl p-6 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <div className="bg-surface border border-subtle rounded-3xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-subtle pb-3">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
                       <Trophy className="h-4 w-4 text-amber-400" />
                       <span>Campeonatos Recentes</span>
                     </h3>
@@ -1080,22 +1080,22 @@ export default function AdminPage() {
                       const sportMeta = SPORT_META[t.sport_type || "DOMINO"] || {
                         label: "Esporte",
                         icon: "🏆",
-                        color: "text-zinc-400",
+                        color: "text-muted",
                       };
                       return (
                         <div
                           key={t.id}
-                          className="p-3 rounded-2xl bg-[#18181b] border border-[#27272a] flex items-center justify-between gap-3 hover:border-zinc-700 transition-all"
+                          className="p-3 rounded-2xl bg-surface-elevated border border-subtle flex items-center justify-between gap-3 hover:border-strong transition-all"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm shrink-0">
+                            <div className="w-9 h-9 rounded-xl bg-canvas border border-subtle flex items-center justify-center text-sm shrink-0">
                               {sportMeta.icon}
                             </div>
                             <div className="space-y-0.5 min-w-0">
-                              <h4 className="text-xs font-bold text-white truncate">
+                              <h4 className="text-xs font-bold text-primary truncate">
                                 {t.name}
                               </h4>
-                              <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+                              <div className="flex items-center gap-2 text-[10px] text-muted">
                                 <span>{sportMeta.label}</span>
                                 <span>•</span>
                                 <span>{formatDate(t.createdAt)}</span>
@@ -1107,7 +1107,7 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => handleForceAccess(t.id)}
-                              className="px-2.5 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/40 text-purple-200 text-[10px] font-bold uppercase transition-all"
+                              className="px-2.5 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/40 text-purple-700 dark:text-purple-200 text-[10px] font-bold uppercase transition-all"
                             >
                               Painel
                             </button>
@@ -1119,9 +1119,9 @@ export default function AdminPage() {
                 </div>
 
                 {/* Box de Utilizadores Recentes */}
-                <div className="bg-[#121214] border border-[#27272a] rounded-3xl p-6 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <div className="bg-surface border border-subtle rounded-3xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-subtle pb-3">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
                       <Users className="h-4 w-4 text-purple-400" />
                       <span>Utilizadores Recentes</span>
                     </h3>
@@ -1141,10 +1141,10 @@ export default function AdminPage() {
                       return (
                         <div
                           key={u.id}
-                          className="p-3 rounded-2xl bg-[#18181b] border border-[#27272a] flex items-center justify-between gap-3 hover:border-zinc-700 transition-all"
+                          className="p-3 rounded-2xl bg-surface-elevated border border-subtle flex items-center justify-between gap-3 hover:border-strong transition-all"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm shrink-0 overflow-hidden">
+                            <div className="w-9 h-9 rounded-xl bg-canvas border border-subtle flex items-center justify-center text-sm shrink-0 overflow-hidden">
                               {avatar.startsWith("http") || avatar.startsWith("data:") ? (
                                 <img src={avatar} alt={u.full_name || "Avatar"} className="w-full h-full object-cover" />
                               ) : (
@@ -1153,16 +1153,16 @@ export default function AdminPage() {
                             </div>
                             <div className="space-y-0.5 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <h4 className="text-xs font-bold text-white truncate">
+                                <h4 className="text-xs font-bold text-primary truncate">
                                   {u.full_name || "Atleta Sem Nome"}
                                 </h4>
                                 {u.is_admin && (
-                                  <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[9px] font-black uppercase">
+                                  <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 text-[9px] font-black uppercase">
                                     Admin
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-zinc-500 block truncate">
+                              <span className="text-[10px] text-muted block truncate">
                                 {u.email || "Sem e-mail"}
                               </span>
                             </div>
@@ -1170,7 +1170,7 @@ export default function AdminPage() {
 
                           <Link
                             href={`/atleta/${u.id}`}
-                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[10px] font-bold uppercase transition-all flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-primary text-[10px] font-bold uppercase transition-all flex items-center gap-1 border border-subtle"
                           >
                             <span>Perfil</span>
                             <ExternalLink className="h-2.5 w-2.5" />
@@ -1190,15 +1190,15 @@ export default function AdminPage() {
           {activeTab === "tournaments" && (
             <div className="space-y-4 animate-fadeIn">
               {/* Barra de Busca e Filtros */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-[#121214] border border-[#27272a] rounded-2xl">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-surface border border-subtle rounded-2xl">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Buscar por nome do torneio, local, organizador ou ID..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#18181b] border border-[#27272a] focus:border-purple-500 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-canvas border border-subtle focus:border-purple-500 rounded-xl text-xs text-primary placeholder:text-muted outline-none transition-all"
                   />
                 </div>
 
@@ -1206,7 +1206,7 @@ export default function AdminPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2.5 bg-[#18181b] border border-[#27272a] focus:border-purple-500 rounded-xl text-xs text-zinc-200 outline-none transition-all cursor-pointer"
+                    className="px-3 py-2.5 bg-canvas border border-subtle focus:border-purple-500 rounded-xl text-xs text-primary outline-none transition-all cursor-pointer"
                   >
                     <option value="ALL">Todos os Status</option>
                     <option value="ATIVO">Inscrições Abertas (Ativo)</option>
@@ -1218,7 +1218,7 @@ export default function AdminPage() {
                   <select
                     value={sportFilter}
                     onChange={(e) => setSportFilter(e.target.value)}
-                    className="px-3 py-2.5 bg-[#18181b] border border-[#27272a] focus:border-purple-500 rounded-xl text-xs text-zinc-200 outline-none transition-all cursor-pointer"
+                    className="px-3 py-2.5 bg-canvas border border-subtle focus:border-purple-500 rounded-xl text-xs text-primary outline-none transition-all cursor-pointer"
                   >
                     <option value="ALL">Todas Modalidades</option>
                     <option value="DOMINO">Dominó</option>
@@ -1230,13 +1230,13 @@ export default function AdminPage() {
               </div>
 
               {/* Tabela de Torneios */}
-              <div className="bg-[#121214] border border-[#27272a] rounded-3xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 border-b border-[#27272a] flex items-center justify-between">
+              <div className="bg-surface border border-subtle rounded-3xl overflow-hidden shadow-2xl">
+                <div className="px-6 py-4 border-b border-subtle flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-primary">
                       Lista de Torneios do Sistema ({filteredTournaments.length})
                     </h3>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-muted">
                       Visão consolidada de todas as competições hospedadas na SportConnect.
                     </p>
                   </div>
@@ -1244,14 +1244,14 @@ export default function AdminPage() {
 
                 {filteredTournaments.length === 0 ? (
                   <div className="py-16 text-center space-y-3">
-                    <AlertCircle className="h-10 w-10 text-zinc-600 mx-auto" />
-                    <p className="text-sm text-zinc-400 font-bold">Nenhum torneio encontrado.</p>
-                    <p className="text-xs text-zinc-600">Tente ajustar os termos da busca ou filtros selecionados.</p>
+                    <AlertCircle className="h-10 w-10 text-muted mx-auto" />
+                    <p className="text-sm text-secondary font-bold">Nenhum torneio encontrado.</p>
+                    <p className="text-xs text-muted">Tente ajustar os termos da busca ou filtros selecionados.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-[#18181b] border-b border-[#27272a] text-zinc-400 font-black uppercase tracking-wider text-[10px]">
+                      <thead className="bg-surface-elevated border-b border-subtle text-secondary font-black uppercase tracking-wider text-[10px]">
                         <tr>
                           <th className="py-3.5 px-6">Torneio & Modalidade</th>
                           <th className="py-3.5 px-6">Organizador</th>
@@ -1260,12 +1260,12 @@ export default function AdminPage() {
                           <th className="py-3.5 px-6 text-right">Ação Super Admin</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#27272a]/60">
+                      <tbody className="divide-y divide-subtle">
                         {filteredTournaments.map((t) => {
                           const sportMeta = SPORT_META[t.sport_type || "DOMINO"] || {
                             label: t.sport_type || "Esporte",
                             icon: "🏆",
-                            color: "text-zinc-400",
+                            color: "text-muted",
                           };
                           const org = t.owner_id ? organizers[t.owner_id] : null;
                           const rawStatus = (t.status || "ATIVO").toUpperCase();
@@ -1275,24 +1275,24 @@ export default function AdminPage() {
                               className={`transition-colors group ${
                                 highlightedTournId === t.id
                                   ? "bg-purple-950/40 ring-1 ring-purple-500 animate-pulse"
-                                  : "hover:bg-zinc-800/40"
+                                  : "hover:bg-surface-elevated/50"
                               }`}
                             >
                               <td className="py-4 px-6">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-lg shrink-0 shadow-inner">
+                                  <div className="w-10 h-10 rounded-xl bg-canvas border border-subtle flex items-center justify-center text-lg shrink-0 shadow-inner">
                                     {sportMeta.icon}
                                   </div>
                                   <div className="space-y-0.5">
                                     <Link
                                       href={`/torneio/${t.id}`}
                                       target="_blank"
-                                      className="font-bold text-white group-hover:text-purple-300 transition-colors hover:underline text-sm flex items-center gap-1.5"
+                                      className="font-bold text-primary group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors hover:underline text-sm flex items-center gap-1.5"
                                     >
                                       <span>{t.name}</span>
-                                      <ExternalLink className="h-3 w-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      <ExternalLink className="h-3 w-3 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </Link>
-                                    <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                                    <div className="flex items-center gap-2 text-[11px] text-muted">
                                       <span className={`font-semibold ${sportMeta.color}`}>
                                         {sportMeta.label}
                                       </span>
@@ -1317,32 +1317,32 @@ export default function AdminPage() {
                                 <div className="space-y-1">
                                   {org ? (
                                     <div>
-                                      <span className="font-bold text-white block">
+                                      <span className="font-bold text-primary block">
                                         {org.full_name || "Organizador"}
                                       </span>
-                                      <span className="text-[11px] text-zinc-400 block truncate max-w-[180px]">
+                                      <span className="text-[11px] text-secondary block truncate max-w-[180px]">
                                         {org.email || "Sem e-mail"}
                                       </span>
                                     </div>
                                   ) : (
-                                    <span className="text-zinc-500 italic block">
+                                    <span className="text-muted italic block">
                                       {t.owner_id ? "Perfil não sincronizado" : "Sem proprietário"}
                                     </span>
                                   )}
 
                                   {t.owner_id && (
                                     <div className="flex items-center gap-1.5 pt-0.5">
-                                      <code className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                                      <code className="text-[10px] text-muted font-mono bg-canvas px-1.5 py-0.5 rounded border border-subtle">
                                         {t.owner_id.slice(0, 8)}...{t.owner_id.slice(-4)}
                                       </code>
                                       <button
                                         type="button"
                                         onClick={(e) => handleCopy(t.owner_id!, e)}
-                                        className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-0.5"
+                                        className="text-muted hover:text-primary transition-colors cursor-pointer p-0.5"
                                         title="Copiar ID do Organizador"
                                       >
                                         {copiedText === t.owner_id ? (
-                                          <Check className="h-3 w-3 text-emerald-400" />
+                                          <Check className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                                         ) : (
                                           <Copy className="h-3 w-3" />
                                         )}
@@ -1354,21 +1354,21 @@ export default function AdminPage() {
 
                               <td className="py-4 px-6">
                                 {rawStatus === "ATIVO" || rawStatus === "OPEN" ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-wider">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                                     <span>Inscrições Abertas</span>
                                   </span>
                                 ) : rawStatus === "EM_ANDAMENTO" || rawStatus === "IN_PROGRESS" ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-wider">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-wider">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-pulse" />
                                     <span>Em Andamento</span>
                                   </span>
                                 ) : rawStatus === "CANCELADO" ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-black uppercase tracking-wider">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-wider">
                                     <span>Cancelado</span>
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] font-black uppercase tracking-wider">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-subtle text-secondary text-[10px] font-black uppercase tracking-wider">
                                     <span>Finalizado</span>
                                   </span>
                                 )}
@@ -1376,10 +1376,10 @@ export default function AdminPage() {
 
                               <td className="py-4 px-6">
                                 <div className="space-y-0.5">
-                                  <span className="font-bold text-white block">
+                                  <span className="font-bold text-primary block">
                                     {t.max_teams || 16} vagas
                                   </span>
-                                  <span className="text-[11px] text-zinc-500 block">
+                                  <span className="text-[11px] text-muted block">
                                     {t.entry_fee && Number(t.entry_fee) > 0
                                       ? `R$ ${Number(t.entry_fee).toFixed(2).replace(".", ",")}`
                                       : "Gratuito"}
@@ -1391,10 +1391,10 @@ export default function AdminPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleForceAccess(t.id)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/40 text-purple-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer"
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/40 text-purple-700 dark:text-purple-200 hover:text-purple-800 dark:hover:text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer"
                                   title="Acessar o painel deste campeonato como Super Admin"
                                 >
-                                  <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
+                                  <ShieldCheck className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
                                   <span>Forçar Acesso ao Painel</span>
                                   <ArrowRight className="h-3.5 w-3.5" />
                                 </button>
@@ -1416,15 +1416,15 @@ export default function AdminPage() {
           {activeTab === "users" && (
             <div className="space-y-4 animate-fadeIn">
               {/* Barra de Busca e Filtros de Utilizadores */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-[#121214] border border-[#27272a] rounded-2xl">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-surface border border-subtle rounded-2xl">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
                   <input
                     type="text"
                     value={userSearchQuery}
                     onChange={(e) => setUserSearchQuery(e.target.value)}
                     placeholder="Buscar por nome, e-mail, telefone, local ou ID..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#18181b] border border-[#27272a] focus:border-purple-500 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-canvas border border-subtle focus:border-purple-500 rounded-xl text-xs text-primary placeholder:text-muted outline-none transition-all"
                   />
                 </div>
 
@@ -1432,7 +1432,7 @@ export default function AdminPage() {
                   <select
                     value={userRoleFilter}
                     onChange={(e) => setUserRoleFilter(e.target.value)}
-                    className="px-3 py-2.5 bg-[#18181b] border border-[#27272a] focus:border-purple-500 rounded-xl text-xs text-zinc-200 outline-none transition-all cursor-pointer"
+                    className="px-3 py-2.5 bg-canvas border border-subtle focus:border-purple-500 rounded-xl text-xs text-primary outline-none transition-all cursor-pointer"
                   >
                     <option value="ALL">Todos os Utilizadores</option>
                     <option value="ADMIN">Apenas Admins do Sistema</option>
@@ -1442,13 +1442,13 @@ export default function AdminPage() {
               </div>
 
               {/* Tabela de Utilizadores */}
-              <div className="bg-[#121214] border border-[#27272a] rounded-3xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 border-b border-[#27272a] flex items-center justify-between">
+              <div className="bg-surface border border-subtle rounded-3xl overflow-hidden shadow-2xl">
+                <div className="px-6 py-4 border-b border-subtle flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-primary">
                       Lista Global de Utilizadores ({filteredUsers.length})
                     </h3>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-muted">
                       Atletas e administradores registados na plataforma SportConnect.
                     </p>
                   </div>
@@ -1456,14 +1456,14 @@ export default function AdminPage() {
 
                 {filteredUsers.length === 0 ? (
                   <div className="py-16 text-center space-y-3">
-                    <AlertCircle className="h-10 w-10 text-zinc-600 mx-auto" />
-                    <p className="text-sm text-zinc-400 font-bold">Nenhum utilizador encontrado.</p>
-                    <p className="text-xs text-zinc-600">Ajuste os filtros de busca para encontrar atletas.</p>
+                    <AlertCircle className="h-10 w-10 text-muted mx-auto" />
+                    <p className="text-sm text-secondary font-bold">Nenhum utilizador encontrado.</p>
+                    <p className="text-xs text-muted">Ajuste os filtros de busca para encontrar atletas.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-[#18181b] border-b border-[#27272a] text-zinc-400 font-black uppercase tracking-wider text-[10px]">
+                      <thead className="bg-surface-elevated border-b border-subtle text-secondary font-black uppercase tracking-wider text-[10px]">
                         <tr>
                           <th className="py-3.5 px-6">Atleta & Identidade</th>
                           <th className="py-3.5 px-6">Contacto (E-mail / Telefone)</th>
@@ -1472,7 +1472,7 @@ export default function AdminPage() {
                           <th className="py-3.5 px-6 text-right">Ação</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#27272a]/60">
+                      <tbody className="divide-y divide-subtle">
                         {filteredUsers.map((u) => {
                           const avatar = u.avatar_url || DEFAULT_AVATAR;
                           const isDropdownOpen = openDropdownUserId === u.id;
@@ -1480,12 +1480,12 @@ export default function AdminPage() {
                           return (
                             <tr
                               key={u.id}
-                              className="hover:bg-zinc-800/40 transition-colors group"
+                              className="hover:bg-surface-elevated/50 transition-colors group"
                             >
                               {/* Avatar & Nome */}
                               <td className="py-4 px-6">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-lg shrink-0 overflow-hidden shadow-inner">
+                                  <div className="w-10 h-10 rounded-xl bg-canvas border border-subtle flex items-center justify-center text-lg shrink-0 overflow-hidden shadow-inner">
                                     {avatar.startsWith("http") || avatar.startsWith("data:") ? (
                                       <img src={avatar} alt={u.full_name || "Avatar"} className="w-full h-full object-cover" />
                                     ) : (
@@ -1495,12 +1495,12 @@ export default function AdminPage() {
                                   <div className="space-y-0.5">
                                     <Link
                                       href={`/atleta/${u.id}`}
-                                      className="font-bold text-white group-hover:text-purple-300 transition-colors hover:underline text-sm flex items-center gap-1.5"
+                                      className="font-bold text-primary group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors hover:underline text-sm flex items-center gap-1.5"
                                     >
                                       <span>{u.full_name || "Atleta Sem Nome"}</span>
-                                      <ExternalLink className="h-3 w-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      <ExternalLink className="h-3 w-3 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </Link>
-                                    <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                                    <div className="flex items-center gap-2 text-[11px] text-muted">
                                       {u.location ? (
                                         <span className="flex items-center gap-1">
                                           <MapPin className="h-3 w-3 text-orange-400" />
@@ -1511,17 +1511,17 @@ export default function AdminPage() {
                                       )}
                                       <span>•</span>
                                       <div className="flex items-center gap-1">
-                                        <code className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-1 py-0.5 rounded border border-zinc-800">
+                                        <code className="text-[10px] text-muted font-mono bg-canvas px-1 py-0.5 rounded border border-subtle">
                                           {u.id.slice(0, 8)}...
                                         </code>
                                         <button
                                           type="button"
                                           onClick={(e) => handleCopy(u.id, e)}
-                                          className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                                          className="text-muted hover:text-primary transition-colors cursor-pointer"
                                           title="Copiar ID do atleta"
                                         >
                                           {copiedText === u.id ? (
-                                            <Check className="h-3 w-3 text-emerald-400" />
+                                            <Check className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                                           ) : (
                                             <Copy className="h-3 w-3" />
                                           )}
@@ -1535,15 +1535,15 @@ export default function AdminPage() {
                               {/* Contacto */}
                               <td className="py-4 px-6">
                                 <div className="space-y-1">
-                                  <div className="flex items-center gap-1.5 text-zinc-200">
-                                    <Mail className="h-3 w-3 text-zinc-500 shrink-0" />
+                                  <div className="flex items-center gap-1.5 text-primary">
+                                    <Mail className="h-3 w-3 text-muted shrink-0" />
                                     <span className="font-medium truncate max-w-[180px]">
                                       {u.email || "Sem e-mail cadastrado"}
                                     </span>
                                   </div>
                                   {u.phone && (
-                                    <div className="flex items-center gap-1.5 text-zinc-400 text-[11px]">
-                                      <Phone className="h-3 w-3 text-emerald-400 shrink-0" />
+                                    <div className="flex items-center gap-1.5 text-secondary text-[11px]">
+                                      <Phone className="h-3 w-3 text-emerald-500 dark:text-emerald-400 shrink-0" />
                                       <span>{formatPhoneBR(u.phone)}</span>
                                     </div>
                                   )}
@@ -1551,23 +1551,23 @@ export default function AdminPage() {
                               </td>
 
                               {/* Data de Registo */}
-                              <td className="py-4 px-6 text-zinc-300">
+                              <td className="py-4 px-6 text-secondary">
                                 <div className="space-y-0.5">
                                   <span className="font-medium block">{formatDate(u.created_at)}</span>
-                                  <span className="text-[10px] text-zinc-500 block">Data de adesão</span>
+                                  <span className="text-[10px] text-muted block">Data de adesão</span>
                                 </div>
                               </td>
 
                               {/* Status / Função */}
                               <td className="py-4 px-6">
                                 {u.is_admin ? (
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/40 text-purple-300 text-[10px] font-black uppercase tracking-wider shadow-sm">
-                                    <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/40 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase tracking-wider shadow-sm">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
                                     <span>Admin do Sistema</span>
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] font-bold uppercase tracking-wider">
-                                    <UserCheck className="h-3 w-3 text-zinc-500" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-subtle text-secondary text-[10px] font-bold uppercase tracking-wider">
+                                    <UserCheck className="h-3 w-3 text-muted" />
                                     <span>Atleta Oficial</span>
                                   </span>
                                 )}
@@ -1579,7 +1579,7 @@ export default function AdminPage() {
                                   {/* Botão de Atalho Rápido: Ver Perfil */}
                                   <Link
                                     href={`/atleta/${u.id}`}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-600/15 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-600/15 hover:bg-purple-600/30 border border-purple-500/30 text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white text-xs font-bold transition-all shadow-sm active:scale-95"
                                     title="Acessar o perfil público deste atleta"
                                   >
                                     <ExternalLink className="h-3 w-3" />
@@ -1594,7 +1594,7 @@ export default function AdminPage() {
                                         e.stopPropagation();
                                         setOpenDropdownUserId(isDropdownOpen ? null : u.id);
                                       }}
-                                      className="p-1.5 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer border border-transparent hover:border-zinc-700"
+                                      className="p-1.5 rounded-xl hover:bg-surface-elevated text-muted hover:text-primary transition-colors cursor-pointer border border-transparent hover:border-subtle"
                                       title="Mais opções"
                                     >
                                       <MoreVertical className="h-4 w-4" />
@@ -1604,11 +1604,11 @@ export default function AdminPage() {
                                     {isDropdownOpen && (
                                       <div
                                         onClick={(e) => e.stopPropagation()}
-                                        className="absolute right-0 top-full mt-1.5 w-48 rounded-2xl bg-[#18181b] border border-zinc-700/80 p-1.5 shadow-2xl z-50 text-left space-y-1 animate-fadeIn"
+                                        className="absolute right-0 top-full mt-1.5 w-48 rounded-2xl bg-surface-elevated border border-subtle p-1.5 shadow-2xl z-50 text-left space-y-1 animate-fadeIn"
                                       >
                                         <Link
                                           href={`/atleta/${u.id}`}
-                                          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-200 hover:text-white hover:bg-zinc-800 transition-colors"
+                                          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-primary hover:bg-surface transition-colors"
                                         >
                                           <ExternalLink className="h-3.5 w-3.5 text-purple-400" />
                                           <span>Ver Perfil Público</span>
@@ -1620,9 +1620,9 @@ export default function AdminPage() {
                                             handleCopy(u.id, e);
                                             setOpenDropdownUserId(null);
                                           }}
-                                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-200 hover:text-white hover:bg-zinc-800 transition-colors text-left cursor-pointer"
+                                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-primary hover:bg-surface transition-colors text-left cursor-pointer"
                                         >
-                                          <Copy className="h-3.5 w-3.5 text-zinc-400" />
+                                          <Copy className="h-3.5 w-3.5 text-muted" />
                                           <span>Copiar ID do Atleta</span>
                                         </button>
 
@@ -1633,9 +1633,9 @@ export default function AdminPage() {
                                               handleCopy(u.email!, e);
                                               setOpenDropdownUserId(null);
                                             }}
-                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-200 hover:text-white hover:bg-zinc-800 transition-colors text-left cursor-pointer"
+                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-primary hover:bg-surface transition-colors text-left cursor-pointer"
                                           >
-                                            <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                                            <Mail className="h-3.5 w-3.5 text-muted" />
                                             <span>Copiar E-mail</span>
                                           </button>
                                         )}
@@ -1663,9 +1663,9 @@ export default function AdminPage() {
               {/* Cards de Métricas de Rede / WebSocket */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 1. Status do Canal */}
-                <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-2 shadow-md">
+                <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-2 shadow-md">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                       <Radio className="h-4 w-4 text-purple-400" />
                       <span>Status do Canal</span>
                     </span>
@@ -1679,18 +1679,18 @@ export default function AdminPage() {
                       }`}
                     />
                   </div>
-                  <div className="text-2xl font-black text-white font-mono tracking-tight">
+                  <div className="text-2xl font-black text-primary font-mono tracking-tight">
                     {wsStatus}
                   </div>
-                  <p className="text-[11px] text-zinc-500 font-mono truncate">
+                  <p className="text-[11px] text-muted font-mono truncate">
                     Canal: central-sistema-realtime
                   </p>
                 </div>
 
                 {/* 2. Latência RTT */}
-                <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-2 shadow-md">
+                <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-2 shadow-md">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                       <Activity className="h-4 w-4 text-emerald-400" />
                       <span>Latência (RTT)</span>
                     </span>
@@ -1698,50 +1698,50 @@ export default function AdminPage() {
                       type="button"
                       onClick={() => sendWebSocketPing()}
                       disabled={isPinging}
-                      className="text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all cursor-pointer"
+                      className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all cursor-pointer"
                     >
                       <RefreshCw className={`h-2.5 w-2.5 ${isPinging ? "animate-spin" : ""}`} />
                       <span>Testar Ping</span>
                     </button>
                   </div>
-                  <div className="text-2xl font-black text-emerald-400 font-mono">
+                  <div className="text-2xl font-black text-emerald-500 dark:text-emerald-400 font-mono">
                     {isPinging ? (
-                      <span className="text-sm text-zinc-400 animate-pulse">Medindo...</span>
+                      <span className="text-sm text-secondary animate-pulse">Medindo...</span>
                     ) : latency !== null ? (
                       `${latency} ms`
                     ) : (
-                      <span className="text-zinc-600">—</span>
+                      <span className="text-muted">—</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-muted">
                     Round-trip time com Supabase
                   </p>
                 </div>
 
                 {/* 3. Total de Eventos Capturados */}
-                <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-2 shadow-md">
-                  <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-2 shadow-md">
+                  <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                     <Zap className="h-4 w-4 text-amber-400" />
                     <span>Eventos Capturados</span>
                   </span>
-                  <div className="text-2xl font-black text-amber-400 font-mono">
+                  <div className="text-2xl font-black text-amber-500 dark:text-amber-400 font-mono">
                     {totalWsEvents}
                   </div>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-muted">
                     {realtimeLogs.length} logs mantidos na sessão
                   </p>
                 </div>
 
                 {/* 4. Presença Online */}
-                <div className="p-5 rounded-2xl bg-[#121214] border border-[#27272a] space-y-2 shadow-md">
-                  <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <div className="p-5 rounded-2xl bg-surface border border-subtle space-y-2 shadow-md">
+                  <span className="text-[11px] text-secondary font-bold uppercase tracking-wider flex items-center gap-1.5">
                     <Users className="h-4 w-4 text-blue-400" />
                     <span>Usuários no Canal</span>
                   </span>
-                  <div className="text-2xl font-black text-blue-400 font-mono">
+                  <div className="text-2xl font-black text-blue-500 dark:text-blue-400 font-mono">
                     {onlineUsers.length}
                   </div>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-muted">
                     Clientes sincronizados via Presence
                   </p>
                 </div>
@@ -1750,14 +1750,14 @@ export default function AdminPage() {
               {/* Seção Central: Broadcast e Presença */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Transmissor de Broadcast */}
-                <div className="lg:col-span-2 bg-[#121214] border border-[#27272a] rounded-3xl p-6 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+                <div className="lg:col-span-2 bg-surface border border-subtle rounded-3xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-subtle pb-3">
                     <div className="space-y-0.5">
-                      <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
                         <Send className="h-4 w-4 text-purple-400" />
                         <span>Transmissor de Broadcast (Alerta Global)</span>
                       </h3>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-muted">
                         Envie um alerta em tempo real para todos os clientes e administradores conectados a este canal.
                       </p>
                     </div>
@@ -1770,7 +1770,7 @@ export default function AdminPage() {
                         value={broadcastInput}
                         onChange={(e) => setBroadcastInput(e.target.value)}
                         placeholder="Ex: Manutenção agendada para 22h ou Inscrições prorrogadas..."
-                        className="flex-1 px-4 py-3 bg-[#18181b] border border-[#27272a] focus:border-purple-500 rounded-2xl text-xs text-white placeholder-zinc-500 outline-none transition-all"
+                        className="flex-1 px-4 py-3 bg-canvas border border-subtle focus:border-purple-500 rounded-2xl text-xs text-primary placeholder:text-muted outline-none transition-all"
                       />
                       <button
                         type="submit"
@@ -1785,7 +1785,7 @@ export default function AdminPage() {
                         <span>Transmitir</span>
                       </button>
                     </div>
-                    <div className="text-[11px] text-zinc-500 flex items-center gap-2">
+                    <div className="text-[11px] text-muted flex items-center gap-2">
                       <span className="flex h-1.5 w-1.5 rounded-full bg-purple-400" />
                       <span>Dispara notificação flutuante com feedback visual instantâneo em todas as telas conectadas.</span>
                     </div>
@@ -1793,19 +1793,19 @@ export default function AdminPage() {
                 </div>
 
                 {/* Usuários Conectados (Presence) */}
-                <div className="bg-[#121214] border border-[#27272a] rounded-3xl p-6 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <div className="bg-surface border border-subtle rounded-3xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-subtle pb-3">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
                       <Users className="h-4 w-4 text-emerald-400" />
                       <span>Presença ({onlineUsers.length})</span>
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-300 font-mono">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-600 dark:text-emerald-300 font-mono">
                       SYNC
                     </span>
                   </div>
 
                   {onlineUsers.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-zinc-500">
+                    <div className="py-8 text-center text-xs text-muted">
                       Nenhum outro usuário detectado no canal.
                     </div>
                   ) : (
@@ -1813,15 +1813,15 @@ export default function AdminPage() {
                       {onlineUsers.map((u, idx) => (
                         <div
                           key={`${u.id}-${idx}`}
-                          className="p-3 rounded-xl bg-[#18181b] border border-[#27272a] flex items-center justify-between gap-2"
+                          className="p-3 rounded-xl bg-surface-elevated border border-subtle flex items-center justify-between gap-2"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-                            <span className="text-xs font-bold text-zinc-200 truncate">
+                            <span className="text-xs font-bold text-primary truncate">
                               {u.name}
                             </span>
                           </div>
-                          <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+                          <span className="text-[10px] text-muted font-mono shrink-0">
                             {u.onlineAt}
                           </span>
                         </div>
@@ -1832,27 +1832,27 @@ export default function AdminPage() {
               </div>
 
               {/* Console de Diagnóstico Realtime */}
-              <div className="bg-[#0f0f12] border border-[#27272a] rounded-3xl overflow-hidden shadow-2xl">
+              <div className="bg-surface border border-subtle rounded-3xl overflow-hidden shadow-2xl">
                 {/* Console Header */}
-                <div className="px-6 py-4 bg-[#141418] border-b border-[#27272a] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="px-6 py-4 bg-surface-elevated border-b border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <div className="flex gap-1.5">
                       <span className="h-3 w-3 rounded-full bg-red-500/80 inline-block" />
                       <span className="h-3 w-3 rounded-full bg-amber-500/80 inline-block" />
                       <span className="h-3 w-3 rounded-full bg-emerald-500/80 inline-block" />
                     </div>
-                    <span className="text-xs font-mono font-bold text-zinc-300 flex items-center gap-1.5 ml-2">
+                    <span className="text-xs font-mono font-bold text-primary flex items-center gap-1.5 ml-2">
                       <Terminal className="h-3.5 w-3.5 text-purple-400" />
                       <span>Console de Eventos Realtime</span>
                     </span>
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-[10px] text-zinc-400 font-mono">
+                    <span className="px-2 py-0.5 rounded-full bg-surface text-[10px] text-secondary font-mono border border-subtle">
                       {realtimeLogs.length}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Filtros de Tipo */}
-                    <div className="flex items-center gap-1 bg-[#18181b] p-1 rounded-xl border border-zinc-800">
+                    <div className="flex items-center gap-1 bg-canvas p-1 rounded-xl border border-subtle">
                       {(["ALL", "postgres", "broadcast", "presence", "system", "error"] as const).map(
                         (f) => (
                           <button
@@ -1862,7 +1862,7 @@ export default function AdminPage() {
                             className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${
                               logFilter === f
                                 ? "bg-purple-600 text-white shadow-sm"
-                                : "text-zinc-400 hover:text-white"
+                                : "text-secondary hover:text-primary"
                             }`}
                           >
                             {f}
@@ -1875,7 +1875,7 @@ export default function AdminPage() {
                     <button
                       type="button"
                       onClick={() => setRealtimeLogs([])}
-                      className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-red-400 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      className="px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-elevated border border-subtle text-secondary hover:text-red-500 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                       title="Limpar console"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -1889,10 +1889,10 @@ export default function AdminPage() {
                   {realtimeLogs
                     .filter((l) => (logFilter === "ALL" ? true : l.type === logFilter))
                     .length === 0 ? (
-                    <div className="py-16 text-center text-zinc-600 space-y-2">
-                      <Terminal className="h-8 w-8 text-zinc-700 mx-auto" />
+                    <div className="py-16 text-center text-muted space-y-2">
+                      <Terminal className="h-8 w-8 text-muted mx-auto" />
                       <p className="text-xs">Nenhum evento registrado no console com os filtros atuais.</p>
-                      <p className="text-[10px] text-zinc-700">
+                      <p className="text-[10px] text-muted">
                         Eventos de banco (INSERT/UPDATE/DELETE), pings e broadcasts aparecerão aqui em tempo real.
                       </p>
                     </div>
@@ -1902,25 +1902,25 @@ export default function AdminPage() {
                       .map((log) => {
                         const typeBadgeColor =
                           log.type === "postgres"
-                            ? "bg-blue-500/15 border-blue-500/40 text-blue-300"
+                            ? "bg-blue-500/15 border-blue-500/40 text-blue-600 dark:text-blue-300"
                             : log.type === "broadcast"
-                            ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
+                            ? "bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-300"
                             : log.type === "presence"
-                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-300"
                             : log.type === "error"
-                            ? "bg-red-500/15 border-red-500/40 text-red-300"
-                            : "bg-zinc-800 border-zinc-700 text-zinc-400";
+                            ? "bg-red-500/15 border-red-500/40 text-red-600 dark:text-red-300"
+                            : "bg-surface-elevated border-subtle text-secondary";
 
                         const isExpanded = expandedLogId === log.id;
 
                         return (
                           <div
                             key={log.id}
-                            className="p-3 rounded-xl bg-[#141418] border border-zinc-800/80 hover:border-zinc-700 transition-all space-y-2"
+                            className="p-3 rounded-xl bg-surface-elevated border border-subtle hover:border-strong transition-all space-y-2"
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[10px] text-zinc-500">
+                                <span className="text-[10px] text-muted">
                                   [{log.timestamp}]
                                 </span>
                                 <span
@@ -1929,17 +1929,17 @@ export default function AdminPage() {
                                   {log.type}
                                 </span>
                                 {log.table && (
-                                  <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-700 text-[10px] text-zinc-300 flex items-center gap-1">
+                                  <span className="px-2 py-0.5 rounded-md bg-canvas border border-subtle text-[10px] text-secondary flex items-center gap-1">
                                     <Database className="h-2.5 w-2.5 text-purple-400" />
                                     <span>{log.table}</span>
                                     {log.eventType && (
-                                      <span className="text-purple-300 font-bold">
+                                      <span className="text-purple-600 dark:text-purple-300 font-bold">
                                         :{log.eventType}
                                       </span>
                                     )}
                                   </span>
                                 )}
-                                <span className="text-zinc-200 font-semibold text-xs">
+                                <span className="text-primary font-semibold text-xs">
                                   {log.title}
                                 </span>
                               </div>
@@ -1950,7 +1950,7 @@ export default function AdminPage() {
                                   onClick={() =>
                                     setExpandedLogId(isExpanded ? null : log.id)
                                   }
-                                  className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer px-2 py-0.5 rounded hover:bg-zinc-800 transition-colors shrink-0"
+                                  className="text-[11px] text-secondary hover:text-primary flex items-center gap-1 cursor-pointer px-2 py-0.5 rounded hover:bg-surface transition-colors shrink-0"
                                 >
                                   <span>{isExpanded ? "Ocultar" : "Detalhes"}</span>
                                   {isExpanded ? (
@@ -1963,7 +1963,7 @@ export default function AdminPage() {
                             </div>
 
                             {isExpanded && log.details && (
-                              <pre className="p-3 rounded-lg bg-[#0a0a0c] border border-zinc-800 text-[11px] text-zinc-300 overflow-x-auto leading-relaxed">
+                              <pre className="p-3 rounded-lg bg-canvas border border-subtle text-[11px] text-secondary overflow-x-auto leading-relaxed">
                                 {JSON.stringify(log.details, null, 2)}
                               </pre>
                             )}
@@ -1982,12 +1982,12 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {liveToast && (
           <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300">
-            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#18181b]/95 backdrop-blur-md border border-purple-500/40 text-white shadow-2xl shadow-purple-950/50">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface-elevated/95 backdrop-blur-md border border-purple-500/40 text-primary shadow-2xl shadow-purple-950/20">
               <span className="flex h-2.5 w-2.5 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
               </span>
-              <p className="text-xs font-semibold text-zinc-100">{liveToast.message}</p>
+              <p className="text-xs font-semibold text-primary">{liveToast.message}</p>
             </div>
           </div>
         )}

@@ -442,7 +442,7 @@ export default function TeamRegistration({
                 ? "bg-emerald-950/95 text-emerald-400 border-emerald-500/30"
                 : toast.type === "error"
                 ? "bg-red-950/95 text-red-400 border-red-500/30"
-                : "bg-[#e6ddca]/95 dark:bg-neutral-900/95 text-[#3b342e] dark:text-neutral-300 border-[#d8ccb4] dark:border-neutral-700/60"
+                : "bg-surface/95 text-primary border-subtle"
             }`}
           >
             {toast.type === "success" && <Sparkles className="h-5 w-5 text-emerald-400" />}
