@@ -205,14 +205,24 @@ export default function RegistrationManagement({
         }));
         setLocalTeams(mapped);
 
-        // Fetch de todos os membros vinculados (team_members) para os times do torneio
+        // Fetch em lotes (chunks de 50) dos membros vinculados (team_members) para evitar estouro de URL
         const teamIds = dbTeams.map((t: any) => t.id).filter(Boolean);
         if (teamIds.length > 0) {
           try {
-            const { data: membersData } = await supabase
-              .from("team_members")
-              .select("*")
-              .in("team_id", teamIds);
+            const chunkSize = 50;
+            const chunks: string[][] = [];
+            for (let i = 0; i < teamIds.length; i += chunkSize) {
+              chunks.push(teamIds.slice(i, i + chunkSize));
+            }
+            const membersResults = await Promise.all(
+              chunks.map((chunk) =>
+                supabase
+                  .from("team_members")
+                  .select("id, team_id, user_id, name, email, cpf, phone, is_captain, created_at")
+                  .in("team_id", chunk)
+              )
+            );
+            const membersData = membersResults.flatMap((r) => r.data || []);
 
             const map: Record<string, TeamMember[]> = {};
             if (membersData) {

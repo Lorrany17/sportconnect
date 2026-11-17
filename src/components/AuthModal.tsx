@@ -458,7 +458,7 @@ export default function AuthModal({
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="Ex: Carlos Eduardo Silva"
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
               />
             </div>
           </div>
@@ -484,7 +484,7 @@ export default function AuthModal({
                   if (successMessage) setSuccessMessage("");
                 }}
                 placeholder="(XX) XXXXX-XXXX"
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
               />
             </div>
           </div>
@@ -509,7 +509,7 @@ export default function AuthModal({
                 if (successMessage) setSuccessMessage("");
               }}
               placeholder="seu@email.com"
-              className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
             />
           </div>
         </div>
@@ -533,7 +533,7 @@ export default function AuthModal({
                 if (successMessage) setSuccessMessage("");
               }}
               placeholder={activeTab === "signup" ? "Mínimo 6 caracteres" : "Sua senha de acesso"}
-              className="w-full pl-10 pr-11 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus:ring-1 focus:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all"
+              className="w-full pl-10 pr-11 py-3 bg-zinc-900 border border-zinc-800 focus:border-[#00a2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a2ff] rounded-xl text-sm text-zinc-100 placeholder:text-zinc-400 transition-all"
             />
             <button
               type="button"
