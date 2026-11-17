@@ -243,12 +243,12 @@ export default function DetalhesTorneioPage() {
           const parsedRulesObj =
             typeof data.match_rules === "string"
               ? (() => {
-                  try {
-                    return JSON.parse(data.match_rules);
-                  } catch {
-                    return {};
-                  }
-                })()
+                try {
+                  return JSON.parse(data.match_rules);
+                } catch {
+                  return {};
+                }
+              })()
               : data.match_rules || {};
           const resolvedRegulationUrl =
             data.regulation_url ||
@@ -569,18 +569,33 @@ export default function DetalhesTorneioPage() {
 
       const fileName = "cartaz-sportconnect.png";
 
-      // 1. Mobile / Web Share API (WhatsApp, Instagram Stories, etc.)
-      if (typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
-        try {
-          const response = await fetch(dataUrl);
-          const blob = await response.blob();
-          const file = new File([blob], fileName, { type: "image/png" });
+      // Converte dataUrl diretamente para Blob/File (evita bloqueios de CSP em fetch(data:))
+      const dataUrlToFile = (url: string, name: string): File => {
+        const [header, base64] = url.split(",");
+        const mimeMatch = header?.match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : "image/png";
+        const binary = atob(base64 || "");
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return new File([bytes], name, { type: mime });
+      };
 
-          if (navigator.canShare({ files: [file] })) {
+      // 1. Mobile / Web Share API (WhatsApp, Instagram Stories, etc.)
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        try {
+          const file = dataUrlToFile(dataUrl, fileName);
+          const canShareFiles =
+            typeof navigator.canShare === "function"
+              ? navigator.canShare({ files: [file] })
+              : true;
+
+          if (canShareFiles) {
             await navigator.share({
               files: [file],
               title: tournament.name,
-              text: `Confira o torneio ${tournament.name} na SportConnect!`,
+              text: `Inscreva-se no meu torneio: ${tournament.name}!`,
             });
             return;
           }
@@ -839,13 +854,13 @@ export default function DetalhesTorneioPage() {
         >
           {/* 1. Hero Section (Foto de Capa Grande + Nome Sobreposto) */}
           <section
-            className={`relative w-full ${isGenerating ? "h-[340px] shrink-0" : "h-72 sm:h-96 overflow-hidden"
+            className={`relative w-full flex flex-col justify-end ${isGenerating ? "h-[340px] shrink-0" : "min-h-72 sm:min-h-96 overflow-hidden"
               } bg-zinc-950`}
           >
             <img
               src={coverImage}
               alt={tournament.name}
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
             {/* Gradiente Escuro Sobreposto com foco nas cores SportConnect e alto contraste */}
             <div
@@ -857,12 +872,12 @@ export default function DetalhesTorneioPage() {
 
             {/* Conteúdo do Hero Sobreposto */}
             <div
-              className={`absolute inset-0 ${isGenerating ? "w-full px-10 pb-7" : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-8"
+              className={`relative z-10 w-full ${isGenerating ? "px-10 pb-7 pt-10" : "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-8"
                 } flex flex-col justify-end`}
             >
-              <div className={`${isGenerating ? "space-y-3 w-full" : "space-y-3 max-w-3xl"} animate-fadeIn`}>
+              <div className={`${isGenerating ? "space-y-3 w-full" : "space-y-3 max-w-3xl w-full"} animate-fadeIn`}>
                 {/* Grupo de Tags Superiores (Modalidade, Formato, Gênero, Status) */}
-                <div className={`flex flex-wrap items-center ${isGenerating ? "gap-3" : "gap-2"}`}>
+                <div className={`flex flex-wrap items-center max-w-full ${isGenerating ? "gap-3" : "gap-2"}`}>
                   <span
                     className={`inline-flex items-center gap-2 rounded-xl bg-black/85 backdrop-blur-md border border-blue-400/30 font-black uppercase tracking-wider text-blue-400 shadow-lg ${isGenerating ? "px-4 py-2 text-base" : "px-3 py-1 text-xs"
                       }`}
@@ -1344,8 +1359,8 @@ export default function DetalhesTorneioPage() {
                       (tournament as any).custom_rules ||
                       ""
                     ).trim() ||
-                      tournament.regulation_url ||
-                      tournament.rulebook_url
+                    tournament.regulation_url ||
+                    tournament.rulebook_url
                   ) && (
                     <div className="bg-[#18181b] border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
                       <h2 className="text-sm font-black uppercase tracking-wider text-zinc-300 flex items-center gap-2">
@@ -1361,32 +1376,31 @@ export default function DetalhesTorneioPage() {
                           ""
                         ).trim()
                       ) && (
-                        <div className="space-y-3">
-                          <div
-                            className={`p-4 rounded-xl bg-[#121214] border border-zinc-800 text-sm text-zinc-300 whitespace-pre-line leading-relaxed transition-all ${
-                              !isRulebookExpanded ? "relative max-h-64 overflow-hidden" : ""
-                            }`}
-                          >
-                            {(
-                              tournament.rules ||
-                              (tournament as any).rules_description ||
-                              (tournament as any).custom_rules ||
-                              ""
-                            ).trim()}
-                            {!isRulebookExpanded && (
-                              <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-[#121214] to-transparent pointer-events-none" />
-                            )}
-                          </div>
+                          <div className="space-y-3">
+                            <div
+                              className={`p-4 rounded-xl bg-[#121214] border border-zinc-800 text-sm text-zinc-300 whitespace-pre-line leading-relaxed transition-all ${!isRulebookExpanded ? "relative max-h-64 overflow-hidden" : ""
+                                }`}
+                            >
+                              {(
+                                tournament.rules ||
+                                (tournament as any).rules_description ||
+                                (tournament as any).custom_rules ||
+                                ""
+                              ).trim()}
+                              {!isRulebookExpanded && (
+                                <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-[#121214] to-transparent pointer-events-none" />
+                              )}
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => setIsRulebookExpanded(!isRulebookExpanded)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-[#00a2ff] hover:text-blue-300 transition-all cursor-pointer"
-                          >
-                            <span>{isRulebookExpanded ? "Ler menos" : "Ler mais do regulamento"}</span>
-                          </button>
-                        </div>
-                      )}
+                            <button
+                              type="button"
+                              onClick={() => setIsRulebookExpanded(!isRulebookExpanded)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-[#00a2ff] hover:text-blue-300 transition-all cursor-pointer"
+                            >
+                              <span>{isRulebookExpanded ? "Ler menos" : "Ler mais do regulamento"}</span>
+                            </button>
+                          </div>
+                        )}
 
                       {(tournament.regulation_url || tournament.rulebook_url) && (
                         <div>
