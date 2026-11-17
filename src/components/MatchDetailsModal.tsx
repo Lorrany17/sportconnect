@@ -595,26 +595,26 @@ export default function MatchDetailsModal({
       onClick={onClose}
     >
       <div
-        className="relative bg-[#141417] border border-zinc-700/70 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-[#e4e4e7]"
+        className="relative bg-white dark:bg-[#141417] border border-zinc-200 dark:border-zinc-700/70 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-zinc-900 dark:text-[#e4e4e7]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow Superior */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#00a2ff] via-amber-400 to-[#00a2ff]" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800/80 bg-[#18181c]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-[#18181c]">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#00a2ff]/10 border border-[#00a2ff]/30 flex items-center justify-center text-[#00a2ff]">
               <BarChart2 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <span>Detalhes do Confronto</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-bold border border-zinc-700">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold border border-zinc-300 dark:border-zinc-700">
                   {sportTitle}
                 </span>
               </h3>
-              <p className="text-[11px] text-zinc-400 font-medium">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
                 {liveMatch.phase || "Fase Eliminatória"} • Jogo #{liveMatch.match_order || 1}
               </p>
             </div>
@@ -622,7 +622,7 @@ export default function MatchDetailsModal({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-zinc-800/70 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all flex items-center justify-center cursor-pointer"
+            className="w-8 h-8 rounded-xl bg-zinc-200/70 dark:bg-zinc-800/70 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center justify-center cursor-pointer"
             title="Fechar (Esc)"
           >
             <X className="w-4 h-4" />
@@ -632,16 +632,16 @@ export default function MatchDetailsModal({
         {/* Modal Body */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {/* 1. Card Resumo do Placar Geral */}
-          <div className="bg-[#1c1c21] border border-zinc-800 rounded-2xl p-4 shadow-inner">
-            <div className="flex items-center justify-between text-[11px] font-bold text-zinc-400 uppercase tracking-wider pb-3 border-b border-zinc-800/80 mb-3">
+          <div className="bg-zinc-50 dark:bg-[#1c1c21] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-inner">
+            <div className="flex items-center justify-between text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider pb-3 border-b border-zinc-200 dark:border-zinc-800/80 mb-3">
               <span>Placar Geral</span>
               {isLive ? (
-                <span className="flex items-center gap-1.5 text-amber-400 font-black animate-pulse">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-black animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400" />
                   EM ANDAMENTO
                 </span>
               ) : isCompleted ? (
-                <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   CONFRONTO ENCERRADO
                 </span>
@@ -655,16 +655,16 @@ export default function MatchDetailsModal({
               <div
                 className={`p-3.5 rounded-xl border transition-all ${
                   isWinner1
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                    : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                    : "bg-white dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200"
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div
                     className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
                       isWinner1
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                        : "bg-zinc-800 text-zinc-400"
+                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40"
+                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                     }`}
                   >
                     {team1 ? team1.name.slice(0, 1).toUpperCase() : "1"}
@@ -674,7 +674,7 @@ export default function MatchDetailsModal({
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
                     {isSetsSport ? "Sets Vencidos" : isFutsal ? "Gols" : "Pontos"}
                   </span>
                   <span className="text-2xl font-black font-mono">
@@ -682,7 +682,7 @@ export default function MatchDetailsModal({
                   </span>
                 </div>
                 {isWinner1 && (
-                  <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                  <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                     <Trophy className="w-3 h-3" />
                     <span>Vencedor</span>
                   </div>
@@ -693,16 +693,16 @@ export default function MatchDetailsModal({
               <div
                 className={`p-3.5 rounded-xl border transition-all ${
                   isWinner2
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                    : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                    : "bg-white dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200"
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div
                     className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
                       isWinner2
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                        : "bg-zinc-800 text-zinc-400"
+                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40"
+                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
                     }`}
                   >
                     {team2 ? team2.name.slice(0, 1).toUpperCase() : "2"}
@@ -712,7 +712,7 @@ export default function MatchDetailsModal({
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
                     {isSetsSport ? "Sets Vencidos" : isFutsal ? "Gols" : "Pontos"}
                   </span>
                   <span className="text-2xl font-black font-mono">
@@ -720,7 +720,7 @@ export default function MatchDetailsModal({
                   </span>
                 </div>
                 {isWinner2 && (
-                  <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                  <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                     <Trophy className="w-3 h-3" />
                     <span>Vencedor</span>
                   </div>
@@ -732,7 +732,7 @@ export default function MatchDetailsModal({
           {/* 2. Secção Histórico Detalhado (Sets / Tempos / Quedas) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-xs font-black text-zinc-800 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-[#00a2ff]" />
                 <span>
                   {isSetsSport
@@ -759,14 +759,14 @@ export default function MatchDetailsModal({
                       {safeHistory.map((s: any, idx: number) => (
                         <div
                           key={`pill-${s.setNumber}-${idx}`}
-                          className="shrink-0 px-2.5 py-1 rounded-lg bg-zinc-800/80 border border-zinc-700/80 text-[10px] font-mono flex items-center gap-1.5 shadow-sm"
+                          className="shrink-0 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/80 text-[10px] font-mono flex items-center gap-1.5 shadow-sm"
                         >
-                          <span className="font-bold text-zinc-400">Set {s.setNumber}:</span>
-                          <span className={s.wonA ? "text-emerald-400 font-bold" : "text-zinc-200"}>
+                          <span className="font-bold text-zinc-500 dark:text-zinc-400">Set {s.setNumber}:</span>
+                          <span className={s.wonA ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-700 dark:text-zinc-200"}>
                             {s.scoreA}
                           </span>
-                          <span className="text-zinc-500">x</span>
-                          <span className={s.wonB ? "text-emerald-400 font-bold" : "text-zinc-200"}>
+                          <span className="text-zinc-400 dark:text-zinc-500">x</span>
+                          <span className={s.wonB ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-700 dark:text-zinc-200"}>
                             {s.scoreB}
                           </span>
                         </div>
@@ -781,24 +781,24 @@ export default function MatchDetailsModal({
                         return (
                           <div
                             key={`set-${s.setNumber}-${idx}`}
-                            className="bg-[#18181c] border border-zinc-800 hover:border-zinc-700 rounded-xl p-3.5 flex items-center justify-between transition-all"
+                            className="bg-zinc-50 dark:bg-[#18181c] border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-xl p-3.5 flex items-center justify-between transition-all"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="px-2 py-1 rounded-lg bg-zinc-800 text-[#00a2ff] font-mono text-xs font-black border border-zinc-700/80 shadow-inner">
+                              <span className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[#00a2ff] font-mono text-xs font-black border border-zinc-200 dark:border-zinc-700/80 shadow-inner">
                                 Set {s.setNumber}
                               </span>
                               <div>
-                                <span className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
                                   <span>Set {s.setNumber}</span>
                                   {isTieBreak && (
-                                    <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/30">
+                                    <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/30">
                                       Tie-break
                                     </span>
                                   )}
                                 </span>
-                                <span className="text-[11px] text-zinc-400 block mt-0.5">
+                                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 block mt-0.5">
                                   Vencedor:{" "}
-                                  <strong className={s.wonA || s.wonB ? "text-emerald-400" : "text-zinc-400"}>
+                                  <strong className={s.wonA || s.wonB ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}>
                                     {s.winnerName}
                                   </strong>
                                 </span>
@@ -806,12 +806,12 @@ export default function MatchDetailsModal({
                             </div>
 
                             {/* Placar exato dinâmico no formato "${set.scoreA} - ${set.scoreB}" */}
-                            <div className="flex items-center gap-2 font-mono text-sm font-black px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800">
-                              <span className={s.wonA ? "text-emerald-400" : "text-zinc-300"}>
+                            <div className="flex items-center gap-2 font-mono text-sm font-black px-3 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                              <span className={s.wonA ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300"}>
                                 {s.scoreA}
                               </span>
-                              <span className="text-zinc-600">-</span>
-                              <span className={s.wonB ? "text-emerald-400" : "text-zinc-300"}>
+                              <span className="text-zinc-400 dark:text-zinc-600">-</span>
+                              <span className={s.wonB ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300"}>
                                 {s.scoreB}
                               </span>
                             </div>
@@ -822,12 +822,12 @@ export default function MatchDetailsModal({
                   </div>
                 ) : (
                   /* Fallback seguro: "Histórico de sets indisponível" */
-                  <div className="bg-[#18181c] border border-dashed border-zinc-800 rounded-2xl p-6 text-center text-xs text-zinc-500 flex flex-col items-center justify-center gap-2">
-                    <Clock className="w-6 h-6 text-zinc-600" />
-                    <p className="font-semibold text-zinc-400">
+                  <div className="bg-zinc-50 dark:bg-[#18181c] border border-dashed border-zinc-300 dark:border-zinc-800 rounded-2xl p-6 text-center text-xs text-zinc-500 flex flex-col items-center justify-center gap-2">
+                    <Clock className="w-6 h-6 text-zinc-400 dark:text-zinc-600" />
+                    <p className="font-semibold text-zinc-700 dark:text-zinc-400">
                       Histórico de sets indisponível
                     </p>
-                    <p className="text-[11px] text-zinc-600">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-600">
                       Nenhum detalhe de sets ou parciais foi registrado para este confronto.
                     </p>
                   </div>
@@ -838,36 +838,36 @@ export default function MatchDetailsModal({
             {/* Futsal */}
             {isFutsal && (
               <div className="space-y-2">
-                <div className="bg-[#18181c] border border-zinc-800 rounded-xl p-3.5 flex items-center justify-between">
+                <div className="bg-zinc-50 dark:bg-[#18181c] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-zinc-200 block">Tempo Regulamentar</span>
-                    <span className="text-[11px] text-zinc-400">Gols de jogo</span>
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">Tempo Regulamentar</span>
+                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Gols de jogo</span>
                   </div>
-                  <div className="flex items-center gap-2 font-mono text-sm font-black px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800">
-                    <span className={score1 > score2 ? "text-emerald-400" : "text-zinc-300"}>
+                  <div className="flex items-center gap-2 font-mono text-sm font-black px-3 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <span className={score1 > score2 ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300"}>
                       {score1}
                     </span>
-                    <span className="text-zinc-600">-</span>
-                    <span className={score2 > score1 ? "text-emerald-400" : "text-zinc-300"}>
+                    <span className="text-zinc-400 dark:text-zinc-600">-</span>
+                    <span className={score2 > score1 ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300"}>
                       {score2}
                     </span>
                   </div>
                 </div>
 
                 {penA !== null && penB !== null && (penA > 0 || penB > 0) && (
-                  <div className="bg-[#18181c] border border-amber-500/30 bg-amber-500/5 rounded-xl p-3.5 flex items-center justify-between">
+                  <div className="bg-amber-500/5 dark:bg-[#18181c] border border-amber-500/30 rounded-xl p-3.5 flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold text-amber-300 block">Disputa de Pênaltis</span>
-                      <span className="text-[11px] text-zinc-400">
+                      <span className="text-xs font-bold text-amber-600 dark:text-amber-300 block">Disputa de Pênaltis</span>
+                      <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
                         Vencedor nos pênaltis: {penA > penB ? team1Name : team2Name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 font-mono text-sm font-black px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800">
-                      <span className={penA > penB ? "text-emerald-400" : "text-zinc-300"}>
+                    <div className="flex items-center gap-2 font-mono text-sm font-black px-3 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                      <span className={penA > penB ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300"}>
                         {penA}
                       </span>
-                      <span className="text-zinc-600">-</span>
-                      <span className={penB > penA ? "text-emerald-400" : "text-zinc-300"}>
+                      <span className="text-zinc-400 dark:text-zinc-600">-</span>
+                      <span className={penB > penA ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-300"}>
                         {penB}
                       </span>
                     </div>
@@ -892,38 +892,38 @@ export default function MatchDetailsModal({
                     return (
                       <div
                         key={r.roundNumber}
-                        className="bg-[#18181c] border border-zinc-800 rounded-xl p-3 flex items-center justify-between"
+                        className="bg-zinc-50 dark:bg-[#18181c] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className="w-6 h-6 rounded-lg bg-zinc-800 text-[#00a2ff] font-mono text-xs font-black flex items-center justify-center">
+                          <span className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-[#00a2ff] font-mono text-xs font-black flex items-center justify-center">
                             {r.roundNumber}
                           </span>
                           <div>
-                            <span className="text-xs font-bold text-zinc-200 block">
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                               Queda #{r.roundNumber} {r.note ? `• ${r.note}` : ""}
                             </span>
-                            <span className="text-[11px] text-zinc-400">
+                            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
                               Vencedor:{" "}
-                              <strong className={isT1 ? "text-[#00a2ff]" : "text-amber-400"}>
+                              <strong className={isT1 ? "text-[#00a2ff]" : "text-amber-500 dark:text-amber-400"}>
                                 {winnerT ? winnerT.name : "Anulada"}
                               </strong>
                             </span>
                           </div>
                         </div>
 
-                        <div className="font-mono text-xs font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                        <div className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
                           +{r.pointsGenerated} pts
                         </div>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="bg-[#18181c] border border-dashed border-zinc-800 rounded-2xl p-6 text-center text-xs text-zinc-500 flex flex-col items-center justify-center gap-2">
-                    <Clock className="w-6 h-6 text-zinc-600" />
-                    <p className="font-semibold text-zinc-400">
+                  <div className="bg-zinc-50 dark:bg-[#18181c] border border-dashed border-zinc-300 dark:border-zinc-800 rounded-2xl p-6 text-center text-xs text-zinc-500 flex flex-col items-center justify-center gap-2">
+                    <Clock className="w-6 h-6 text-zinc-400 dark:text-zinc-600" />
+                    <p className="font-semibold text-zinc-700 dark:text-zinc-400">
                       Nenhum histórico de pontos registado ainda.
                     </p>
-                    <p className="text-[11px] text-zinc-600">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-600">
                       As quedas e pontuações serão exibidas aqui à medida que forem registradas na mesa.
                     </p>
                   </div>
@@ -934,17 +934,17 @@ export default function MatchDetailsModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-zinc-800 bg-[#18181c] flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#18181c] flex items-center justify-between">
           <span className="text-[11px] text-zinc-500 font-medium">
             Pressione{" "}
-            <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 text-[10px]">
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 text-[10px]">
               Esc
             </kbd>{" "}
             para fechar
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+            className="px-5 py-2 rounded-xl bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-white text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
           >
             Fechar Detalhes
           </button>

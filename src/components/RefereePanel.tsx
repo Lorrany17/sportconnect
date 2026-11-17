@@ -544,9 +544,9 @@ export default function RefereePanel({
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn text-[#3b342e] dark:text-[#e4e4e7] print:w-full print:bg-white print:text-black print:space-y-4">
+    <div className="space-y-8 animate-fadeIn text-primary print:w-full print:bg-white print:text-black print:space-y-4">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#d8ccb4] dark:border-neutral-800 print:border-neutral-300 pb-6 print:pb-3">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-subtle print:border-neutral-300 pb-6 print:pb-3">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-xl">{meta.icon}</span>
@@ -605,7 +605,7 @@ export default function RefereePanel({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 print:block print:w-full">
         {/* Left Column: Matches Selection List */}
         <div className="lg:col-span-1 space-y-6 print:hidden">
-          <div className="glass-panel rounded-2xl p-5 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e]">
+          <div className="glass-panel rounded-2xl p-5 border border-subtle bg-surface">
             <h3 className="text-xs font-black uppercase tracking-widest text-stone-600 dark:text-neutral-400 mb-4">
               Confrontos do Torneio
             </h3>
@@ -702,8 +702,8 @@ export default function RefereePanel({
                             selectedMatchId === m.id
                               ? "bg-brand-electric border-brand-electric text-white"
                               : isMatchReady
-                              ? "bg-white/80 border-[#d8ccb4] text-stone-700 hover:bg-[#d8ccb4]/40 dark:bg-[#0f0f0f] dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-[#262626]"
-                              : "bg-white/30 border-dashed border-[#d8ccb4]/60 text-neutral-400 cursor-not-allowed dark:bg-[#0f0f0f]/40 dark:border-neutral-800/50"
+                              ? "bg-white/80 border-zinc-200 text-stone-700 hover:bg-zinc-100 dark:bg-[#0f0f0f] dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-[#262626]"
+                              : "bg-white/30 border-dashed border-zinc-200 text-neutral-400 cursor-not-allowed dark:bg-[#0f0f0f]/40 dark:border-neutral-800/50"
                           }`}
                         >
                           <div
@@ -762,7 +762,7 @@ export default function RefereePanel({
                         className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
                           selectedMatchId === m.id
                             ? "bg-brand-electric border-brand-electric text-white"
-                            : "bg-white/80 border-[#d8ccb4] text-stone-700 hover:bg-[#d8ccb4]/40 dark:bg-[#0f0f0f] dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-[#262626]"
+                            : "bg-white/80 border-zinc-200 text-stone-700 hover:bg-zinc-100 dark:bg-[#0f0f0f] dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-[#262626]"
                         }`}
                       >
                         <div
@@ -808,7 +808,7 @@ export default function RefereePanel({
         <div className="lg:col-span-3 space-y-6 print:w-full print:bg-white print:text-black print:space-y-4">
           {!selectedMatch ? (
             <>
-              <div className="glass-panel rounded-2xl p-16 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e] text-center print:hidden">
+              <div className="glass-panel rounded-2xl p-16 border border-subtle bg-surface text-center print:hidden">
                 <ClipboardCheck className="h-14 w-14 text-neutral-400 dark:text-neutral-600 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-stone-800 dark:text-[#e4e4e7]">
                   Nenhum confronto selecionado
@@ -904,7 +904,7 @@ export default function RefereePanel({
           ) : (
             <>
               {/* Match Header Info */}
-              <div className="glass-panel rounded-2xl p-6 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e] print:bg-white print:text-black print:border-neutral-400 print:shadow-none flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="glass-panel rounded-2xl p-6 border border-subtle bg-surface print:bg-white print:text-black print:border-neutral-400 print:shadow-none flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <div className="text-[10px] font-bold text-brand-electric-light print:text-neutral-700 tracking-widest uppercase mb-1">
                     {formatPhaseName(selectedMatch.phase)} • {meta.venue.toUpperCase()} {selectedMatch.tableNumber}
@@ -955,7 +955,7 @@ export default function RefereePanel({
                     !selectedMatch.teamA.id.startsWith("placeholder-") &&
                     !selectedMatch.teamB.id.startsWith("placeholder-");
                   return (
-                    <div className="glass-panel rounded-2xl p-12 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e] text-center flex flex-col items-center justify-center min-h-[300px] print:hidden">
+                    <div className="glass-panel rounded-2xl p-12 border border-subtle bg-surface text-center flex flex-col items-center justify-center min-h-[300px] print:hidden">
                       {isMatchReady ? (
                         <Clock className="h-12 w-12 text-brand-electric-light mb-4 animate-pulse-slow" />
                       ) : (
@@ -1036,7 +1036,7 @@ export default function RefereePanel({
                   {/* Large Digital Scoreboard */}
                   <div className="grid grid-cols-1 md:grid-cols-7 print:grid-cols-7 gap-4 items-stretch print:w-full">
                     {/* Team A Card */}
-                    <div className="md:col-span-3 print:col-span-3 glass-panel rounded-2xl p-6 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e] print:bg-white print:text-black print:border-neutral-400 print:shadow-none text-center flex flex-col justify-between min-h-[260px] print:min-h-[160px]">
+                    <div className="md:col-span-3 print:col-span-3 glass-panel rounded-2xl p-6 border border-subtle bg-surface print:bg-white print:text-black print:border-neutral-400 print:shadow-none text-center flex flex-col justify-between min-h-[260px] print:min-h-[160px]">
                       <div>
                         <span className="text-[10px] font-black text-brand-electric-light print:text-neutral-700 tracking-widest uppercase block mb-1">
                           {currentSportType === "FUTSAL" ? "EQUIPE A (MANDANTE)" : "TIME A / JOGADOR 1"}
@@ -1149,14 +1149,14 @@ export default function RefereePanel({
                               <button
                                 onClick={() => handleAddPoints(selectedMatch.teamA.id, 1)}
                                 disabled={isMatchFinished}
-                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-[#d8ccb4] dark:border-neutral-700 bg-white dark:bg-[#0f0f0f] text-stone-600 dark:text-[#e4e4e7] hover:border-brand-electric hover:bg-brand-electric/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
+                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-subtle bg-surface text-stone-600 dark:text-[#e4e4e7] hover:border-brand-electric hover:bg-brand-electric/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
                               >
                                 +1 Ponto
                               </button>
                               <button
                                 onClick={() => handleAddPoints(selectedMatch.teamA.id, 2, "Lá e Lô")}
                                 disabled={isMatchFinished}
-                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-[#d8ccb4] dark:border-neutral-700 bg-white dark:bg-[#0f0f0f] text-brand-electric-light hover:border-brand-electric hover:bg-brand-electric/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
+                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-subtle bg-surface text-brand-electric-light hover:border-brand-electric hover:bg-brand-electric/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
                                 title="Batida nas duas pontas (lá e lô)"
                               >
                                 +2 Pontos
@@ -1176,7 +1176,7 @@ export default function RefereePanel({
                     </div>
 
                     {/* VS & Central Controls */}
-                    <div className="md:col-span-1 print:col-span-1 flex flex-col items-center justify-center p-4 border border-[#d8ccb4] dark:border-[#1e1e1e] rounded-2xl bg-white/40 dark:bg-[#0f0f0f] print:bg-white print:text-black print:border-neutral-400 min-h-[120px]">
+                    <div className="md:col-span-1 print:col-span-1 flex flex-col items-center justify-center p-4 border border-subtle rounded-2xl bg-surface/40 dark:bg-[#0f0f0f] print:bg-white print:text-black print:border-neutral-400 min-h-[120px]">
                       <span className="font-display font-black text-neutral-400 dark:text-neutral-600 print:text-black text-2xl select-none block mb-2">
                         VS
                       </span>
@@ -1223,7 +1223,7 @@ export default function RefereePanel({
                     </div>
 
                     {/* Team B Card */}
-                    <div className="md:col-span-3 print:col-span-3 glass-panel rounded-2xl p-6 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e] print:bg-white print:text-black print:border-neutral-400 print:shadow-none text-center flex flex-col justify-between min-h-[260px] print:min-h-[160px]">
+                    <div className="md:col-span-3 print:col-span-3 glass-panel rounded-2xl p-6 border border-subtle bg-surface print:bg-white print:text-black print:border-neutral-400 print:shadow-none text-center flex flex-col justify-between min-h-[260px] print:min-h-[160px]">
                       <div>
                         <span className="text-[10px] font-black text-brand-neon print:text-neutral-700 tracking-widest uppercase block mb-1">
                           {currentSportType === "FUTSAL" ? "EQUIPE B (VISITANTE)" : "TIME B / JOGADOR 2"}
@@ -1336,14 +1336,14 @@ export default function RefereePanel({
                               <button
                                 onClick={() => handleAddPoints(selectedMatch.teamB.id, 1)}
                                 disabled={isMatchFinished}
-                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-[#d8ccb4] dark:border-neutral-700 bg-white dark:bg-[#0f0f0f] text-stone-600 dark:text-[#e4e4e7] hover:border-brand-neon-orange hover:bg-brand-neon-orange/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
+                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-subtle bg-surface text-stone-600 dark:text-[#e4e4e7] hover:border-brand-neon-orange hover:bg-brand-neon-orange/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
                               >
                                 +1 Ponto
                               </button>
                               <button
                                 onClick={() => handleAddPoints(selectedMatch.teamB.id, 2, "Lá e Lô")}
                                 disabled={isMatchFinished}
-                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-[#d8ccb4] dark:border-neutral-700 bg-white dark:bg-[#0f0f0f] text-brand-neon hover:border-brand-neon hover:bg-brand-neon/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
+                                className="py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-xl border border-subtle bg-surface text-brand-neon hover:border-brand-neon hover:bg-brand-neon/10 transition-all active:scale-95 disabled:opacity-30 cursor-pointer"
                                 title="Batida nas duas pontas (lá e lô)"
                               >
                                 +2 Pontos
@@ -1365,7 +1365,7 @@ export default function RefereePanel({
 
                   {/* Histórico de Sets Concluídos (Ping Pong e Vôlei) */}
                   {(currentSportType === "PING_PONG" || currentSportType === "VOLEI") && (
-                    <div className="glass-panel rounded-2xl p-5 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e]">
+                    <div className="glass-panel rounded-2xl p-5 border border-subtle bg-surface">
                       <h3 className="text-sm font-black uppercase tracking-wider text-stone-800 dark:text-[#e4e4e7] mb-3 flex items-center gap-2">
                         <History className="h-4 w-4 text-brand-electric-light" />
                         <span>Histórico de Sets da Partida</span>
@@ -1382,7 +1382,7 @@ export default function RefereePanel({
                             return (
                               <div
                                 key={s.setNumber}
-                                className="p-3.5 rounded-xl bg-white dark:bg-[#0f0f0f] border border-[#d8ccb4] dark:border-neutral-800 flex items-center justify-between shadow-sm"
+                                className="p-3.5 rounded-xl bg-surface border border-subtle flex items-center justify-between shadow-sm"
                               >
                                 <div>
                                   <span className="text-[10px] font-black uppercase tracking-wider text-stone-400 block">
@@ -1413,7 +1413,7 @@ export default function RefereePanel({
 
                   {/* Dominó: Histórico de Rodadas */}
                   {currentSportType === "DOMINO" && (
-                    <div className="glass-panel rounded-2xl p-5 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e]">
+                    <div className="glass-panel rounded-2xl p-5 border border-subtle bg-surface">
                       <h3 className="text-sm font-black uppercase tracking-wider text-stone-800 dark:text-[#e4e4e7] mb-4 flex items-center gap-2">
                         <History className="h-4 w-4 text-stone-500 dark:text-neutral-400" />
                         <span>Histórico de Batidas / Súmula Detalhada</span>
@@ -1438,10 +1438,10 @@ export default function RefereePanel({
                             return (
                               <div
                                 key={round.roundNumber}
-                                className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-[#0f0f0f] border border-[#d8ccb4] dark:border-neutral-800 shadow-sm text-xs"
+                                className="flex items-center justify-between p-3 rounded-lg bg-surface border border-subtle shadow-sm text-xs"
                               >
                                 <div className="flex items-center gap-3">
-                                  <span className="h-5 w-5 rounded bg-stone-100 dark:bg-neutral-900 border border-[#d8ccb4] dark:border-neutral-800 text-stone-500 dark:text-neutral-400 font-bold text-[10px] flex items-center justify-center">
+                                  <span className="h-5 w-5 rounded bg-zinc-100 dark:bg-neutral-900 border border-subtle text-stone-500 dark:text-neutral-400 font-bold text-[10px] flex items-center justify-center">
                                     R{round.roundNumber}
                                   </span>
                                   <div className="flex items-center gap-1.5">
@@ -1487,7 +1487,7 @@ export default function RefereePanel({
                   {/* Scoring Controls and Submission */}
                   {selectedMatch.status === "LIVE" && !isReadOnly && (
                     <div className="w-full print:hidden">
-                      <div className="glass-panel rounded-2xl p-5 border border-[#d8ccb4] dark:border-[#1e1e1e] bg-[#e6ddca] dark:bg-[#1e1e1e]">
+                      <div className="glass-panel rounded-2xl p-5 border border-subtle bg-surface">
                         <h3 className="text-sm font-black uppercase tracking-wider text-stone-800 dark:text-[#e4e4e7] mb-2 flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-brand-electric-light" />
                           <span>Encerramento de Partida</span>

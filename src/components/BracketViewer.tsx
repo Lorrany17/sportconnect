@@ -986,7 +986,7 @@ export default function BracketViewer({
   }, [tournament?.status]);
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-[#e4e4e7] print:bg-white print:text-black print:min-h-0 flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
+    <div className="min-h-screen bg-canvas text-primary print:bg-white print:text-black print:min-h-0 flex flex-col justify-between selection:bg-[#00a2ff]/30 selection:text-white">
       <div>
         {showPublicHeader && (
           <div className="print:hidden">
@@ -996,10 +996,10 @@ export default function BracketViewer({
 
         <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:max-w-none print:w-full print:p-0 print:space-y-4">
           {/* 1. Barra de Navegação & Ações */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#27272a] pb-4 print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-subtle pb-4 print:hidden">
             <button
               onClick={handleBack}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface hover:bg-surface-elevated border border-subtle text-xs font-bold text-secondary hover:text-primary transition-all cursor-pointer shadow-sm active:scale-95"
             >
               <ArrowLeft className="h-4 w-4 text-[#00a2ff]" />
               <span>Voltar ao Torneio</span>
@@ -1010,7 +1010,7 @@ export default function BracketViewer({
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] hover:border-[#00a2ff]/40 text-xs font-bold text-zinc-200 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-elevated border border-subtle hover:border-[#00a2ff]/40 text-xs font-bold text-secondary hover:text-primary transition-all cursor-pointer shadow-sm active:scale-95"
                 title="Imprimir ou baixar árvore do chaveamento em PDF"
               >
                 <Printer className="h-3.5 w-3.5 text-[#00a2ff]" />
@@ -1024,8 +1024,8 @@ export default function BracketViewer({
                   onClick={() => setIsEditMode(!isEditMode)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                     isEditMode
-                      ? "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-lg shadow-amber-500/10"
-                      : "bg-[#1e1e1e] hover:bg-zinc-800 border-[#27272a] text-zinc-300 hover:text-white"
+                      ? "bg-amber-500/20 border-amber-500/50 text-amber-500 dark:text-amber-300 shadow-lg shadow-amber-500/10"
+                      : "bg-surface hover:bg-surface-elevated border-subtle text-secondary hover:text-primary"
                   }`}
                   title={
                     isEditMode
@@ -1035,7 +1035,7 @@ export default function BracketViewer({
                 >
                   <Settings
                     className={`h-3.5 w-3.5 ${
-                      isEditMode ? "animate-spin text-amber-400" : "text-zinc-400"
+                      isEditMode ? "animate-spin text-amber-500 dark:text-amber-400" : "text-zinc-400"
                     }`}
                   />
                   <span>{isEditMode ? "Concluir Edição" : "Editar Chaveamento"}</span>
@@ -1048,7 +1048,7 @@ export default function BracketViewer({
                   type="button"
                   onClick={onRegenerateBracket}
                   disabled={isRegenerating}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                   title="Regenerar o chaveamento do zero com as equipes confirmadas"
                 >
                   {isRegenerating ? (
@@ -1061,8 +1061,8 @@ export default function BracketViewer({
               )}
 
               {isSavingEdit && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium">
-                  <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-xs font-medium">
+                  <Loader2 className="h-3 w-3 animate-spin text-amber-500 dark:text-amber-400" />
                   <span>Salvando alteração...</span>
                 </div>
               )}
@@ -1071,7 +1071,7 @@ export default function BracketViewer({
                 type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-zinc-300 hover:text-white transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-elevated border border-subtle text-xs font-bold text-secondary hover:text-primary transition-all cursor-pointer"
                 title="Recarregar chaveamento e placares"
               >
                 <RefreshCw
@@ -1083,15 +1083,15 @@ export default function BracketViewer({
               </button>
 
               {activeMatchesCount > 0 && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse" />
                   <span>{activeMatchesCount} Partida(s) Ao Vivo</span>
                 </div>
               )}
 
               {isBackgroundFetching && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-medium animate-pulse print:hidden">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-600 dark:text-blue-400 text-xs font-medium animate-pulse print:hidden">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-ping" />
                   <span className="hidden sm:inline">Sincronizando placar...</span>
                 </div>
               )}
@@ -1100,7 +1100,7 @@ export default function BracketViewer({
 
           {/* 2. Cabeçalho Informativo do Torneio */}
           {tournament && (
-            <div className="bg-[#18181b] border border-[#27272a] print:bg-white print:text-black print:border-neutral-300 print:shadow-none rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+            <div className="bg-surface border border-subtle print:bg-white print:text-black print:border-neutral-300 print:shadow-none rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00a2ff] via-indigo-500 to-purple-500 print:hidden" />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
@@ -1108,31 +1108,31 @@ export default function BracketViewer({
                     <span className="px-2.5 py-0.5 rounded-md bg-[#00a2ff]/10 text-[#00a2ff] print:bg-transparent print:text-black print:border-neutral-400 text-[10px] font-black uppercase tracking-wider border border-[#00a2ff]/20">
                       {sportLabel}
                     </span>
-                    <span className="text-zinc-500 text-xs">•</span>
-                    <span className="text-xs font-bold text-emerald-400 print:text-black flex items-center gap-1">
-                      <Trophy className="h-3.5 w-3.5 text-amber-400 print:text-black" />
+                    <span className="text-muted text-xs">•</span>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 print:text-black flex items-center gap-1">
+                      <Trophy className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 print:text-black" />
                       <span>{formatHeaderLabel}</span>
                     </span>
-                    <span className="text-zinc-500 text-xs">•</span>
+                    <span className="text-muted text-xs">•</span>
                     {isTournamentEnded ? (
-                      <span className="px-2.5 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[10px] font-black uppercase tracking-wider border border-zinc-700 flex items-center gap-1.5 shadow-sm">
-                        <CheckCircle className="h-3 w-3 text-emerald-400" />
+                      <span className="px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] font-black uppercase tracking-wider border border-zinc-300 dark:border-zinc-700 flex items-center gap-1.5 shadow-sm">
+                        <CheckCircle className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                         <span>Torneio Finalizado</span>
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                         <span>Em Andamento</span>
                       </span>
                     )}
                   </div>
 
-                  <h1 className="text-xl sm:text-3xl font-black text-white print:text-black font-display tracking-tight">
+                  <h1 className="text-xl sm:text-3xl font-black text-primary print:text-black font-display tracking-tight">
                     {tournament.name}
                   </h1>
 
                   {tournament.location && (
-                    <p className="text-xs text-zinc-400 print:text-neutral-700 flex items-center gap-1.5 pt-0.5">
+                    <p className="text-xs text-secondary print:text-neutral-700 flex items-center gap-1.5 pt-0.5">
                       <MapPin className="h-3.5 w-3.5 text-[#00a2ff] print:text-black" />
                       <span>{tournament.location}</span>
                     </p>
@@ -1142,7 +1142,7 @@ export default function BracketViewer({
                 <div className="flex items-center gap-2 self-start sm:self-center print:hidden">
                   <Link
                     href={`/torneio/${tournament.id}`}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-xs font-bold text-zinc-200 hover:text-white transition-all cursor-pointer shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700/60 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer shadow-sm"
                   >
                     <span>Ver Inscrições</span>
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -1159,12 +1159,12 @@ export default function BracketViewer({
               <div className="absolute bottom-0 left-0 transform -translate-x-8 translate-y-8 w-40 h-40 bg-yellow-400/10 rounded-full blur-2xl pointer-events-none print:hidden" />
 
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-black tracking-widest uppercase print:border-neutral-400 print:text-black">
-                  <Trophy className="h-4 w-4 text-amber-400 print:text-black" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-xs font-black tracking-widest uppercase print:border-neutral-400 print:text-black">
+                  <Trophy className="h-4 w-4 text-amber-500 dark:text-amber-400 print:text-black" />
                   <span>PÓDIO OFICIAL DO TORNEIO</span>
                 </div>
 
-                <h2 className="text-2xl sm:text-3xl font-black text-white print:text-black tracking-tight font-display">
+                <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white print:text-black tracking-tight font-display">
                   🏆 Campeões de {tournament?.name}
                 </h2>
 
@@ -1172,36 +1172,36 @@ export default function BracketViewer({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl pt-2 items-end">
                   {/* 2º Lugar - Prata */}
                   {podiumData.runnerUp ? (
-                    <div className="order-2 sm:order-1 flex flex-col items-center p-4 rounded-2xl bg-zinc-900/80 border border-zinc-700/80 shadow-md print:bg-white print:text-black print:border-neutral-300">
-                      <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-lg mb-2 shadow-sm">
+                    <div className="order-2 sm:order-1 flex flex-col items-center p-4 rounded-2xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-700/80 shadow-md print:bg-white print:text-black print:border-neutral-300">
+                      <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 flex items-center justify-center text-lg mb-2 shadow-sm">
                         🥈
                       </div>
-                      <span className="text-[10px] font-black tracking-widest text-zinc-400 uppercase">2º LUGAR • VICE-CAMPEÃO</span>
-                      <span className="text-sm sm:text-base font-bold text-white print:text-black mt-1 text-center truncate w-full">
+                      <span className="text-[10px] font-black tracking-widest text-zinc-500 dark:text-zinc-400 uppercase">2º LUGAR • VICE-CAMPEÃO</span>
+                      <span className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white print:text-black mt-1 text-center truncate w-full">
                         {podiumData.runnerUp.name}
                       </span>
                     </div>
                   ) : <div className="hidden sm:block order-1" />}
 
                   {/* 1º Lugar - Ouro (Grande Campeão) */}
-                  <div className="order-1 sm:order-2 flex flex-col items-center p-6 rounded-2xl bg-gradient-to-b from-amber-500/25 to-zinc-900/90 border-2 border-amber-400 shadow-xl shadow-amber-500/20 transform sm:-translate-y-2 print:bg-white print:text-black print:border-neutral-400 print:shadow-none">
+                  <div className="order-1 sm:order-2 flex flex-col items-center p-6 rounded-2xl bg-gradient-to-b from-amber-500/20 to-white/95 dark:from-amber-500/25 dark:to-zinc-900/90 border-2 border-amber-400 shadow-xl shadow-amber-500/20 transform sm:-translate-y-2 print:bg-white print:text-black print:border-neutral-400 print:shadow-none">
                     <div className="w-14 h-14 rounded-full bg-amber-400/30 border border-amber-300 flex items-center justify-center text-2xl mb-2 shadow-inner animate-bounce">
                       🥇
                     </div>
-                    <span className="text-[11px] font-black tracking-widest text-amber-300 print:text-black uppercase">1º LUGAR • GRANDE CAMPEÃO</span>
-                    <span className="text-base sm:text-xl font-black text-amber-200 print:text-black mt-1 text-center truncate w-full">
+                    <span className="text-[11px] font-black tracking-widest text-amber-700 dark:text-amber-300 print:text-black uppercase">1º LUGAR • GRANDE CAMPEÃO</span>
+                    <span className="text-base sm:text-xl font-black text-amber-800 dark:text-amber-200 print:text-black mt-1 text-center truncate w-full">
                       {podiumData.champion.name}
                     </span>
                   </div>
 
                   {/* 3º Lugar - Bronze */}
                   {podiumData.thirdPlace ? (
-                    <div className="order-3 sm:order-3 flex flex-col items-center p-4 rounded-2xl bg-zinc-900/80 border border-amber-700/50 shadow-md print:bg-white print:text-black print:border-neutral-300">
-                      <div className="w-10 h-10 rounded-full bg-amber-950/40 border border-amber-700/50 flex items-center justify-center text-lg mb-2 shadow-sm">
+                    <div className="order-3 sm:order-3 flex flex-col items-center p-4 rounded-2xl bg-white/80 dark:bg-zinc-900/80 border border-amber-300 dark:border-amber-700/50 shadow-md print:bg-white print:text-black print:border-neutral-300">
+                      <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/50 flex items-center justify-center text-lg mb-2 shadow-sm">
                         🥉
                       </div>
-                      <span className="text-[10px] font-black tracking-widest text-amber-500 uppercase">3º LUGAR • BRONZE</span>
-                      <span className="text-sm sm:text-base font-bold text-white print:text-black mt-1 text-center truncate w-full">
+                      <span className="text-[10px] font-black tracking-widest text-amber-600 dark:text-amber-500 uppercase">3º LUGAR • BRONZE</span>
+                      <span className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white print:text-black mt-1 text-center truncate w-full">
                         {podiumData.thirdPlace.name}
                       </span>
                     </div>
@@ -1213,7 +1213,7 @@ export default function BracketViewer({
 
           {/* Mensagem de Erro */}
           {errorMessage && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-medium">
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-300 text-xs font-medium">
               {errorMessage}
             </div>
           )}
@@ -1222,23 +1222,23 @@ export default function BracketViewer({
           {initialLoading && !tournament && matches.length === 0 ? (
             <div className="py-24 text-center space-y-3">
               <Loader2 className="h-9 w-9 text-[#00a2ff] animate-spin mx-auto" />
-              <p className="text-xs font-bold text-zinc-400">
+              <p className="text-xs font-bold text-secondary">
                 Carregando chaveamento e classificação da competição...
               </p>
             </div>
           ) : matches.length === 0 ? (
             <>
-              <div className="print:hidden border-2 border-dashed border-[#27272a] bg-[#141416]/50 rounded-3xl p-12 text-center space-y-4 max-w-xl mx-auto my-12">
-                <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center mx-auto shadow-md">
+              <div className="print:hidden border-2 border-dashed border-subtle bg-surface/50 rounded-3xl p-12 text-center space-y-4 max-w-xl mx-auto my-12">
+                <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 flex items-center justify-center mx-auto shadow-md">
                   <Network className="h-7 w-7 text-[#00a2ff]" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-base font-bold text-white">
+                  <h3 className="text-base font-bold text-primary">
                     {resolvedFormat === "LEAGUE"
                       ? "Tabela e Rodadas Ainda Não Geradas"
                       : "Chaveamento Ainda Não Gerado"}
                   </h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <p className="text-xs text-secondary leading-relaxed">
                     {resolvedFormat === "LEAGUE"
                       ? "Os confrontos de todas as rodadas deste campeonato em pontos corridos ainda não foram gerados pela organização. Assim que as inscrições forem encerradas e a tabela oficial for gerada, a classificação e as rodadas aparecerão aqui em tempo real."
                       : "As chaves e confrontos deste campeonato ainda não foram sorteados pela organização. Assim que as inscrições forem encerradas e o chaveamento oficial for gerado, a árvore de confrontos aparecerá aqui em tempo real."}
@@ -1256,7 +1256,7 @@ export default function BracketViewer({
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-zinc-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface hover:bg-surface-elevated border border-subtle text-secondary hover:text-primary font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
                   >
                     <Printer className="h-3.5 w-3.5 text-[#00a2ff]" />
                     <span>Imprimir Chave Vazia</span>
@@ -1320,9 +1320,9 @@ export default function BracketViewer({
 
       {/* 4. Faixa Discreta de Patrocinadores Oficiais no Rodapé */}
       {tournament?.sponsors && tournament.sponsors.length > 0 && (
-        <section className="w-full border-t border-[#27272a] bg-[#121214]/90 backdrop-blur-md py-3.5 px-4 sm:px-6 mt-8 print:hidden">
+        <section className="w-full border-t border-subtle bg-surface/90 backdrop-blur-md py-3.5 px-4 sm:px-6 mt-8 print:hidden">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3 sm:gap-6">
-            <span className="text-[11px] font-black uppercase tracking-wider text-zinc-500 whitespace-nowrap">
+            <span className="text-[11px] font-black uppercase tracking-wider text-muted whitespace-nowrap">
               Patrocinadores Oficiais:
             </span>
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-6">
@@ -1342,7 +1342,7 @@ export default function BracketViewer({
                         />
                       </div>
                     ) : (
-                      <span className="text-xs font-bold text-zinc-400 group-hover:text-amber-400 transition-colors">
+                      <span className="text-xs font-bold text-secondary group-hover:text-amber-500 transition-colors">
                         {sponsor.name}
                       </span>
                     )}
@@ -1374,7 +1374,7 @@ export default function BracketViewer({
       )}
 
       {/* Footer Limpo */}
-      <footer className="border-t border-[#27272a] py-6 text-center text-xs text-zinc-500 bg-[#141416]/50 print:hidden">
+      <footer className="border-t border-subtle py-6 text-center text-xs text-muted bg-surface/50 print:hidden">
         <div>SportConnect • Plataforma de Competições Esportivas</div>
       </footer>
 

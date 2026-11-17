@@ -93,17 +93,17 @@ export default function LeagueTable({
   return (
     <div className="space-y-8">
       {/* 1. Tabela de Classificação Master (Pontos Corridos) */}
-      <div className="bg-[#141416]/90 border border-[#27272a] rounded-3xl p-4 sm:p-6 shadow-2xl overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-zinc-800/80">
+      <div className="bg-surface/90 border border-subtle rounded-3xl p-4 sm:p-6 shadow-2xl overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-subtle">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
+            <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400">
               <Trophy className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white font-display">
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-primary font-display">
                 Tabela de Classificação • Pontos Corridos
               </h2>
-              <p className="text-[11px] text-zinc-400">
+              <p className="text-[11px] text-secondary">
                 Vitória = 3 pts • Empate = 1 pt • Derrota = 0 pts • Desempate: Pontos e Saldo (SG)
               </p>
             </div>
@@ -117,22 +117,22 @@ export default function LeagueTable({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-zinc-800 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+              <tr className="border-b border-subtle text-[11px] font-black uppercase tracking-wider text-muted">
                 <th className="py-3 px-3 w-14 text-center">Posição</th>
                 <th className="py-3 px-3">Equipe / Atleta</th>
-                <th className="py-3 px-3 text-center text-white" title="Pontos">
+                <th className="py-3 px-3 text-center text-primary" title="Pontos">
                   Pts
                 </th>
                 <th className="py-3 px-3 text-center" title="Jogos Disputados">
                   J
                 </th>
-                <th className="py-3 px-3 text-center text-emerald-400" title="Vitórias">
+                <th className="py-3 px-3 text-center text-emerald-600 dark:text-emerald-400" title="Vitórias">
                   V
                 </th>
-                <th className="py-3 px-3 text-center text-amber-400" title="Empates">
+                <th className="py-3 px-3 text-center text-amber-600 dark:text-amber-400" title="Empates">
                   E
                 </th>
-                <th className="py-3 px-3 text-center text-red-400" title="Derrotas">
+                <th className="py-3 px-3 text-center text-red-600 dark:text-red-400" title="Derrotas">
                   D
                 </th>
                 <th
@@ -155,7 +155,7 @@ export default function LeagueTable({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/60 text-xs sm:text-sm">
+            <tbody className="divide-y divide-subtle text-xs sm:text-sm">
               {standings.map((row, index) => {
                 const isFirst = index === 0;
                 const isTop3 = index < 3;
@@ -166,7 +166,7 @@ export default function LeagueTable({
                     className={`transition-colors ${
                       isFirst
                         ? "bg-amber-500/5 hover:bg-amber-500/10"
-                        : "hover:bg-zinc-900/60"
+                        : "hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60"
                     }`}
                   >
                     <td className="py-3.5 px-3 text-center font-black">
@@ -178,19 +178,19 @@ export default function LeagueTable({
                             ? "bg-zinc-300 text-black"
                             : index === 2
                             ? "bg-amber-700 text-white"
-                            : "bg-zinc-800/80 text-zinc-400"
+                            : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400"
                         }`}
                       >
                         {row.position}º
                       </span>
                     </td>
-                    <td className="py-3.5 px-3 font-bold text-white">
+                    <td className="py-3.5 px-3 font-bold text-primary">
                       <div className="flex items-center gap-2.5">
                         <span className="truncate max-w-[200px] sm:max-w-xs">
                           {row.teamName}
                         </span>
                         {isFirst && row.played > 0 && (
-                          <span className="print:hidden text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          <span className="print:hidden text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
                             Líder
                           </span>
                         )}
@@ -204,32 +204,32 @@ export default function LeagueTable({
                     <td className="py-3.5 px-3 text-center font-black text-base text-[#00a2ff]">
                       {row.pts}
                     </td>
-                    <td className="py-3.5 px-3 text-center text-zinc-300 font-semibold font-mono">
+                    <td className="py-3.5 px-3 text-center text-secondary font-semibold font-mono">
                       {row.j}
                     </td>
-                    <td className="py-3.5 px-3 text-center text-emerald-400 font-bold font-mono">
+                    <td className="py-3.5 px-3 text-center text-emerald-600 dark:text-emerald-400 font-bold font-mono">
                       {row.v}
                     </td>
-                    <td className="py-3.5 px-3 text-center text-amber-400 font-bold font-mono">
+                    <td className="py-3.5 px-3 text-center text-amber-600 dark:text-amber-400 font-bold font-mono">
                       {row.e}
                     </td>
-                    <td className="py-3.5 px-3 text-center text-red-400 font-bold font-mono">
+                    <td className="py-3.5 px-3 text-center text-red-600 dark:text-red-400 font-bold font-mono">
                       {row.d}
                     </td>
-                    <td className="py-3.5 px-3 text-center text-zinc-400 font-mono">
+                    <td className="py-3.5 px-3 text-center text-secondary font-mono">
                       {row.pro}
                     </td>
-                    <td className="py-3.5 px-3 text-center text-zinc-400 font-mono">
+                    <td className="py-3.5 px-3 text-center text-secondary font-mono">
                       {row.contra}
                     </td>
                     <td className="py-3.5 px-3 text-center font-mono font-bold">
                       <span
                         className={
                           row.sg > 0
-                            ? "text-emerald-400"
+                            ? "text-emerald-600 dark:text-emerald-400"
                             : row.sg < 0
-                            ? "text-red-400"
-                            : "text-zinc-400"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-secondary"
                         }
                       >
                         {row.sg > 0 ? `+${row.sg}` : row.sg}
@@ -246,11 +246,11 @@ export default function LeagueTable({
       {/* 2. Lista de Confrontos Organizados por Rodada (Rodada 1, Rodada 2...) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-zinc-200 flex items-center gap-2 font-display">
+          <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-primary flex items-center gap-2 font-display">
             <Calendar className="h-4 w-4 text-[#00a2ff]" />
             <span>Confrontos por Rodada ({sortedRounds.length} Rodadas)</span>
           </h3>
-          <span className="text-xs text-zinc-400 hidden sm:inline">
+          <span className="text-xs text-secondary hidden sm:inline">
             Todos contra todos • Turno Único
           </span>
         </div>
@@ -292,22 +292,22 @@ export default function LeagueTable({
             return (
               <div
                 key={roundNum}
-                className="bg-[#18181b] border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3 flex flex-col justify-between"
+                className="bg-surface border border-subtle rounded-2xl p-4 sm:p-5 shadow-xl space-y-3 flex flex-col justify-between"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-subtle">
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-1 rounded-lg bg-[#00a2ff]/15 border border-[#00a2ff]/30 text-xs font-black uppercase tracking-wider text-[#00a2ff]">
                         Rodada {roundNum}
                       </span>
                       {completedInRound === roundMatches.length && roundMatches.length > 0 && (
-                        <span className="print:hidden inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                        <span className="print:hidden inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="h-3 w-3" />
                           <span>Concluída</span>
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-zinc-500 font-semibold">
+                    <span className="text-[11px] text-muted font-semibold">
                       {roundMatches.length} {roundMatches.length === 1 ? "jogo" : "jogos"}
                     </span>
                   </div>
@@ -341,15 +341,15 @@ export default function LeagueTable({
                               onSelectMatch(match);
                             }
                           }}
-                          className={`p-3 rounded-xl bg-[#121214] border transition-all flex items-center justify-between gap-2 ${
+                          className={`p-3 rounded-xl bg-zinc-50 dark:bg-[#121214] border transition-all flex items-center justify-between gap-2 ${
                             isLive
                               ? "border-amber-500/50 ring-1 ring-amber-500/20"
                               : isCompleted
-                              ? "border-zinc-800 hover:border-[#00a2ff]/40 cursor-pointer"
-                              : "border-zinc-800/70"
+                              ? "border-subtle hover:border-[#00a2ff]/40 cursor-pointer"
+                              : "border-subtle/70"
                           }`}
                         >
-                          <span className="text-[10px] font-bold text-zinc-500 shrink-0 w-8">
+                          <span className="text-[10px] font-bold text-muted shrink-0 w-8">
                             #{match.match_order || idx + 1}
                           </span>
 
@@ -357,8 +357,8 @@ export default function LeagueTable({
                             <span
                               className={`text-xs font-bold truncate block ${
                                 isCompleted && (matchIsSets ? sets1 > sets2 : score1 > score2)
-                                  ? "text-emerald-400"
-                                  : "text-zinc-100"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-primary"
                               }`}
                               title={team1?.name || "Equipe 1"}
                             >
@@ -366,25 +366,25 @@ export default function LeagueTable({
                             </span>
                           </div>
 
-                          <div className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 print:bg-white print:border-neutral-400 print:text-black font-mono text-[11px] font-black text-white shrink-0">
+                          <div className="px-2.5 py-1 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-neutral-400 print:text-black font-mono text-[11px] font-black text-zinc-900 dark:text-white shrink-0">
                             {isCompleted ? (
                               matchIsSets ? (
                                 <>
-                                  <span className={sets1 > sets2 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                  <span className={sets1 > sets2 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                     {sets1}
                                   </span>
-                                  <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
-                                  <span className={sets2 > sets1 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                  <span className="text-muted print:text-neutral-700 mx-1">x</span>
+                                  <span className={sets2 > sets1 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                     {sets2}
                                   </span>
                                 </>
                               ) : (
                                 <>
-                                  <span className={score1 > score2 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                  <span className={score1 > score2 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                     {score1}
                                   </span>
-                                  <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
-                                  <span className={score2 > score1 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                  <span className="text-muted print:text-neutral-700 mx-1">x</span>
+                                  <span className={score2 > score1 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                     {score2}
                                   </span>
                                 </>
@@ -392,25 +392,25 @@ export default function LeagueTable({
                             ) : isLive ? (
                               matchIsSets ? (
                                 <div className="flex items-center gap-1 font-mono text-xs">
-                                  <span className="text-white print:text-black font-black">{sets1}</span>
+                                  <span className="text-primary print:text-black font-black">{sets1}</span>
                                   <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
                                     ({activePts1})
                                   </span>
-                                  <span className="text-zinc-500 print:text-neutral-700 mx-0.5">x</span>
+                                  <span className="text-muted print:text-neutral-700 mx-0.5">x</span>
                                   <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
                                     ({activePts2})
                                   </span>
-                                  <span className="text-white print:text-black font-black">{sets2}</span>
+                                  <span className="text-primary print:text-black font-black">{sets2}</span>
                                 </div>
                               ) : (
                                 <>
-                                  <span className="text-white print:text-black">{score1}</span>
-                                  <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
-                                  <span className="text-white print:text-black">{score2}</span>
+                                  <span className="text-primary print:text-black">{score1}</span>
+                                  <span className="text-muted print:text-neutral-700 mx-1">x</span>
+                                  <span className="text-primary print:text-black">{score2}</span>
                                 </>
                               )
                             ) : (
-                              <span className="text-zinc-500 print:text-black font-mono">[&nbsp;&nbsp;] x [&nbsp;&nbsp;]</span>
+                              <span className="text-muted print:text-black font-mono">[&nbsp;&nbsp;] x [&nbsp;&nbsp;]</span>
                             )}
                           </div>
 
@@ -418,8 +418,8 @@ export default function LeagueTable({
                             <span
                               className={`text-xs font-bold truncate block ${
                                 isCompleted && (matchIsSets ? sets2 > sets1 : score2 > score1)
-                                  ? "text-emerald-400"
-                                  : "text-zinc-100"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-primary"
                               }`}
                               title={team2?.name || "Equipe 2"}
                             >
@@ -428,7 +428,7 @@ export default function LeagueTable({
                           </div>
 
                           {(isCompleted || isLive) && onSelectMatch && (
-                            <BarChart2 className="h-3.5 w-3.5 text-zinc-500 hover:text-[#00a2ff] shrink-0" />
+                            <BarChart2 className="h-3.5 w-3.5 text-zinc-400 hover:text-[#00a2ff] shrink-0" />
                           )}
                         </div>
                       );
@@ -437,12 +437,12 @@ export default function LeagueTable({
                 </div>
 
                 {explicitByeTeamName && (
-                  <div className="pt-2.5 border-t border-zinc-800/70 flex items-center justify-between text-[11px] text-zinc-400">
-                    <span className="flex items-center gap-1.5 font-semibold text-amber-400/90">
+                  <div className="pt-2.5 border-t border-subtle flex items-center justify-between text-[11px] text-secondary">
+                    <span className="flex items-center gap-1.5 font-semibold text-amber-500 dark:text-amber-400/90">
                       <Clock className="h-3.5 w-3.5" />
                       <span>Folga na Rodada (BYE):</span>
                     </span>
-                    <span className="font-bold text-zinc-200 truncate max-w-[180px]">
+                    <span className="font-bold text-primary truncate max-w-[180px]">
                       {explicitByeTeamName}
                     </span>
                   </div>

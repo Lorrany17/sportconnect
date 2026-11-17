@@ -577,18 +577,18 @@ export function KnockoutTree({
     return (
       <div
         key={(match as any).uuid || (match as any).db_id || match.id}
-        className={`bg-[#18181b] border rounded-2xl p-3.5 sm:p-4 shadow-xl transition-all duration-300 relative group print:bg-white print:text-black print:border-neutral-400 print:shadow-none print:break-inside-avoid ${
+        className={`bg-surface border rounded-2xl p-3.5 sm:p-4 shadow-xl transition-all duration-300 relative group print:bg-white print:text-black print:border-neutral-400 print:shadow-none print:break-inside-avoid ${
           isThirdPlace
             ? "border-amber-500/40 ring-1 ring-amber-500/15"
             : isLive
             ? "border-amber-500/60 ring-1 ring-amber-500/30"
             : isFinal
             ? "border-amber-500/30 hover:border-amber-500/60"
-            : "border-zinc-800 hover:border-[#00a2ff]/50"
+            : "border-subtle hover:border-[#00a2ff]/50"
         }`}
       >
-        <div className="flex items-center justify-between text-[10px] font-bold pb-2 mb-2 border-b border-zinc-800/80 print:border-neutral-300">
-          <span className="text-zinc-500 print:text-black uppercase tracking-wider">
+        <div className="flex items-center justify-between text-[10px] font-bold pb-2 mb-2 border-b border-subtle print:border-neutral-300">
+          <span className="text-muted print:text-black uppercase tracking-wider">
             {isThirdPlace ? "Disputa de 3º Lugar" : `Jogo #${match.match_order || idx + 1}`}
           </span>
 
@@ -688,8 +688,8 @@ export function KnockoutTree({
           <div
             className={`flex items-center justify-between py-1.5 px-2 rounded-xl transition-colors print:text-black ${
               isWinner1
-                ? "bg-emerald-500/10 text-emerald-300 print:bg-neutral-100 font-black"
-                : "text-zinc-200"
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 print:bg-neutral-100 font-black"
+                : "text-secondary"
             }`}
           >
             <div className="flex items-center gap-2 min-w-0 pr-2">
@@ -700,8 +700,8 @@ export function KnockoutTree({
                   team1
                     ? "bg-blue-600/20 text-[#00a2ff] border border-blue-500/30"
                     : canEditRound
-                    ? "bg-zinc-800/80 text-amber-400/80 border border-dashed border-amber-500/40"
-                    : "bg-zinc-800/60 text-zinc-500 border border-zinc-700/40"
+                    ? "bg-zinc-100 dark:bg-zinc-800/80 text-amber-500 dark:text-amber-400/80 border border-dashed border-amber-500/40"
+                    : "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 border border-zinc-200 dark:border-zinc-700/40"
                 }`}
               >
                 {team1 ? team1.name.slice(0, 1).toUpperCase() : canEditRound ? "∅" : "?"}
@@ -710,9 +710,9 @@ export function KnockoutTree({
                 className={`text-xs truncate print:text-black ${
                   !team1
                     ? canEditRound
-                      ? "text-amber-400/90 font-medium italic"
+                      ? "text-amber-500 dark:text-amber-400/90 font-medium italic"
                       : "text-zinc-500 italic font-normal"
-                    : "font-semibold"
+                    : "font-semibold text-primary"
                 }`}
                 title={team1Name}
               >
@@ -735,12 +735,12 @@ export function KnockoutTree({
 
             <div className="shrink-0 font-mono text-xs font-black min-w-[28px] text-right print:text-black">
               {isScheduled ? (
-                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-zinc-700/80 text-zinc-500 text-[10px] font-mono print:border-black print:text-black print:font-bold">
+                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700/80 text-zinc-500 text-[10px] font-mono print:border-black print:text-black print:font-bold">
                   [&nbsp;&nbsp;]
                 </span>
               ) : isLive && isSetsSport ? (
                 <div className="inline-flex items-center justify-end gap-1">
-                  <span className="text-white print:text-black font-black">{sets1}</span>
+                  <span className="text-primary print:text-black font-black">{sets1}</span>
                   <span className="text-[11px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
                     ({score1})
                   </span>
@@ -755,7 +755,7 @@ export function KnockoutTree({
 
           {canEditRound && (
             <div
-              className="mt-1 pt-1 border-t border-zinc-800/50 print:hidden"
+              className="mt-1 pt-1 border-t border-subtle print:hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <select
@@ -773,7 +773,7 @@ export function KnockoutTree({
                   }
                   onReplaceTeam(match.id, "team1", val);
                 }}
-                className="w-full text-[10px] bg-zinc-900 border border-zinc-700/80 rounded-lg px-2 py-1 text-zinc-200 hover:border-amber-400 focus:border-amber-400 focus:outline-none cursor-pointer"
+                className="w-full text-[10px] bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-2 py-1 text-zinc-900 dark:text-zinc-200 hover:border-amber-400 focus:border-amber-400 focus:outline-none cursor-pointer"
               >
                 <option value="">{team1Id ? "Remover equipe da vaga" : "Definir equipe..."}</option>
                 <optgroup label="Equipes disponíveis">
@@ -800,7 +800,7 @@ export function KnockoutTree({
         </div>
 
         {/* Divisor */}
-        <div className="h-[1px] bg-zinc-800/80 print:bg-neutral-300 my-2" />
+        <div className="h-[1px] bg-subtle print:bg-neutral-300 my-2" />
 
         {/* Equipe 2 */}
         <div
@@ -872,7 +872,7 @@ export function KnockoutTree({
                   isOver2
                     ? "border-amber-400 bg-amber-500/25 ring-2 ring-amber-400/60 scale-[1.01]"
                     : isEmpty2
-                    ? "border-amber-500/50 bg-zinc-900/60 hover:border-amber-400 hover:bg-amber-500/10"
+                    ? "border-amber-500/50 bg-zinc-100/60 dark:bg-zinc-900/60 hover:border-amber-400 hover:bg-amber-500/10"
                     : "border-amber-500/30 hover:bg-amber-500/10"
                 }`
               : ""
@@ -881,8 +881,8 @@ export function KnockoutTree({
           <div
             className={`flex items-center justify-between py-1.5 px-2 rounded-xl transition-colors print:text-black ${
               isWinner2
-                ? "bg-emerald-500/10 text-emerald-300 print:bg-neutral-100 font-black"
-                : "text-zinc-200"
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 print:bg-neutral-100 font-black"
+                : "text-secondary"
             }`}
           >
             <div className="flex items-center gap-2 min-w-0 pr-2">
@@ -893,8 +893,8 @@ export function KnockoutTree({
                   team2
                     ? "bg-blue-600/20 text-[#00a2ff] border border-blue-500/30"
                     : canEditRound
-                    ? "bg-zinc-800/80 text-amber-400/80 border border-dashed border-amber-500/40"
-                    : "bg-zinc-800/60 text-zinc-500 border border-zinc-700/40"
+                    ? "bg-zinc-100 dark:bg-zinc-800/80 text-amber-500 dark:text-amber-400/80 border border-dashed border-amber-500/40"
+                    : "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 border border-zinc-200 dark:border-zinc-700/40"
                 }`}
               >
                 {team2 ? team2.name.slice(0, 1).toUpperCase() : canEditRound ? "∅" : "?"}
@@ -903,9 +903,9 @@ export function KnockoutTree({
                 className={`text-xs truncate print:text-black ${
                   !team2
                     ? canEditRound
-                      ? "text-amber-400/90 font-medium italic"
+                      ? "text-amber-500 dark:text-amber-400/90 font-medium italic"
                       : "text-zinc-500 italic font-normal"
-                    : "font-semibold"
+                    : "font-semibold text-primary"
                 }`}
                 title={team2Name}
               >
@@ -928,12 +928,12 @@ export function KnockoutTree({
 
             <div className="shrink-0 font-mono text-xs font-black min-w-[28px] text-right print:text-black">
               {isScheduled ? (
-                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-zinc-700/80 text-zinc-500 text-[10px] font-mono print:border-black print:text-black print:font-bold">
+                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700/80 text-zinc-500 text-[10px] font-mono print:border-black print:text-black print:font-bold">
                   [&nbsp;&nbsp;]
                 </span>
               ) : isLive && isSetsSport ? (
                 <div className="inline-flex items-center justify-end gap-1">
-                  <span className="text-white print:text-black font-black">{sets2}</span>
+                  <span className="text-primary print:text-black font-black">{sets2}</span>
                   <span className="text-[11px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
                     ({score2})
                   </span>
@@ -948,7 +948,7 @@ export function KnockoutTree({
 
           {canEditRound && (
             <div
-              className="mt-1 pt-1 border-t border-zinc-800/50 print:hidden"
+              className="mt-1 pt-1 border-t border-subtle print:hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <select
@@ -966,7 +966,7 @@ export function KnockoutTree({
                   }
                   onReplaceTeam(match.id, "team2", val);
                 }}
-                className="w-full text-[10px] bg-zinc-900 border border-zinc-700/80 rounded-lg px-2 py-1 text-zinc-200 hover:border-amber-400 focus:border-amber-400 focus:outline-none cursor-pointer"
+                className="w-full text-[10px] bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-2 py-1 text-zinc-900 dark:text-zinc-200 hover:border-amber-400 focus:border-amber-400 focus:outline-none cursor-pointer"
               >
                 <option value="">{team2Id ? "Remover equipe da vaga" : "Definir equipe..."}</option>
                 <optgroup label="Equipes disponíveis">
@@ -999,7 +999,7 @@ export function KnockoutTree({
               e.stopPropagation();
               onSelectMatch(match);
             }}
-            className="w-full mt-2.5 pt-2 border-t border-zinc-800/70 flex items-center justify-center gap-1.5 text-[10px] font-bold text-zinc-400 hover:text-[#00a2ff] transition-all cursor-pointer group/det print:hidden"
+            className="w-full mt-2.5 pt-2 border-t border-subtle flex items-center justify-center gap-1.5 text-[10px] font-bold text-muted hover:text-[#00a2ff] transition-all cursor-pointer group/det print:hidden"
           >
             <BarChart2 className="h-3 w-3 text-zinc-500 group-hover/det:text-[#00a2ff] transition-colors" />
             <span>Ver Detalhes</span>
@@ -1010,22 +1010,22 @@ export function KnockoutTree({
   };
 
   return (
-    <div className="w-full bg-[#141416]/70 border border-[#27272a] print:w-full print:bg-white print:text-black print:border-neutral-300 print:shadow-none print:overflow-visible rounded-3xl p-4 sm:p-6 shadow-2xl overflow-hidden">
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-zinc-800/80 print:border-neutral-300 text-xs text-zinc-400 print:text-black">
+    <div className="w-full bg-surface/70 border border-subtle print:w-full print:bg-white print:text-black print:border-neutral-300 print:shadow-none print:overflow-visible rounded-3xl p-4 sm:p-6 shadow-2xl overflow-hidden">
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-subtle print:border-neutral-300 text-xs text-secondary print:text-black">
         <div className="flex items-center gap-2">
           <Network className="h-4 w-4 text-[#00a2ff] print:text-black" />
-          <span className="font-bold text-zinc-300 print:text-black">
+          <span className="font-bold text-primary print:text-black">
             Árvore Eliminatória ({roundGroups.length} Fases • {matches.length} Partidas)
           </span>
         </div>
-        <span className="text-[11px] text-zinc-500 hidden sm:inline print:hidden">
+        <span className="text-[11px] text-muted hidden sm:inline print:hidden">
           Deslize para os lados para visualizar da 1ª Fase até a Final
         </span>
       </div>
 
       {isEditMode && (
-        <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-xs text-amber-300 animate-fadeIn print:hidden">
-          <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
+        <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-xs text-amber-600 dark:text-amber-300 animate-fadeIn print:hidden">
+          <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400 shrink-0" />
           <span>
             <strong>Modo de Edição Manual Ativo:</strong> Arraste e solte uma equipe sobre outra vaga para trocar as posições, ou selecione a equipe no menu suspenso de cada confronto da 1ª rodada.
           </span>
@@ -1047,15 +1047,15 @@ export function KnockoutTree({
                 isFinal ? "justify-center" : "justify-around"
               }`}
             >
-              <div className="text-center pb-3.5 mb-2 border-b border-zinc-800 print:border-neutral-300">
+              <div className="text-center pb-3.5 mb-2 border-b border-subtle print:border-neutral-300">
                 <span
                   className={`text-xs font-black uppercase tracking-wider block print:text-black ${
-                    isFinal ? "text-amber-400" : "text-[#00a2ff]"
+                    isFinal ? "text-amber-500 dark:text-amber-400" : "text-[#00a2ff]"
                   }`}
                 >
                   {roundTitle}
                 </span>
-                <span className="text-[11px] text-zinc-500 print:text-neutral-700 font-medium">
+                <span className="text-[11px] text-muted print:text-neutral-700 font-medium">
                   {roundMatches.length}{" "}
                   {roundMatches.length === 1 ? "confronto" : "confrontos"}
                 </span>
@@ -1083,7 +1083,7 @@ export function KnockoutTree({
 
                 {/* Conector exclusivo no agrupamento (Round Wrapper / Pair) */}
                 {!isFinal && !isSingle && (
-                  <div className="hidden sm:block absolute inset-y-0 left-full w-6 sm:w-10 pointer-events-none text-zinc-700/80 dark:text-zinc-600">
+                  <div className="hidden sm:block absolute inset-y-0 left-full w-6 sm:w-10 pointer-events-none text-zinc-300 dark:text-zinc-700">
                     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                       <path
                         d="M 0 25 H 50 V 75 H 0 M 50 50 H 100"
@@ -1097,7 +1097,7 @@ export function KnockoutTree({
                 )}
 
                 {!isFinal && isSingle && (
-                  <div className="hidden sm:block absolute inset-y-0 left-full w-6 sm:w-10 pointer-events-none text-zinc-700/80 dark:text-zinc-600">
+                  <div className="hidden sm:block absolute inset-y-0 left-full w-6 sm:w-10 pointer-events-none text-zinc-300 dark:text-zinc-700">
                     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                       <path
                         d="M 0 50 H 100"
@@ -1115,7 +1115,7 @@ export function KnockoutTree({
 
           {/* Disputa de 3º Lugar renderizada logo abaixo da Grande Final */}
           {isFinal && thirdPlaceMatch && (
-            <div className="mt-6 pt-4 border-t border-dashed border-zinc-800 space-y-2">
+            <div className="mt-6 pt-4 border-t border-dashed border-subtle space-y-2">
               <div className="flex items-center gap-1.5 px-0.5">
                 <span className="text-[11px] font-black uppercase tracking-wider text-amber-500/90 flex items-center gap-1">
                   🥉 Disputa de 3º Lugar
@@ -1370,27 +1370,27 @@ export function GroupStages({
     <div className="space-y-8 print:w-full print:bg-white print:text-black">
       {/* 1. Secção Superior: Tabelas de Classificação da Fase de Grupos */}
       <div className="space-y-4">
-        <div className="bg-[#141416]/90 border border-[#27272a] print:bg-white print:text-black print:border-neutral-300 print:shadow-none rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div className="bg-surface/90 border border-subtle print:bg-white print:text-black print:border-neutral-300 print:shadow-none rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#00a2ff]/10 border border-[#00a2ff]/20 text-[#00a2ff] print:bg-transparent print:text-black print:border-neutral-400">
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white print:text-black font-display">
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-primary print:text-black font-display">
                 Tabelas de Classificação • Fase de Grupos ({computedGroups.length} Grupos)
               </h2>
-              <p className="text-xs text-zinc-400 print:text-neutral-700">
+              <p className="text-xs text-secondary print:text-neutral-700">
                 Vitória = 3 pts • Empate = 1 pt • Os 2 primeiros de cada grupo classificam-se para o Mata-Mata
               </p>
             </div>
           </div>
 
           {groupMatchesTotal > 0 && (
-            <div className="print:hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 self-start sm:self-center">
+            <div className="print:hidden inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 self-start sm:self-center">
               <CheckCircle2
                 className={`h-4 w-4 ${
                   groupMatchesCompleted === groupMatchesTotal
-                    ? "text-emerald-400"
+                    ? "text-emerald-500 dark:text-emerald-400"
                     : "text-[#00a2ff]"
                 }`}
               />
@@ -1413,19 +1413,19 @@ export function GroupStages({
             return (
               <div
                 key={group.id}
-                className="bg-[#141416]/90 border border-[#27272a] print:bg-white print:text-black print:border-neutral-400 print:shadow-none print:break-inside-avoid rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5 flex flex-col justify-between"
+                className="bg-surface/90 border border-subtle print:bg-white print:text-black print:border-neutral-400 print:shadow-none print:break-inside-avoid rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5 flex flex-col justify-between"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-800 print:border-neutral-300">
+                  <div className="flex items-center justify-between pb-3 border-b border-subtle print:border-neutral-300">
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-1 rounded-lg bg-[#00a2ff]/15 border border-[#00a2ff]/30 print:bg-transparent print:border-neutral-400 print:text-black text-xs font-black uppercase tracking-wider text-[#00a2ff]">
                         {group.name}
                       </span>
-                      <span className="text-[11px] font-bold text-zinc-400 print:text-neutral-700">
+                      <span className="text-[11px] font-bold text-secondary print:text-neutral-700">
                         Classificação
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold text-zinc-500 print:text-neutral-700">
+                    <span className="text-[11px] font-bold text-muted print:text-neutral-700">
                       {rows.length} {rows.length === 1 ? "equipe" : "equipes"}
                     </span>
                   </div>
@@ -1434,22 +1434,22 @@ export function GroupStages({
                   <div className="overflow-x-auto print:overflow-visible">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-zinc-800 print:border-neutral-300 text-[10px] font-black uppercase text-zinc-500 print:text-black">
+                        <tr className="border-b border-subtle print:border-neutral-300 text-[10px] font-black uppercase text-muted print:text-black">
                           <th className="py-2 px-2 w-12 text-center">Posição</th>
                           <th className="py-2 px-2">Equipe</th>
-                          <th className="py-2 px-2 text-center text-white print:text-black" title="Pontos">
+                          <th className="py-2 px-2 text-center text-primary print:text-black" title="Pontos">
                             Pts
                           </th>
                           <th className="py-2 px-2 text-center" title="Jogos">
                             J
                           </th>
-                          <th className="py-2 px-2 text-center text-emerald-400 print:text-black" title="Vitórias">
+                          <th className="py-2 px-2 text-center text-emerald-600 dark:text-emerald-400 print:text-black" title="Vitórias">
                             V
                           </th>
-                          <th className="py-2 px-2 text-center text-amber-400 print:text-black" title="Empates">
+                          <th className="py-2 px-2 text-center text-amber-600 dark:text-amber-400 print:text-black" title="Empates">
                             E
                           </th>
-                          <th className="py-2 px-2 text-center text-red-400 print:text-black" title="Derrotas">
+                          <th className="py-2 px-2 text-center text-red-600 dark:text-red-400 print:text-black" title="Derrotas">
                             D
                           </th>
                           <th className="py-2 px-2 text-center" title={isSetsSport ? "Saldo de Sets" : "Saldo"}>
@@ -1457,7 +1457,7 @@ export function GroupStages({
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-800/50 print:divide-neutral-300 text-xs">
+                      <tbody className="divide-y divide-subtle print:divide-neutral-300 text-xs">
                         {rows.map((row, idx) => {
                           const qualified = groupMatchesCompleted > 0 && idx < 2;
                           return (
@@ -1466,27 +1466,27 @@ export function GroupStages({
                               className={
                                 qualified
                                   ? "bg-emerald-500/5 hover:bg-emerald-500/10 print:bg-transparent transition-colors"
-                                  : "hover:bg-zinc-900/50 transition-colors"
+                                  : "hover:bg-zinc-100/50 dark:hover:bg-zinc-900/50 transition-colors"
                               }
                             >
                               <td className="py-2.5 px-2 text-center font-black">
                                 <span
                                   className={`inline-flex items-center justify-center w-6 h-5 rounded text-[10px] print:text-black ${
                                     qualified
-                                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 print:bg-transparent print:border-none"
-                                      : "text-zinc-500"
+                                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 print:bg-transparent print:border-none"
+                                      : "text-muted"
                                   }`}
                                 >
                                   {row.position}º
                                 </span>
                               </td>
-                              <td className="py-2.5 px-2 font-bold text-white print:text-black truncate max-w-[150px]">
+                              <td className="py-2.5 px-2 font-bold text-primary print:text-black truncate max-w-[150px]">
                                 <div className="flex items-center gap-1.5">
                                   <span className="truncate" title={row.teamName}>
                                     {row.teamName}
                                   </span>
                                   {qualified && (
-                                    <span className="print:hidden text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">
+                                    <span className="print:hidden text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shrink-0">
                                       Classif.
                                     </span>
                                   )}
@@ -1495,26 +1495,26 @@ export function GroupStages({
                               <td className="py-2.5 px-2 text-center font-black text-[#00a2ff] print:text-black">
                                 {row.pts}
                               </td>
-                              <td className="py-2.5 px-2 text-center text-zinc-400 print:text-black font-mono">
+                              <td className="py-2.5 px-2 text-center text-secondary print:text-black font-mono">
                                 {row.j}
                               </td>
-                              <td className="py-2.5 px-2 text-center text-emerald-400 print:text-black font-bold font-mono">
+                              <td className="py-2.5 px-2 text-center text-emerald-600 dark:text-emerald-400 print:text-black font-bold font-mono">
                                 {row.v}
                               </td>
-                              <td className="py-2.5 px-2 text-center text-amber-400 print:text-black font-bold font-mono">
+                              <td className="py-2.5 px-2 text-center text-amber-600 dark:text-amber-400 print:text-black font-bold font-mono">
                                 {row.e}
                               </td>
-                              <td className="py-2.5 px-2 text-center text-red-400 print:text-black font-bold font-mono">
+                              <td className="py-2.5 px-2 text-center text-red-600 dark:text-red-400 print:text-black font-bold font-mono">
                                 {row.d}
                               </td>
                               <td className="py-2.5 px-2 text-center font-mono font-bold">
                                 <span
                                   className={`print:text-black ${
                                     row.sg > 0
-                                      ? "text-emerald-400"
+                                      ? "text-emerald-600 dark:text-emerald-400"
                                       : row.sg < 0
-                                      ? "text-red-400"
-                                      : "text-zinc-400"
+                                      ? "text-red-600 dark:text-red-400"
+                                      : "text-secondary"
                                   }`}
                                 >
                                   {row.sg > 0 ? `+${row.sg}` : row.sg}
@@ -1530,13 +1530,13 @@ export function GroupStages({
 
                 {/* Partidas do Grupo (Round-Robin) */}
                 {group.matches.length > 0 && (
-                  <div className="pt-3 border-t border-zinc-800/80 print:border-neutral-300 space-y-2.5">
-                    <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-zinc-400 print:text-black">
+                  <div className="pt-3 border-t border-subtle print:border-neutral-300 space-y-2.5">
+                    <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-secondary print:text-black">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-[#00a2ff] print:text-black" />
                         <span>Confrontos do {group.name}</span>
                       </span>
-                      <span className="text-zinc-500 print:text-neutral-700">
+                      <span className="text-muted print:text-neutral-700">
                         {group.matches.length} {group.matches.length === 1 ? "jogo" : "jogos"}
                       </span>
                     </div>
@@ -1569,41 +1569,41 @@ export function GroupStages({
                                 onSelectMatch(match);
                               }
                             }}
-                            className={`px-3 py-2 rounded-xl bg-[#18181b] print:bg-white print:text-black print:border-neutral-300 border text-xs flex items-center justify-between gap-2 transition-all ${
+                            className={`px-3 py-2 rounded-xl bg-zinc-50 dark:bg-[#18181b] print:bg-white print:text-black print:border-neutral-300 border text-xs flex items-center justify-between gap-2 transition-all ${
                               isLive
                                 ? "border-amber-500/50 ring-1 ring-amber-500/20"
                                 : isCompleted
-                                ? "border-zinc-800 hover:border-[#00a2ff]/40 cursor-pointer"
-                                : "border-zinc-800/60"
+                                ? "border-subtle hover:border-[#00a2ff]/40 cursor-pointer"
+                                : "border-subtle/60"
                             }`}
                           >
-                            <span className="text-[10px] font-bold text-zinc-500 print:text-neutral-700 shrink-0 w-10">
+                            <span className="text-[10px] font-bold text-muted print:text-neutral-700 shrink-0 w-10">
                               R{match.round || 1}
                             </span>
 
-                            <span className="flex-1 text-right font-semibold text-zinc-200 print:text-black truncate">
+                            <span className="flex-1 text-right font-semibold text-primary print:text-black truncate">
                               {t1?.name || "Equipe 1"}
                             </span>
 
-                            <div className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 print:bg-white print:border-neutral-400 print:text-black font-mono text-[11px] font-black text-white shrink-0">
+                            <div className="px-2.5 py-1 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 print:bg-white print:border-neutral-400 print:text-black font-mono text-[11px] font-black text-zinc-900 dark:text-white shrink-0">
                               {isCompleted ? (
                                 matchIsSets ? (
                                   <>
-                                    <span className={sets1 > sets2 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    <span className={sets1 > sets2 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                       {sets1}
                                     </span>
-                                    <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
-                                    <span className={sets2 > sets1 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    <span className="text-muted print:text-neutral-700 mx-1">x</span>
+                                    <span className={sets2 > sets1 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                       {sets2}
                                     </span>
                                   </>
                                 ) : (
                                   <>
-                                    <span className={score1 > score2 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    <span className={score1 > score2 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                       {score1}
                                     </span>
-                                    <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
-                                    <span className={score2 > score1 ? "text-emerald-400 print:text-black" : "text-white print:text-black"}>
+                                    <span className="text-muted print:text-neutral-700 mx-1">x</span>
+                                    <span className={score2 > score1 ? "text-emerald-600 dark:text-emerald-400 print:text-black" : "text-primary print:text-black"}>
                                       {score2}
                                     </span>
                                   </>
@@ -1611,29 +1611,29 @@ export function GroupStages({
                               ) : isLive ? (
                                 matchIsSets ? (
                                   <div className="flex items-center gap-1 font-mono text-xs">
-                                    <span className="text-white print:text-black font-black">{sets1}</span>
+                                    <span className="text-primary print:text-black font-black">{sets1}</span>
                                     <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
                                       ({activePts1})
                                     </span>
-                                    <span className="text-zinc-500 print:text-neutral-700 mx-0.5">x</span>
+                                    <span className="text-muted print:text-neutral-700 mx-0.5">x</span>
                                     <span className="text-[10px] font-bold text-[#00a2ff] bg-[#00a2ff]/10 px-1 py-0.5 rounded border border-[#00a2ff]/30 print:border-black print:text-black">
                                       ({activePts2})
                                     </span>
-                                    <span className="text-white print:text-black font-black">{sets2}</span>
+                                    <span className="text-primary print:text-black font-black">{sets2}</span>
                                   </div>
                                 ) : (
                                   <>
-                                    <span className="text-white print:text-black">{score1}</span>
-                                    <span className="text-zinc-600 print:text-neutral-700 mx-1">x</span>
-                                    <span className="text-white print:text-black">{score2}</span>
+                                    <span className="text-primary print:text-black">{score1}</span>
+                                    <span className="text-muted print:text-neutral-700 mx-1">x</span>
+                                    <span className="text-primary print:text-black">{score2}</span>
                                   </>
                                 )
                               ) : (
-                                <span className="text-zinc-500 print:text-black font-mono">[&nbsp;&nbsp;] x [&nbsp;&nbsp;]</span>
+                                <span className="text-muted print:text-black font-mono">[&nbsp;&nbsp;] x [&nbsp;&nbsp;]</span>
                               )}
                             </div>
 
-                            <span className="flex-1 text-left font-semibold text-zinc-200 print:text-black truncate">
+                            <span className="flex-1 text-left font-semibold text-primary print:text-black truncate">
                               {t2?.name || "Equipe 2"}
                             </span>
                           </div>
@@ -1652,20 +1652,20 @@ export function GroupStages({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2">
-            <Network className="h-4 w-4 text-amber-400 print:text-black" />
-            <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-white print:text-black font-display">
+            <Network className="h-4 w-4 text-amber-500 dark:text-amber-400 print:text-black" />
+            <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-primary print:text-black font-display">
               Fase 2 • Chaveamento Eliminatório (Mata-Mata)
             </h3>
           </div>
           {knockoutMatches.length > 0 ? (
-            <span className="text-xs font-bold text-emerald-400 print:hidden">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 print:hidden">
               Cruzamento Olímpico Ativo (1º vs 2º)
             </span>
           ) : (
             <button
               type="button"
               onClick={() => setShowBlankBracketPreview((prev) => !prev)}
-              className="print:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-200 hover:text-white transition-all cursor-pointer"
+              className="print:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-elevated border border-subtle text-xs font-bold text-secondary hover:text-primary transition-all cursor-pointer"
             >
               <Network className="h-3.5 w-3.5 text-[#00a2ff]" />
               <span>
@@ -1692,20 +1692,20 @@ export function GroupStages({
             {!showBlankBracketPreview && (
               allGroupsFinished ? (
                 isOrganizerUser ? (
-                  <div className="print:hidden border-2 border-dashed border-emerald-500/40 bg-gradient-to-b from-emerald-950/30 to-[#141416]/90 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl shadow-emerald-950/20 animate-fadeIn">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
-                      <Trophy className="h-6 w-6 text-emerald-400" />
+                  <div className="print:hidden border-2 border-dashed border-emerald-500/40 bg-gradient-to-b from-emerald-500/10 dark:from-emerald-950/30 to-surface/90 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl shadow-emerald-950/20 animate-fadeIn">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+                      <Trophy className="h-6 w-6 text-emerald-500 dark:text-emerald-400" />
                     </div>
 
                     <div className="space-y-1.5 max-w-lg mx-auto">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[11px] font-black uppercase tracking-wider text-emerald-300">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[11px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                         <span>Fase de Grupos 100% Concluída</span>
                       </div>
-                      <h4 className="text-base font-bold text-white">
+                      <h4 className="text-base font-bold text-primary">
                         Todos os jogos dos grupos foram finalizados!
                       </h4>
-                      <p className="text-xs text-zinc-300 leading-relaxed">
+                      <p className="text-xs text-secondary leading-relaxed">
                         As classificações dos grupos estão consolidadas. Como organizador, clique no botão abaixo para encerrar a 1ª fase e gerar os confrontos das Semifinais com cruzamento oficial (1º A vs 2º B e 1º B vs 2º A).
                       </p>
                     </div>
@@ -1732,43 +1732,43 @@ export function GroupStages({
                     </div>
 
                     {generateKnockoutError && (
-                      <p className="text-xs text-red-400 font-semibold mt-2">
+                      <p className="text-xs text-red-500 dark:text-red-400 font-semibold mt-2">
                         {generateKnockoutError}
                       </p>
                     )}
 
                     {generateKnockoutSuccess && (
-                      <p className="text-xs text-emerald-400 font-semibold mt-2">
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-2">
                         {generateKnockoutSuccess}
                       </p>
                     )}
                   </div>
                 ) : (
-                  <div className="print:hidden border border-dashed border-zinc-800 bg-[#141416]/60 rounded-2xl p-6 sm:p-8 text-center space-y-3 animate-fadeIn">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
-                      <Trophy className="h-5 w-5 text-amber-400" />
+                  <div className="print:hidden border border-dashed border-subtle bg-surface/60 rounded-2xl p-6 sm:p-8 text-center space-y-3 animate-fadeIn">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center mx-auto">
+                      <Trophy className="h-5 w-5 text-amber-500 dark:text-amber-400" />
                     </div>
                     <div className="space-y-1">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-400">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                         <span>Fase de Grupos Concluída</span>
                       </div>
-                      <h4 className="text-sm font-bold text-zinc-200">
+                      <h4 className="text-sm font-bold text-primary">
                         Classificação Definida
                       </h4>
-                      <p className="text-xs text-zinc-400 max-w-md mx-auto italic">
+                      <p className="text-xs text-secondary max-w-md mx-auto italic">
                         Aguardando a organização oficializar os resultados e gerar as semifinais.
                       </p>
                     </div>
                   </div>
                 )
               ) : (
-                <div className="print:hidden border border-dashed border-zinc-800 bg-[#141416]/60 rounded-2xl p-8 text-center space-y-2">
-                  <Trophy className="h-7 w-7 text-amber-400/70 mx-auto" />
-                  <h4 className="text-sm font-bold text-zinc-200">
+                <div className="print:hidden border border-dashed border-subtle bg-surface/60 rounded-2xl p-8 text-center space-y-2">
+                  <Trophy className="h-7 w-7 text-amber-500/70 dark:text-amber-400/70 mx-auto" />
+                  <h4 className="text-sm font-bold text-primary">
                     Aguardando Encerramento da Fase de Grupos
                   </h4>
-                  <p className="text-xs text-zinc-400 max-w-lg mx-auto">
+                  <p className="text-xs text-secondary max-w-lg mx-auto">
                     {groupMatchesTotal > 0
                       ? `Partidas finalizadas: ${groupMatchesCompleted} de ${groupMatchesTotal}. Assim que todos os jogos da Fase de Grupos forem finalizados, o botão para gerar o Mata-Mata será liberado aqui.`
                       : "Assim que todas as partidas da Fase de Grupos forem finalizadas, o organizador encerrará a 1ª fase e a árvore de confrontos do Mata-Mata (1º do Grupo A vs 2º do Grupo B, etc.) aparecerá automaticamente aqui. Na versão impressa, a árvore em branco já é gerada automaticamente para preenchimento manual."}
