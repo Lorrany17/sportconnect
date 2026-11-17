@@ -77,9 +77,9 @@ export default function TournamentDashboardPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-[#0f0f0f] text-white flex flex-col items-center justify-center p-6">
+        <div className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-text-primary)] flex flex-col items-center justify-center p-6">
           <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-3" />
-          <p className="text-xs text-zinc-400">Carregando painel do torneio...</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Carregando painel do torneio...</p>
         </div>
       </ProtectedRoute>
     );
@@ -87,7 +87,7 @@ export default function TournamentDashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#0f0f0f] py-6 sm:py-8 px-4 sm:px-6 lg:px-8 flex flex-col print:bg-white print:text-black print:p-0">
+      <div className="min-h-screen bg-[var(--color-canvas)] text-[var(--color-text-primary)] py-6 sm:py-8 px-4 sm:px-6 lg:px-8 flex flex-col transition-colors print:bg-white print:text-black print:p-0">
         <OrganizerDashboard
           tournament={tournament}
           onBack={() => router.push("/hub")}

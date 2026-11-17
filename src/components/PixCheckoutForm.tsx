@@ -342,7 +342,7 @@ export default function PixCheckoutForm({
   }, [isPaid, currentTeamId, teamId, handleRedirect]);
 
   return (
-    <div className="w-full max-w-xl mx-auto max-h-[90vh] overflow-y-auto bg-[#0f0f0f] border border-[#27272a] rounded-3xl p-5 sm:p-8 pb-8 sm:pb-12 text-[#e4e4e7] shadow-2xl relative selection:bg-orange-500/30 selection:text-white">
+    <div className="w-full max-w-xl mx-auto max-h-[90vh] overflow-y-auto bg-white dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a] rounded-3xl p-5 sm:p-8 pb-8 sm:pb-12 text-zinc-800 dark:text-[#e4e4e7] shadow-2xl relative selection:bg-orange-500/30 selection:text-white transition-colors">
       {/* Linha decorativa superior no topo do card */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500" />
 
@@ -357,7 +357,7 @@ export default function PixCheckoutForm({
             onClose();
             router.refresh();
           }}
-          className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+          className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           title="Fechar"
         >
           <X className="h-5 w-5" />
@@ -367,20 +367,20 @@ export default function PixCheckoutForm({
       {/* Estado 1: Comprovante Enviado com Sucesso */}
       {receiptSuccess ? (
         <div className="py-8 text-center space-y-4 animate-fadeIn">
-          <div className="w-16 h-16 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-400 flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20">
+          <div className="w-16 h-16 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20">
             <CheckCircle2 className="h-10 w-10 animate-bounce" />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[11px] font-black uppercase tracking-wider">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-[11px] font-black uppercase tracking-wider">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>COMPROVANTE ENVIADO</span>
           </div>
 
-          <h3 className="text-2xl font-black font-display uppercase tracking-tight text-white">
+          <h3 className="text-2xl font-black font-display uppercase tracking-tight text-zinc-900 dark:text-white">
             Comprovante enviado! O organizador irá conferir em breve.
           </h3>
 
-          <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
             Seu pagamento foi registrado no sistema. O organizador do torneio receberá uma notificação para validar sua vaga na tabela oficial.
           </p>
 
@@ -398,21 +398,21 @@ export default function PixCheckoutForm({
       ) : isPaid ? (
         /* Estado 2: Pagamento Confirmado via Webhook/Simulação */
         <div className="py-8 text-center space-y-4 animate-fadeIn">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
             <CheckCircle2 className="h-10 w-10 animate-bounce" />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wider">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-black uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
             <span>PAGAMENTO APROVADO</span>
           </div>
 
-          <h3 className="text-2xl font-black font-display uppercase tracking-tight text-white">
+          <h3 className="text-2xl font-black font-display uppercase tracking-tight text-zinc-900 dark:text-white">
             Inscrição Confirmada!
           </h3>
 
-          <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-            O Pix de <strong className="text-white">{formatCurrency(totalAmount)}</strong> foi identificado com sucesso. Sua equipe já está apta para a chave de jogos!
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
+            O Pix de <strong className="text-zinc-900 dark:text-white">{formatCurrency(totalAmount)}</strong> foi identificado com sucesso. Sua equipe já está apta para a chave de jogos!
           </p>
 
           <div className="pt-4">
@@ -436,36 +436,36 @@ export default function PixCheckoutForm({
                 <button
                   type="button"
                   onClick={onBack}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white text-[11px] font-bold transition-all cursor-pointer active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-[11px] font-bold transition-all cursor-pointer active:scale-95"
                   title="Voltar para o formulário de inscrição"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Voltar</span>
                 </button>
               )}
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-[11px] font-black uppercase tracking-wider">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[11px] font-black uppercase tracking-wider">
               <Clock className="w-3.5 h-3.5 animate-pulse" />
               <span>INSCRIÇÃO PENDENTE</span>
             </div>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black text-white font-display mt-2 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white font-display mt-2 tracking-tight">
               {tournamentName}
             </h2>
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-zinc-400">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-zinc-600 dark:text-zinc-400">
               <span>
-                Equipe: <strong className="text-zinc-200">{teamName}</strong>
+                Equipe: <strong className="text-zinc-900 dark:text-zinc-200">{teamName}</strong>
               </span>
               <span>•</span>
               <span>
-                Capitão: <strong className="text-zinc-200">{captainName}</strong>
+                Capitão: <strong className="text-zinc-900 dark:text-zinc-200">{captainName}</strong>
               </span>
               {sportType && (
                 <>
                   <span>•</span>
                   <span>
-                    Modalidade: <strong className="text-zinc-200">{sportType}</strong>
+                    Modalidade: <strong className="text-zinc-900 dark:text-zinc-200">{sportType}</strong>
                   </span>
                 </>
               )}
@@ -474,7 +474,7 @@ export default function PixCheckoutForm({
 
           {/* Mensagem de Erro Geral ou de Upload */}
           {(error || receiptError) && (
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center justify-between gap-3 animate-fadeIn">
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center justify-between gap-3 animate-fadeIn">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{receiptError || error}</span>
@@ -483,7 +483,7 @@ export default function PixCheckoutForm({
                 <button
                   type="button"
                   onClick={generatePix}
-                  className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold rounded-lg text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                  className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-300 font-bold rounded-lg text-[11px] transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <RefreshCw className="w-3 h-3" />
                   <span>Tentar de novo</span>
@@ -493,26 +493,26 @@ export default function PixCheckoutForm({
           )}
 
           {/* 2. Card de Valor Total e Transparência do Split */}
-          <div className="w-full bg-[#1a1a1a] border border-[#27272a] rounded-2xl p-5 text-center shadow-inner space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+          <div className="w-full bg-zinc-50 dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#27272a] rounded-2xl p-5 text-center shadow-inner space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 block">
               VALOR TOTAL
             </span>
-            <div className="text-3xl sm:text-4xl font-black text-white font-display tracking-tight text-shadow-sm">
+            <div className="text-3xl sm:text-4xl font-black text-zinc-900 dark:text-white font-display tracking-tight text-shadow-sm">
               {formatCurrency(totalAmount)}
             </div>
 
             {split && (
-              <div className="pt-2 border-t border-zinc-800/80 mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
+              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/80 mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                 <span>
                   Taxa SportConnect (10%):{" "}
-                  <strong className="text-zinc-300">
+                  <strong className="text-zinc-800 dark:text-zinc-300">
                     {formatCurrency(split.platformFee)}
                   </strong>
                 </span>
                 <span>•</span>
                 <span>
                   Organizador:{" "}
-                  <strong className="text-zinc-300">
+                  <strong className="text-zinc-800 dark:text-zinc-300">
                     {formatCurrency(split.organizerAmount)}
                   </strong>
                 </span>
@@ -521,15 +521,15 @@ export default function PixCheckoutForm({
           </div>
 
           {/* 3. Área do QR Code com Loading Spinner */}
-          <div className="w-full bg-[#1a1a1a] border border-[#27272a] rounded-2xl p-4 sm:p-6 text-center space-y-4">
+          <div className="w-full bg-zinc-50 dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#27272a] rounded-2xl p-4 sm:p-6 text-center space-y-4">
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center space-y-3">
                 <div className="relative">
                   <div className="w-12 h-12 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin" />
-                  <QrCode className="w-5 h-5 text-orange-400 absolute inset-0 m-auto" />
+                  <QrCode className="w-5 h-5 text-orange-500 dark:text-orange-400 absolute inset-0 m-auto" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                  <p className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
                     Gerando QR Code Pix
                   </p>
                   <p className="text-[11px] text-zinc-500">
@@ -540,7 +540,7 @@ export default function PixCheckoutForm({
             ) : qrCodeImageUrl ? (
               <div className="flex flex-col items-center justify-center space-y-3">
                 {/* Quadro branco com bordas arredondadas para o QR Code */}
-                <div className="bg-white p-3.5 sm:p-4 rounded-2xl shadow-xl border-4 border-zinc-900 inline-flex items-center justify-center transition-transform hover:scale-[1.01]">
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl shadow-xl border-4 border-zinc-200 dark:border-zinc-900 inline-flex items-center justify-center transition-transform hover:scale-[1.01]">
                   <img
                     src={qrCodeImageUrl}
                     alt="QR Code Pix Dinâmico"
@@ -549,11 +549,11 @@ export default function PixCheckoutForm({
                 </div>
 
                 <div className="space-y-1 text-center">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center justify-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white flex items-center justify-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                     <span>Pague via Pix</span>
                   </h4>
-                  <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-xs mx-auto">
                     Escaneie o QR Code acima apontando a câmera do aplicativo do seu banco.
                   </p>
                 </div>
@@ -562,9 +562,9 @@ export default function PixCheckoutForm({
 
             {/* 4. Pix Copia e Cola */}
             {!loading && copiaECola && (
-              <div className="space-y-2 text-left pt-2 border-t border-zinc-800">
+              <div className="space-y-2 text-left pt-2 border-t border-zinc-200 dark:border-zinc-800">
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                     Pix Copia e Cola
                   </label>
                   <span className="text-[10px] text-zinc-500 font-medium">
@@ -572,8 +572,8 @@ export default function PixCheckoutForm({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 p-2 bg-[#0f0f0f] border border-[#27272a] rounded-xl focus-within:border-orange-500/60 transition-colors">
-                  <div className="flex-1 min-w-0 px-2 font-mono text-xs text-zinc-300 truncate select-all">
+                <div className="flex items-center gap-2 p-2 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#27272a] rounded-xl focus-within:border-orange-500/60 transition-colors">
+                  <div className="flex-1 min-w-0 px-2 font-mono text-xs text-zinc-800 dark:text-zinc-300 truncate select-all">
                     {copiaECola}
                   </div>
 
@@ -582,18 +582,18 @@ export default function PixCheckoutForm({
                     onClick={handleCopyCode}
                     className={`px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                       copied
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                        : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700/60"
+                        ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40"
+                        : "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white border border-zinc-300 dark:border-zinc-700/60"
                     }`}
                   >
                     {copied ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                         <span>Copiado!</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                        <Copy className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                         <span>Copiar</span>
                       </>
                     )}
@@ -619,7 +619,7 @@ export default function PixCheckoutForm({
 
             {/* Mensagem de Erro de Upload do Comprovante */}
             {receiptError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{receiptError}</span>
               </div>
@@ -658,7 +658,7 @@ export default function PixCheckoutForm({
               className={`w-full py-4 px-6 rounded-2xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 shadow-lg ${
                 receiptSuccess && !isUploadingReceipt
                   ? "bg-emerald-500 hover:bg-emerald-400 text-neutral-950 shadow-emerald-500/25 cursor-pointer active:scale-[0.99]"
-                  : "bg-zinc-800/80 text-zinc-500 border border-zinc-700/50 cursor-not-allowed opacity-50"
+                  : "bg-zinc-200 dark:bg-zinc-800/80 text-zinc-400 dark:text-zinc-500 border border-zinc-300 dark:border-zinc-700/50 cursor-not-allowed opacity-50"
               }`}
             >
               {isUploadingReceipt ? (
@@ -673,20 +673,20 @@ export default function PixCheckoutForm({
                 </>
               ) : (
                 <>
-                  <Clock className="w-4 h-4 text-zinc-500" />
+                  <Clock className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
                   <span>Concluir Pagamento</span>
                 </>
               )}
             </button>
 
             {/* Texto de Segurança com Ícone */}
-            <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-400 font-medium text-center">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium text-center">
+              <ShieldCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
               <span>Pagamento 100% Seguro via SportConnect Pay</span>
             </div>
 
             {/* Status Informativo Suave */}
-            <div className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-[11px] text-zinc-400 text-center">
+            <div className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 text-center">
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500" />
@@ -697,12 +697,11 @@ export default function PixCheckoutForm({
             </div>
 
             {/* Ações de Apoio / Fechamento */}
-            {/* Ações de Apoio / Fechamento */}
             {onBack && (
               <button
                 type="button"
                 onClick={onBack}
-                className="w-full py-2.5 px-4 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700/70 text-xs font-bold text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700/70 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Editar dados da inscrição</span>
@@ -714,7 +713,7 @@ export default function PixCheckoutForm({
                   type="button"
                   onClick={handlePayLater}
                   disabled={isUploadingReceipt || isCommitting}
-                  className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-800 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isCommitting ? (
                     <span className="flex items-center justify-center gap-2">

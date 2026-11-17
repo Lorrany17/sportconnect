@@ -935,25 +935,25 @@ export default function OrganizerDashboard({
 
   if (currentView !== "overview") {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto w-full min-w-0 text-[#e4e4e7] animate-fadeIn pb-16 print:space-y-2 print:max-w-none print:w-full print:bg-white print:text-black print:pb-0">
+      <div className="space-y-6 max-w-7xl mx-auto w-full min-w-0 text-zinc-800 dark:text-[#e4e4e7] animate-fadeIn pb-16 print:space-y-2 print:max-w-none print:w-full print:bg-white print:text-black print:pb-0 transition-colors">
         {/* Indicador Global de Modo Offline / Sincronização */}
         {(!context.isOnline || context.pendingSyncCount > 0 || context.syncStatus === "SYNCING" || context.syncStatus === "SYNCED") && (
           <div
             className={`print:hidden p-3.5 px-4 rounded-2xl border text-xs font-bold flex flex-wrap items-center justify-between gap-3 transition-all ${
               context.syncStatus === "SYNCING"
-                ? "bg-blue-500/15 border-blue-500/40 text-blue-300"
+                ? "bg-blue-500/15 border-blue-500/40 text-blue-600 dark:text-blue-300"
                 : !context.isOnline || context.pendingSyncCount > 0
-                ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
-                : "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300"
+                : "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
             }`}
           >
             <div className="flex items-center gap-2.5">
               {context.syncStatus === "SYNCING" ? (
-                <RefreshCw className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+                <RefreshCw className="h-4 w-4 text-blue-500 dark:text-blue-400 animate-spin shrink-0" />
               ) : !context.isOnline || context.pendingSyncCount > 0 ? (
-                <CloudOff className="h-4 w-4 text-amber-400 shrink-0" />
+                <CloudOff className="h-4 w-4 text-amber-500 dark:text-amber-400 shrink-0" />
               ) : (
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
               )}
               <span>
                 {context.syncStatus === "SYNCING"
@@ -967,7 +967,7 @@ export default function OrganizerDashboard({
               <button
                 type="button"
                 onClick={() => context.syncOfflineQueue()}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-700 dark:text-amber-200 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all"
               >
                 <RefreshCw className="h-3 w-3" />
                 <span>Sincronizar Agora</span>
@@ -977,20 +977,20 @@ export default function OrganizerDashboard({
         )}
 
         {/* Barra Superior Unificada dos Módulos */}
-        <div className="print:hidden flex flex-wrap items-center justify-between gap-3 border-b border-[#27272a] pb-4">
+        <div className="print:hidden flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 dark:border-[#27272a] pb-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={handleReturnToOverview}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-[#1e1e1e] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-[#27272a] text-xs font-bold text-zinc-700 dark:text-[#e4e4e7] hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
             >
               <ArrowLeft className="h-4 w-4 text-[#00a2ff]" />
               <span>Voltar ao Painel Geral</span>
             </button>
 
-            <span className="text-zinc-600 hidden md:inline">•</span>
+            <span className="text-zinc-400 dark:text-zinc-600 hidden md:inline">•</span>
 
             <div className="hidden sm:flex items-center gap-2 min-w-0">
-              <span className="text-xs font-bold text-white truncate max-w-[160px] md:max-w-[200px]">
+              <span className="text-xs font-bold text-zinc-900 dark:text-white truncate max-w-[160px] md:max-w-[200px]">
                 {currentTour?.name || "Campeonato"}
               </span>
               <span className="hidden md:inline-flex px-2 py-0.5 rounded-md bg-[#00a2ff]/10 text-[#00a2ff] text-[10px] font-black uppercase tracking-wider border border-[#00a2ff]/20 shrink-0">
@@ -1012,8 +1012,8 @@ export default function OrganizerDashboard({
 
             {/* Badge Super Admin nos submódulos */}
             {isSuperAdmin && (
-              <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 to-indigo-600/25 border border-purple-500/40 text-purple-300 text-xs font-black uppercase tracking-wider shadow-sm">
-                <ShieldCheck className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+              <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 to-indigo-600/25 border border-purple-500/40 text-purple-700 dark:text-purple-300 text-xs font-black uppercase tracking-wider shadow-sm">
+                <ShieldCheck className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400 shrink-0" />
                 <span>SUPER ADMIN</span>
               </div>
             )}
@@ -1049,12 +1049,12 @@ export default function OrganizerDashboard({
             )}
 
             {/* Roteador interno rápido entre os três módulos */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#1e1e1e] border border-[#27272a] w-full sm:w-auto justify-between sm:justify-start overflow-x-auto">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-[#1e1e1e] border border-zinc-200 dark:border-[#27272a] w-full sm:w-auto justify-between sm:justify-start overflow-x-auto">
               <button
                 onClick={() => handleShortcutClick("teams")}
                 className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${currentView === "teams"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
-                  : "text-zinc-400 hover:text-white"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                   }`}
               >
                 <Users className="h-3.5 w-3.5" />
@@ -1065,7 +1065,7 @@ export default function OrganizerDashboard({
                 onClick={() => handleShortcutClick("bracket")}
                 className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${currentView === "bracket"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
-                  : "text-zinc-400 hover:text-white"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                   }`}
               >
                 <Network className="h-3.5 w-3.5" />
@@ -1076,7 +1076,7 @@ export default function OrganizerDashboard({
                 onClick={() => handleShortcutClick("referee")}
                 className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${currentView === "referee"
                   ? "bg-[#00a2ff] text-white shadow-md shadow-blue-500/20"
-                  : "text-zinc-400 hover:text-white"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                   }`}
               >
                 <ClipboardList className="h-3.5 w-3.5" />
@@ -1259,25 +1259,25 @@ export default function OrganizerDashboard({
   // ==========================================
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto w-full text-[#e4e4e7] animate-fadeIn pb-12">
+    <div className="space-y-6 max-w-5xl mx-auto w-full text-zinc-800 dark:text-[#e4e4e7] animate-fadeIn pb-12 transition-colors">
       {/* Indicador Global de Modo Offline / Sincronização */}
       {(!context.isOnline || context.pendingSyncCount > 0 || context.syncStatus === "SYNCING" || context.syncStatus === "SYNCED") && (
         <div
           className={`print:hidden p-3.5 px-4 rounded-2xl border text-xs font-bold flex flex-wrap items-center justify-between gap-3 transition-all ${
             context.syncStatus === "SYNCING"
-              ? "bg-blue-500/15 border-blue-500/40 text-blue-300"
+              ? "bg-blue-500/15 border-blue-500/40 text-blue-600 dark:text-blue-300"
               : !context.isOnline || context.pendingSyncCount > 0
-              ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
-              : "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+              ? "bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300"
+              : "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
           }`}
         >
           <div className="flex items-center gap-2.5">
             {context.syncStatus === "SYNCING" ? (
-              <RefreshCw className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+              <RefreshCw className="h-4 w-4 text-blue-500 dark:text-blue-400 animate-spin shrink-0" />
             ) : !context.isOnline || context.pendingSyncCount > 0 ? (
-              <CloudOff className="h-4 w-4 text-amber-400 shrink-0" />
+              <CloudOff className="h-4 w-4 text-amber-500 dark:text-amber-400 shrink-0" />
             ) : (
-              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
             )}
             <span>
               {context.syncStatus === "SYNCING"
@@ -1291,7 +1291,7 @@ export default function OrganizerDashboard({
             <button
               type="button"
               onClick={() => context.syncOfflineQueue()}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-700 dark:text-amber-200 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all"
             >
               <RefreshCw className="h-3 w-3" />
               <span>Sincronizar Agora</span>
@@ -1301,11 +1301,11 @@ export default function OrganizerDashboard({
       )}
 
       {/* 1. Cabeçalho de Navegação com Voltar ao Hub, Super Admin Badge e Status Pill */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#27272a] pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 dark:border-[#27272a] pb-4">
         {/* Lado esquerdo: Botão Voltar ao Hub */}
         <button
           onClick={handleBackNavigation}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#1e1e1e] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-[#27272a] text-xs font-bold text-zinc-700 dark:text-[#e4e4e7] hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
         >
           <ArrowLeft className="h-4 w-4 text-[#00a2ff]" />
           <span>Voltar ao Hub</span>
@@ -1317,16 +1317,16 @@ export default function OrganizerDashboard({
 
           {/* Badge Super Admin em destaque */}
           {isSuperAdmin && (
-            <div className="hidden md:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 via-indigo-600/20 to-purple-600/25 border border-purple-500/50 text-purple-300 text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-500/20 animate-pulse">
-              <ShieldCheck className="h-4 w-4 text-purple-400 shrink-0" />
+            <div className="hidden md:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600/25 via-indigo-600/20 to-purple-600/25 border border-purple-500/50 text-purple-700 dark:text-purple-300 text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-500/20 animate-pulse">
+              <ShieldCheck className="h-4 w-4 text-purple-500 dark:text-purple-400 shrink-0" />
               <span>SUPER ADMIN</span>
             </div>
           )}
 
           {/* Badge de Staff Role se aplicável */}
           {!isSuperAdmin && !permissions.isOwner && permissions.role && (
-            <div className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-bold tracking-wide shadow-sm">
-              <Shield className="h-3.5 w-3.5 text-blue-400" />
+            <div className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-600 dark:text-blue-400 text-xs font-bold tracking-wide shadow-sm">
+              <Shield className="h-3.5 w-3.5 text-[#00a2ff]" />
               <span>
                 {permissions.role === "ADMIN"
                   ? "Administrador"
@@ -1418,7 +1418,7 @@ export default function OrganizerDashboard({
                 {!isTourCompleted && (
                   <button
                     onClick={() => setShowEditModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-xs font-bold text-[#e4e4e7] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#1e1e1e] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-[#27272a] text-xs font-bold text-zinc-700 dark:text-[#e4e4e7] hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
                     title="Editar dados e configurações do campeonato"
                   >
                     <Pencil className="h-3.5 w-3.5 text-[#00a2ff]" />
@@ -1430,7 +1430,7 @@ export default function OrganizerDashboard({
                   <button
                     type="button"
                     onClick={() => setShowOptionsMenu((prev) => !prev)}
-                    className="p-1.5 rounded-xl bg-[#1e1e1e] hover:bg-zinc-800 border border-[#27272a] text-zinc-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center"
+                    className="p-1.5 rounded-xl bg-white dark:bg-[#1e1e1e] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-[#27272a] text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center"
                     title="Mais opções do torneio"
                   >
                     <MoreVertical className="h-4 w-4" />
@@ -1442,16 +1442,16 @@ export default function OrganizerDashboard({
                         className="fixed inset-0 z-40"
                         onClick={() => setShowOptionsMenu(false)}
                       />
-                      <div className="absolute right-0 top-full mt-2 w-52 bg-[#18181b] border border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 animate-fadeIn space-y-1">
+                      <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-1.5 shadow-2xl z-50 animate-fadeIn space-y-1">
                         {!isTourCompleted && (
                           <>
                             <button
                               type="button"
                               onClick={handleCancelTournament}
                               disabled={isCanceling}
-                              className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                              className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                             >
-                              <Ban className="h-4 w-4 shrink-0 text-amber-400" />
+                              <Ban className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
                               <span>
                                 {currentTour?.status === "CANCELLED" || currentTour?.status === "CANCELADO"
                                   ? "Reativar Torneio"
@@ -1459,7 +1459,7 @@ export default function OrganizerDashboard({
                               </span>
                             </button>
 
-                            <div className="border-t border-zinc-800/80 my-1" />
+                            <div className="border-t border-zinc-200 dark:border-zinc-800/80 my-1" />
                           </>
                         )}
 
@@ -1467,9 +1467,9 @@ export default function OrganizerDashboard({
                           type="button"
                           onClick={handleDeleteTournament}
                           disabled={isDeleting}
-                          className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                          className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                         >
-                          <Trash2 className="h-4 w-4 shrink-0 text-red-400" />
+                          <Trash2 className="h-4 w-4 shrink-0 text-red-500 dark:text-red-400" />
                           <span>Excluir Torneio</span>
                         </button>
                       </div>
@@ -1484,8 +1484,8 @@ export default function OrganizerDashboard({
 
       {/* Alerta de Permissão se o usuário não for dono nem tiver permissão de admin */}
       {!canEditSettings && !canEditScores && !canManageFinances && !isSuperAdmin && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 dark:text-amber-400 shrink-0" />
           <div>
             <span className="font-bold">Permissão Limitada: </span>
             <span>
@@ -1496,7 +1496,7 @@ export default function OrganizerDashboard({
       )}
 
       {(permissions.isReferee || permissions.isScorekeeper) && !permissions.isAdmin && !isSuperAdmin && (
-        <div className="p-3 px-4 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-300 text-xs flex items-center gap-3">
+        <div className="p-3 px-4 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-700 dark:text-blue-300 text-xs flex items-center gap-3">
           <Shield className="h-4 w-4 text-[#00a2ff] shrink-0" />
           <div>
             <span className="font-bold">Acesso de Equipe ({permissions.isReferee ? "Árbitro" : "Mesário"}): </span>
@@ -1544,13 +1544,13 @@ export default function OrganizerDashboard({
           <div className="bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-amber-500/15 border-2 border-emerald-500/40 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
             <div className="flex items-start sm:items-center gap-3.5">
               <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 shadow-inner">
-                <Trophy className="h-6 w-6 text-amber-400" />
+                <Trophy className="h-6 w-6 text-amber-500 dark:text-amber-400" />
               </div>
               <div className="space-y-0.5">
-                <h3 className="text-sm sm:text-base font-black text-white tracking-tight">
+                <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white tracking-tight">
                   Campeonato Pronto para Encerramento Oficial
                 </h3>
-                <p className="text-xs text-zinc-300 leading-relaxed">
+                <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
                   Todos os confrontos foram finalizados. Clique aqui para encerrar o campeonato e gerar o pódio oficial.
                 </p>
               </div>
@@ -1605,7 +1605,7 @@ export default function OrganizerDashboard({
       })()}
 
       {/* 2. Cartão de Informação do Torneio (Topo) */}
-      <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
+      <div className="bg-white dark:bg-[#1e1e1e] border border-zinc-200 dark:border-[#27272a] rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
         {/* Foto de Capa como Imagem de Fundo com Overlay Escuro para legibilidade */}
         {currentTour?.cover_url && (
           <div className="absolute inset-0 z-0 pointer-events-none">
@@ -1614,7 +1614,7 @@ export default function OrganizerDashboard({
               alt={currentTour.name || "Capa do Torneio"}
               className="w-full h-full object-cover object-center"
             />
-            {/* Overlay escuro para manter a legibilidade do texto branco */}
+            {/* Overlay para manter a legibilidade do texto */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/60" />
           </div>
@@ -1638,20 +1638,20 @@ export default function OrganizerDashboard({
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-black text-white font-display tracking-tight drop-shadow-md">
+            <h1 className={`text-2xl sm:text-4xl font-black font-display tracking-tight drop-shadow-md ${currentTour?.cover_url ? "text-white" : "text-zinc-900 dark:text-white"}`}>
               {currentTour?.name || "Copa SportConnect"}
             </h1>
 
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-zinc-200 pt-1 drop-shadow-sm font-medium">
-              <span className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm">
+            <div className={`flex flex-wrap items-center gap-4 sm:gap-6 text-xs pt-1 drop-shadow-sm font-medium ${currentTour?.cover_url ? "text-zinc-200" : "text-zinc-600 dark:text-zinc-200"}`}>
+              <span className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm text-zinc-100">
                 <MapPin className="h-4 w-4 text-[#00a2ff]" />
                 <span>{venueLocation}</span>
               </span>
-              <span className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm">
+              <span className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm text-zinc-100">
                 <Calendar className="h-4 w-4 text-[#00a2ff]" />
                 <span>{formattedDate}</span>
               </span>
-              <span className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm">
+              <span className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm text-zinc-100">
                 <Trophy className="h-4 w-4 text-amber-400" />
                 <span>{competitionFormat}</span>
               </span>
@@ -1668,10 +1668,10 @@ export default function OrganizerDashboard({
               <Ban className="h-5 w-5" />
             </div>
             <div className="space-y-0.5">
-              <h3 className="text-sm font-black text-white">
+              <h3 className="text-sm font-black text-zinc-900 dark:text-white">
                 Torneio Cancelado • Gestão de Inscrições Liberada
               </h3>
-              <p className="text-xs text-zinc-300 leading-relaxed">
+              <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
                 O painel de inscrições permanece ativo para que você possa realizar estornos, remover equipes ou reativar o evento.
               </p>
             </div>
@@ -1681,7 +1681,7 @@ export default function OrganizerDashboard({
             <button
               type="button"
               onClick={() => handleShortcutClick("teams")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-600 dark:text-red-200 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
             >
               <Users className="h-3.5 w-3.5" />
               <span>Gerenciar Inscrições ({confirmedTeamsCount + pendingCount})</span>
@@ -1779,24 +1779,24 @@ export default function OrganizerDashboard({
       {/* 3. Secção "Inscrições e Vagas" (Grid 1x2) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Cartão Esquerdo: Ocupação das Vagas */}
-        <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+        <div className="bg-white dark:bg-[#1e1e1e] border border-zinc-200 dark:border-[#27272a] rounded-2xl p-6 flex flex-col justify-between shadow-xl">
           <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#9ca3af]">
+            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 dark:text-[#9ca3af]">
               Ocupação das Vagas
             </h3>
-            <div className="text-4xl sm:text-5xl font-black text-white my-3 font-display">
+            <div className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white my-3 font-display">
               {confirmedTeamsCount} / {maxSpots}
             </div>
           </div>
 
           <div>
-            <div className="w-full bg-zinc-900 h-3 rounded-full overflow-hidden border border-zinc-800">
+            <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-3 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
               <div
                 className="bg-gradient-to-r from-[#00a2ff] to-blue-500 h-full rounded-full transition-all duration-700 shadow-md shadow-blue-500/20"
                 style={{ width: `${spotsPercent}%` }}
               />
             </div>
-            <p className="text-xs text-[#9ca3af] mt-2.5 font-medium flex items-center justify-between">
+            <p className="text-xs text-zinc-600 dark:text-[#9ca3af] mt-2.5 font-medium flex items-center justify-between">
               <span>{spotsPercent}% das vagas preenchidas</span>
               <span className="text-[#00a2ff] font-bold">
                 {remainingSpots} {remainingSpots === 1 ? "vaga restante" : "vagas restantes"}
@@ -1805,17 +1805,17 @@ export default function OrganizerDashboard({
 
             {/* Status e Botão de Encerramento Manual de Inscrições */}
             {canEditSettings && (
-              <div className="pt-3 mt-3 border-t border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="pt-3 mt-3 border-t border-zinc-200 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 {["COMPLETED", "FINALIZADO", "FINISHED", "CONCLUIDO"].includes(
                   String(currentTour?.status || "").toUpperCase().trim()
                 ) ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-400 font-bold uppercase tracking-wider">
-                    <Lock className="h-3.5 w-3.5 text-zinc-400" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-wider">
+                    <Lock className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" />
                     <span>TORNEIO FINALIZADO</span>
                   </div>
                 ) : currentTour?.status === "CLOSED" ? (
                   <>
-                    <div className="flex items-center gap-1.5 text-xs text-red-400 font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-bold uppercase tracking-wider">
                       <Lock className="h-3.5 w-3.5" />
                       <span>INSCRIÇÕES ENCERRADAS</span>
                     </div>
@@ -1823,7 +1823,7 @@ export default function OrganizerDashboard({
                       type="button"
                       onClick={handleReopenRegistrations}
                       disabled={isClosingRegistrations}
-                      className="px-3.5 py-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm disabled:opacity-50"
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm disabled:opacity-50"
                     >
                       <Unlock className="h-3.5 w-3.5" />
                       <span>Reabrir Inscrições</span>
@@ -1832,20 +1832,20 @@ export default function OrganizerDashboard({
                 ) : currentTour?.status === "IN_PROGRESS" ||
                   currentTour?.status === "EM_ANDAMENTO" ||
                   currentTour?.status === "LIVE" ? (
-                  <div className="flex items-center gap-1.5 text-xs text-blue-400 font-bold uppercase tracking-wider">
-                    <Swords className="h-3.5 w-3.5 text-blue-400" />
+                  <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
+                    <Swords className="h-3.5 w-3.5 text-[#00a2ff]" />
                     <span>CAMPEONATO EM ANDAMENTO</span>
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold uppercase tracking-wider">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                       <span>INSCRIÇÕES ABERTAS</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowCloseRegistrationsModal(true)}
-                      className="px-3.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 hover:text-red-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
+                      className="px-3.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
                       title="Encerrar inscrições para impedir novos registros ou pagamentos"
                     >
                       <Lock className="h-3.5 w-3.5" />
@@ -1859,30 +1859,30 @@ export default function OrganizerDashboard({
         </div>
 
         {/* Cartão Direito: Pendentes de Aprovação */}
-        <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+        <div className="bg-white dark:bg-[#1e1e1e] border border-zinc-200 dark:border-[#27272a] rounded-2xl p-6 flex flex-col justify-between shadow-xl">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#9ca3af]">
+            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 dark:text-[#9ca3af]">
               Pendentes de Aprovação
             </h3>
-            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20 shadow-sm">
               <Clock className="h-5 w-5" />
             </div>
           </div>
 
           <div className="my-3">
-            <div className="text-4xl sm:text-5xl font-black text-amber-400 font-display">
+            <div className="text-4xl sm:text-5xl font-black text-amber-500 dark:text-amber-400 font-display">
               {pendingCount} {pendingCount === 1 ? "equipe" : "equipes"}
             </div>
           </div>
 
-          <p className="text-xs text-[#9ca3af] font-medium leading-relaxed">
+          <p className="text-xs text-zinc-600 dark:text-[#9ca3af] font-medium leading-relaxed">
             Inscrições registradas que aguardam validação de comprovantes de pagamento e elenco de atletas.
           </p>
         </div>
       </div>
 
       {/* 4. Secção "Resumo Financeiro" */}
-      <div className="bg-gradient-to-br from-[#1e1e1e] to-blue-950/20 border border-blue-500/25 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-white to-blue-50/40 dark:from-[#1e1e1e] dark:to-blue-950/20 border border-blue-200 dark:border-blue-500/25 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
         {/* Glow decorativo sutil */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#00a2ff]/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -1892,23 +1892,23 @@ export default function OrganizerDashboard({
               <Wallet className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white font-display tracking-wide uppercase">
+              <h2 className="text-lg font-black text-zinc-900 dark:text-white font-display tracking-wide uppercase">
                 Balanço do Campeonato
               </h2>
-              <p className="text-xs text-[#9ca3af] mt-0.5">
+              <p className="text-xs text-zinc-600 dark:text-[#9ca3af] mt-0.5">
                 Taxa por inscrição:{" "}
-                <strong className="text-zinc-200">{formatCurrency(feePerTeam)}</strong>
+                <strong className="text-zinc-800 dark:text-zinc-200">{formatCurrency(feePerTeam)}</strong>
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-5 border-t border-[#27272a]/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-5 border-t border-zinc-200 dark:border-[#27272a]/80">
           <div className="space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#9ca3af]">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-[#9ca3af]">
               Arrecadação Bruta
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-[#e4e4e7] font-display">
+            <div className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-[#e4e4e7] font-display">
               {formatCurrency(grossRevenue)}
             </div>
             <span className="text-[10px] text-zinc-500 block">
@@ -1917,37 +1917,37 @@ export default function OrganizerDashboard({
           </div>
 
           <div className="space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#9ca3af]">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-[#9ca3af]">
               Taxa SportConnect (10%)
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-red-400 font-display">
+            <div className="text-2xl sm:text-3xl font-black text-red-500 dark:text-red-400 font-display">
               - {formatCurrency(platformFee)}
             </div>
-            <span className="text-[10px] text-red-400/70 block">
+            <span className="text-[10px] text-red-500/80 dark:text-red-400/70 block">
               Tarifa de processamento e plataforma
             </span>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#9ca3af]">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-[#9ca3af]">
               Total Líquido do Organizador
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-display">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-display">
               {formatCurrency(netRevenue)}
             </div>
-            <span className="text-[10px] text-emerald-400/70 block font-semibold">
+            <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70 block font-semibold">
               Disponível para repasse ao organizador
             </span>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
               Receita Pendente (Aguardando Pagamento)
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-amber-400 font-display">
+            <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-display">
               {formatCurrency(pendingRevenue)}
             </div>
-            <span className="text-[10px] text-amber-400/70 block font-semibold">
+            <span className="text-[10px] text-amber-600/80 dark:text-amber-400/70 block font-semibold">
               {pendingCount} {pendingCount === 1 ? "inscrição aguardando Pix / aprovação" : "inscrições aguardando Pix / aprovação"}
             </span>
           </div>
@@ -1956,7 +1956,7 @@ export default function OrganizerDashboard({
 
       {/* 5. Secção "Atalhos de Gestão" (Roteadores Internos para os Módulos) */}
       <div className="space-y-3">
-        <h2 className="text-xs font-black uppercase tracking-wider text-[#9ca3af] pl-1">
+        <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500 dark:text-[#9ca3af] pl-1">
           Atalhos de Gestão Operacional
         </h2>
 
@@ -1964,22 +1964,22 @@ export default function OrganizerDashboard({
           {/* Item 1: Gerenciar Inscrições */}
           <button
             onClick={() => handleShortcutClick("teams")}
-            className="w-full bg-[#1e1e1e] hover:bg-zinc-800/90 border border-[#27272a] hover:border-[#00a2ff]/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-md group cursor-pointer text-left"
+            className="w-full bg-white dark:bg-[#1e1e1e] hover:bg-zinc-50 dark:hover:bg-zinc-800/90 border border-zinc-200 dark:border-[#27272a] hover:border-[#00a2ff]/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-md group cursor-pointer text-left"
           >
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-[#00a2ff]/10 text-[#00a2ff] border border-[#00a2ff]/20 group-hover:bg-[#00a2ff] group-hover:text-white transition-colors">
                 <Users className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="font-display font-black text-base text-white group-hover:text-[#00a2ff] transition-colors">
+                <h4 className="font-display font-black text-base text-zinc-900 dark:text-white group-hover:text-[#00a2ff] transition-colors">
                   Gerenciar Inscrições
                 </h4>
-                <p className="text-xs text-[#9ca3af] mt-0.5">
+                <p className="text-xs text-zinc-600 dark:text-[#9ca3af] mt-0.5">
                   Validar comprovantes e equipes inscritas ({confirmedTeamsCount} inscritos)
                 </p>
               </div>
             </div>
-            <div className="p-2 rounded-xl text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all">
+            <div className="p-2 rounded-xl text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all">
               <ChevronRight className="h-5 w-5" />
             </div>
           </button>
@@ -1987,22 +1987,22 @@ export default function OrganizerDashboard({
           {/* Item 2: Tabela & Chaveamento */}
           <button
             onClick={() => handleShortcutClick("bracket")}
-            className="w-full bg-[#1e1e1e] hover:bg-zinc-800/90 border border-[#27272a] hover:border-[#00a2ff]/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-md group cursor-pointer text-left"
+            className="w-full bg-white dark:bg-[#1e1e1e] hover:bg-zinc-50 dark:hover:bg-zinc-800/90 border border-zinc-200 dark:border-[#27272a] hover:border-[#00a2ff]/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-md group cursor-pointer text-left"
           >
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-[#00a2ff]/10 text-[#00a2ff] border border-[#00a2ff]/20 group-hover:bg-[#00a2ff] group-hover:text-white transition-colors">
                 <Network className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="font-display font-black text-base text-white group-hover:text-[#00a2ff] transition-colors">
+                <h4 className="font-display font-black text-base text-zinc-900 dark:text-white group-hover:text-[#00a2ff] transition-colors">
                   Tabela & Chaveamento
                 </h4>
-                <p className="text-xs text-[#9ca3af] mt-0.5">
+                <p className="text-xs text-zinc-600 dark:text-[#9ca3af] mt-0.5">
                   Gerar confrontos, chaves mata-mata e chaveamento automático
                 </p>
               </div>
             </div>
-            <div className="p-2 rounded-xl text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all">
+            <div className="p-2 rounded-xl text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all">
               <ChevronRight className="h-5 w-5" />
             </div>
           </button>
@@ -2010,22 +2010,22 @@ export default function OrganizerDashboard({
           {/* Item 3: Lançar Placares */}
           <button
             onClick={() => handleShortcutClick("referee")}
-            className="w-full bg-[#1e1e1e] hover:bg-zinc-800/90 border border-[#27272a] hover:border-[#00a2ff]/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-md group cursor-pointer text-left"
+            className="w-full bg-white dark:bg-[#1e1e1e] hover:bg-zinc-50 dark:hover:bg-zinc-800/90 border border-zinc-200 dark:border-[#27272a] hover:border-[#00a2ff]/50 rounded-2xl p-5 flex items-center justify-between transition-all duration-300 shadow-md group cursor-pointer text-left"
           >
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-[#00a2ff]/10 text-[#00a2ff] border border-[#00a2ff]/20 group-hover:bg-[#00a2ff] group-hover:text-white transition-colors">
                 <ClipboardList className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="font-display font-black text-base text-white group-hover:text-[#00a2ff] transition-colors">
+                <h4 className="font-display font-black text-base text-zinc-900 dark:text-white group-hover:text-[#00a2ff] transition-colors">
                   Lançar Placares
                 </h4>
-                <p className="text-xs text-[#9ca3af] mt-0.5">
+                <p className="text-xs text-zinc-600 dark:text-[#9ca3af] mt-0.5">
                   Atualizar resultados das partidas na súmula digital em tempo real
                 </p>
               </div>
             </div>
-            <div className="p-2 rounded-xl text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all">
+            <div className="p-2 rounded-xl text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all">
               <ChevronRight className="h-5 w-5" />
             </div>
           </button>
@@ -2034,17 +2034,17 @@ export default function OrganizerDashboard({
 
       {/* 5. Secção de Patrocinadores Cadastrados */}
       {currentTour?.sponsors && currentTour.sponsors.length > 0 ? (
-        <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl p-6 sm:p-7 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-4">
+        <div className="bg-white dark:bg-[#1e1e1e] border border-zinc-200 dark:border-[#27272a] rounded-2xl p-6 sm:p-7 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-[#27272a] pb-4">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base sm:text-lg font-black text-white font-display">
+                <h3 className="text-base sm:text-lg font-black text-zinc-900 dark:text-white font-display">
                   Patrocinadores Oficiais do Evento
                 </h3>
-                <p className="text-xs text-[#9ca3af]">
+                <p className="text-xs text-zinc-600 dark:text-[#9ca3af]">
                   Marcas e parceiros que apoiam este torneio
                 </p>
               </div>
@@ -2052,7 +2052,7 @@ export default function OrganizerDashboard({
             {canEditSettings && (
               <button
                 onClick={() => setShowEditModal(true)}
-                className="self-start sm:self-auto text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 cursor-pointer"
+                className="self-start sm:self-auto text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 cursor-pointer"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 <span>Gerenciar Patrocinadores</span>
@@ -2063,9 +2063,9 @@ export default function OrganizerDashboard({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
             {currentTour.sponsors.map((sponsor) => {
               const CardContent = (
-                <div className="h-full p-4 rounded-xl bg-[#141416] border border-[#27272a] hover:border-amber-500/40 hover:bg-zinc-900/90 transition-all flex flex-col items-center justify-center text-center gap-2 group shadow-sm">
+                <div className="h-full p-4 rounded-xl bg-zinc-50 dark:bg-[#141416] border border-zinc-200 dark:border-[#27272a] hover:border-amber-500/40 hover:bg-zinc-100 dark:hover:bg-zinc-900/90 transition-all flex flex-col items-center justify-center text-center gap-2 group shadow-sm">
                   {sponsor.logo_url ? (
-                    <div className="w-full h-14 sm:h-16 flex items-center justify-center p-2 rounded-lg bg-zinc-900/70 border border-zinc-800/80 group-hover:scale-105 transition-transform">
+                    <div className="w-full h-14 sm:h-16 flex items-center justify-center p-2 rounded-lg bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800/80 group-hover:scale-105 transition-transform">
                       <img
                         src={sponsor.logo_url}
                         alt={sponsor.name}
@@ -2073,15 +2073,15 @@ export default function OrganizerDashboard({
                       />
                     </div>
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-black text-base group-hover:scale-105 transition-transform">
+                    <div className="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 dark:text-amber-400 font-black text-base group-hover:scale-105 transition-transform">
                       {sponsor.name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-xs font-bold text-zinc-200 group-hover:text-amber-300 transition-colors line-clamp-1">
+                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors line-clamp-1">
                     {sponsor.name}
                   </span>
                   {sponsor.link && (
-                    <span className="text-[10px] text-zinc-500 group-hover:text-zinc-400 flex items-center gap-1">
+                    <span className="text-[10px] text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-400 flex items-center gap-1">
                       <span>Acessar</span>
                       <ExternalLink className="h-2.5 w-2.5" />
                     </span>
@@ -2113,19 +2113,19 @@ export default function OrganizerDashboard({
           </div>
         </div>
       ) : canEditSettings ? (
-        <div className="bg-[#1e1e1e] border border-[#27272a] rounded-2xl p-6 text-center shadow-xl space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+        <div className="bg-white dark:bg-[#1e1e1e] border border-zinc-200 dark:border-[#27272a] rounded-2xl p-6 text-center shadow-xl space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center mx-auto">
             <Building2 className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Nenhum patrocinador cadastrado</h3>
-            <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Nenhum patrocinador cadastrado</h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-md mx-auto">
               Adicione marcas parceiras e patrocinadores para exibir o apoio oficial no painel e na página pública do torneio.
             </p>
           </div>
           <button
             onClick={() => setShowEditModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-xs font-bold transition-all cursor-pointer"
           >
             <Building2 className="h-4 w-4" />
             <span>Cadastrar Patrocinadores</span>
