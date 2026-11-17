@@ -445,7 +445,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    return await supabase.auth.resetPasswordForEmail(email);
+    const origin =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || "";
+    const redirectUrl = origin ? `${origin.replace(/\/+$/, "")}/atualizar-senha` : undefined;
+    return await supabase.auth.resetPasswordForEmail(
+      email,
+      redirectUrl ? { redirectTo: redirectUrl } : undefined
+    );
   };
 
   const updatePassword = async (newPassword: string) => {
