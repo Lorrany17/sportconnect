@@ -1822,7 +1822,7 @@ export default function CreateTournamentForm({
 
   return (
     <div
-      className={`bg-[#1a1a1a] border border-[#333] rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl relative text-white w-full max-h-[90vh] overflow-y-auto selection:bg-blue-600/30 selection:text-white ${isModal ? "max-w-2xl mx-auto" : "max-w-3xl mx-auto"
+      className={`bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#333] rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-xl dark:shadow-2xl relative text-zinc-900 dark:text-white w-full max-h-[90vh] overflow-y-auto selection:bg-blue-600/30 selection:text-white ${isModal ? "max-w-2xl mx-auto" : "max-w-3xl mx-auto"
         }`}
     >
       {/* Faixa decorativa superior em gradiente azul SportConnect */}
@@ -1833,7 +1833,7 @@ export default function CreateTournamentForm({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           title="Fechar"
         >
           <X className="h-5 w-5" />
@@ -1843,14 +1843,14 @@ export default function CreateTournamentForm({
       {/* Cabeçalho */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2.5 rounded-xl bg-blue-600/15 border border-blue-500/25 text-blue-400">
+          <div className="p-2.5 rounded-xl bg-blue-600/15 border border-blue-500/25 text-blue-500 dark:text-blue-400">
             <Trophy className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-white font-display tracking-tight uppercase">
+            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white font-display tracking-tight uppercase">
               {isEditing ? "Editar Configurações do Torneio" : "Configurar Novo Torneio"}
             </h1>
-            <p className="text-xs sm:text-sm text-zinc-400">
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
               {isEditing
                 ? "Atualize as informações, regras e patrocinadores do evento."
                 : "Preencha as informações essenciais para abrir as inscrições e gerenciar sua competição."}
@@ -1862,7 +1862,7 @@ export default function CreateTournamentForm({
       {/* 1. BARRA DE PROGRESSO MULTI-STEP (WIZARD) */}
       <div className="mb-6 space-y-3">
         {/* Barra horizontal animada */}
-        <div className="w-full h-1.5 bg-[#27272a] rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-zinc-200 dark:bg-[#27272a] rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-blue-600 via-[#00a2ff] to-cyan-400 transition-all duration-300 rounded-full"
             style={{ width: `${(currentStep / 4) * 100}%` }}
@@ -1881,18 +1881,18 @@ export default function CreateTournamentForm({
                 type="button"
                 onClick={() => handleStepClick(step.number)}
                 className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 p-2 sm:px-3 sm:py-2.5 rounded-xl border text-left transition-all cursor-pointer ${isCurrent
-                    ? "bg-blue-600/20 border-blue-500/60 text-white shadow-lg shadow-blue-600/10 ring-1 ring-blue-500/30"
+                    ? "bg-blue-50 dark:bg-blue-600/20 border-blue-500/60 text-blue-700 dark:text-white shadow-sm dark:shadow-lg shadow-blue-600/10 ring-1 ring-blue-500/30"
                     : isPast
-                      ? "bg-[#18181b] border-zinc-800 text-blue-400 hover:border-zinc-700"
-                      : "bg-[#121214] border-zinc-900 text-zinc-500 hover:border-zinc-800"
+                      ? "bg-zinc-100 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-blue-600 dark:text-blue-400 hover:border-zinc-300 dark:hover:border-zinc-700"
+                      : "bg-zinc-50 dark:bg-[#121214] border-zinc-200 dark:border-zinc-900 text-zinc-400 dark:text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-800"
                   }`}
               >
                 <div
                   className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-black transition-colors ${isCurrent
                       ? "bg-blue-600 text-white"
                       : isPast
-                        ? "bg-blue-500/20 text-blue-400"
-                        : "bg-zinc-800 text-zinc-500"
+                        ? "bg-blue-500/20 text-blue-500 dark:text-blue-400"
+                        : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
                     }`}
                 >
                   {isPast ? <Check className="h-3.5 w-3.5" /> : step.number}
@@ -1961,10 +1961,10 @@ export default function CreateTournamentForm({
             {/* Upload da Foto de Capa (Drag & Drop + Botão + Live Preview Padrão/Custom) */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                   Foto de Capa do Torneio
                 </label>
-                <span className="text-[11px] text-zinc-400 font-medium">
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
                   {coverFile ? "Arquivo selecionado" : `Padrão: ${SPORT_SELECT_OPTIONS.find((s) => s.id === sportType)?.label}`}
                 </span>
               </div>
@@ -1988,8 +1988,8 @@ export default function CreateTournamentForm({
                 className={`relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group flex flex-col justify-between p-4 ${isDragging
                     ? "border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30"
                     : coverFile
-                      ? "border-blue-500/60 bg-[#18181b]"
-                      : "border-[#3f3f46] hover:border-zinc-500 bg-[#18181b]"
+                      ? "border-blue-500/60 bg-zinc-100 dark:bg-[#18181b]"
+                      : "border-zinc-300 dark:border-[#3f3f46] hover:border-zinc-400 dark:hover:border-zinc-500 bg-zinc-100 dark:bg-[#18181b]"
                   }`}
               >
                 {/* Imagem de Fundo (Preview Ao Vivo: Usuário ou Padrão) */}
@@ -2068,7 +2068,7 @@ export default function CreateTournamentForm({
 
             {/* Nome do Torneio */}
             <div className="space-y-1.5">
-              <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+              <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                 Nome do Torneio <span className="text-blue-500">*</span>
               </label>
               <input
@@ -2080,7 +2080,7 @@ export default function CreateTournamentForm({
                   if (errorMessage) setErrorMessage("");
                 }}
                 placeholder="Ex: Copa Picos de Dominó 2026"
-                className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
               />
             </div>
 
@@ -2088,17 +2088,17 @@ export default function CreateTournamentForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Modalidade */}
               <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                   Modalidade <span className="text-blue-500">*</span>
                 </label>
                 <div className="relative">
                   <select
                     value={sportType}
                     onChange={(e) => handleSportChange(e.target.value as SportType)}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10 [color-scheme:light_dark]"
                   >
                     {SPORT_SELECT_OPTIONS.map((sport) => (
-                      <option key={sport.id} value={sport.id} className="bg-[#1a1a1a] text-white">
+                      <option key={sport.id} value={sport.id}>
                         {sport.icon} {sport.label}
                       </option>
                     ))}
@@ -2111,18 +2111,18 @@ export default function CreateTournamentForm({
 
               {/* Categoria de Gênero */}
               <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                   Categoria <span className="text-blue-500">*</span>
                 </label>
                 <div className="relative">
                   <select
                     value={genderCategory}
                     onChange={(e) => setGenderCategory(e.target.value.toUpperCase())}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10 [color-scheme:light_dark]"
                   >
-                    <option value="MASCULINO" className="bg-[#1a1a1a] text-white">Masculino</option>
-                    <option value="FEMININO" className="bg-[#1a1a1a] text-white">Feminino</option>
-                    <option value="MISTO" className="bg-[#1a1a1a] text-white">Misto</option>
+                    <option value="MASCULINO">Masculino</option>
+                    <option value="FEMININO">Feminino</option>
+                    <option value="MISTO">Misto</option>
                   </select>
                   <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-zinc-400">
                     <ChevronDown className="h-4 w-4" />
@@ -2134,7 +2134,7 @@ export default function CreateTournamentForm({
             {/* Formato da Modalidade (Individual, Duplas, etc. - movido para Etapa 1) */}
             {isFormatVisible && (
               <div className="space-y-1.5 animate-fadeIn">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                   Formato da Modalidade <span className="text-blue-500">*</span>
                 </label>
                 <div className="relative">
@@ -2151,17 +2151,17 @@ export default function CreateTournamentForm({
                         setMaxPlayers("");
                       }
                     }}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10 [color-scheme:light_dark]"
                   >
                     {sportType === "VOLEI" &&
                       VOLEI_FORMAT_OPTIONS.map((fmt) => (
-                        <option key={fmt} value={fmt} className="bg-[#1a1a1a] text-white">
+                        <option key={fmt} value={fmt}>
                           {fmt}
                         </option>
                       ))}
                     {sportType === "PING_PONG" &&
                       PING_PONG_FORMAT_OPTIONS.map((fmt) => (
-                        <option key={fmt} value={fmt} className="bg-[#1a1a1a] text-white">
+                        <option key={fmt} value={fmt}>
                           {fmt}
                         </option>
                       ))}
@@ -2182,7 +2182,7 @@ export default function CreateTournamentForm({
           <div className="space-y-5 animate-fadeIn">
             {/* Local do Evento & Mapa Funcional com Iframe */}
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+              <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                 Local do Evento
               </label>
               <div className="relative">
@@ -2194,30 +2194,30 @@ export default function CreateTournamentForm({
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Digite o endereço do ginásio, quadra ou clube..."
-                  className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                 />
               </div>
 
               {/* Renderização Condicional do Mapa Google Maps */}
               <div className="mt-2">
                 {!debouncedAddress ? (
-                  <div className="h-[150px] w-full rounded-xl border border-[#333] bg-[#0c0c0c] flex flex-col items-center justify-center p-4 text-center">
-                    <div className="w-10 h-10 rounded-full bg-zinc-900 border border-[#333] flex items-center justify-center text-zinc-500 mb-2">
+                  <div className="h-[150px] w-full rounded-xl border border-zinc-200 dark:border-[#333] bg-zinc-50 dark:bg-[#0c0c0c] flex flex-col items-center justify-center p-4 text-center">
+                    <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-[#333] flex items-center justify-center text-zinc-500 mb-2 shadow-sm">
                       <MapPin className="h-5 w-5 text-blue-500/70" />
                     </div>
-                    <p className="text-xs text-zinc-400 font-medium">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
                       Digite o endereço para carregar o mapa
                     </p>
-                    <span className="text-[11px] text-zinc-600 mt-0.5">
+                    <span className="text-[11px] text-zinc-400 dark:text-zinc-600 mt-0.5">
                       O mapa interativo será carregado automaticamente
                     </span>
                   </div>
                 ) : (
-                  <div className="relative rounded-xl overflow-hidden border border-zinc-700 bg-zinc-900 shadow-md animate-fadeIn">
+                  <div className="relative rounded-xl overflow-hidden border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-md animate-fadeIn">
                     <iframe
                       width="100%"
                       height="150"
-                      className="rounded-md border border-zinc-700 w-full block"
+                      className="rounded-md border border-zinc-200 dark:border-zinc-700 w-full block"
                       src={`https://maps.google.com/maps?q=${encodeURIComponent(
                         debouncedAddress
                       )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
@@ -2235,7 +2235,7 @@ export default function CreateTournamentForm({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Data de Início */}
               <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                   Data de Início
                 </label>
                 <div className="relative">
@@ -2249,7 +2249,7 @@ export default function CreateTournamentForm({
                         setEndDate(nextStart);
                       }
                     }}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all [color-scheme:dark]"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all [color-scheme:light_dark]"
                   />
                 </div>
               </div>
@@ -2257,7 +2257,7 @@ export default function CreateTournamentForm({
               {/* Data de Término */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                     Data de Término
                   </label>
                   <span className="text-[10px] text-zinc-500">Opcional</span>
@@ -2276,7 +2276,7 @@ export default function CreateTournamentForm({
                         setErrorMessage("");
                       }
                     }}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all [color-scheme:dark]"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all [color-scheme:light_dark]"
                   />
                 </div>
               </div>
@@ -2284,7 +2284,7 @@ export default function CreateTournamentForm({
               {/* Horário (com tratamento de horário opcional) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                     Horário
                   </label>
                   <span className="text-[10px] text-zinc-500">
@@ -2293,16 +2293,16 @@ export default function CreateTournamentForm({
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
-                    <Clock className={`h-4 w-4 ${noTimeSet ? "text-zinc-600" : "text-blue-500"}`} />
+                    <Clock className={`h-4 w-4 ${noTimeSet ? "text-zinc-400 dark:text-zinc-600" : "text-blue-500"}`} />
                   </div>
                   <input
                     type="time"
                     disabled={noTimeSet}
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border rounded-xl text-sm outline-none transition-all [color-scheme:dark] ${noTimeSet
-                        ? "border-zinc-800 text-zinc-600 cursor-not-allowed opacity-50 bg-[#121214]"
-                        : "border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-zinc-100"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl text-sm outline-none transition-all [color-scheme:light_dark] ${noTimeSet
+                        ? "border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed opacity-50 bg-zinc-100 dark:bg-[#121214]"
+                        : "bg-white dark:bg-[#0f0f0f] border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100"
                       }`}
                   />
                 </div>
@@ -2313,9 +2313,9 @@ export default function CreateTournamentForm({
                     type="checkbox"
                     checked={noTimeSet}
                     onChange={(e) => handleToggleNoTimeSet(e.target.checked)}
-                    className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
-                  <span className="text-xs font-semibold text-zinc-300">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Definir horário depois
                   </span>
                 </label>
@@ -2331,7 +2331,7 @@ export default function CreateTournamentForm({
           <div className="space-y-5 animate-fadeIn">
             {/* NOVO CAMPO OBRIGATÓRIO: Formato do Torneio (tournament_format) */}
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+              <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                 Formato do Torneio <span className="text-blue-500">*</span>
               </label>
 
@@ -2349,8 +2349,8 @@ export default function CreateTournamentForm({
                         if (errorMessage) setErrorMessage("");
                       }}
                       className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer group ${isSelected
-                          ? "bg-blue-600/15 border-blue-500 text-white shadow-lg shadow-blue-600/15 ring-1 ring-blue-500/40"
-                          : "bg-[#0f0f0f] border-[#27272a] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200"
+                          ? "bg-blue-50 dark:bg-blue-600/15 border-blue-500 text-zinc-900 dark:text-white shadow-sm dark:shadow-lg shadow-blue-600/15 ring-1 ring-blue-500/40"
+                          : "bg-white dark:bg-[#0f0f0f] border-zinc-200 dark:border-[#27272a] hover:border-zinc-400 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 shadow-sm"
                         }`}
                     >
                       <div className="space-y-2">
@@ -2358,15 +2358,15 @@ export default function CreateTournamentForm({
                           <div
                             className={`p-2 rounded-xl transition-colors ${isSelected
                                 ? "bg-blue-600 text-white"
-                                : "bg-zinc-800/80 text-zinc-400 group-hover:text-white"
+                                : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white"
                               }`}
                           >
                             <Icon className="h-4 w-4" />
                           </div>
                           <span
                             className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${isSelected
-                                ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
-                                : "bg-zinc-800/60 border-zinc-700/60 text-zinc-400"
+                                ? "bg-blue-500/20 border-blue-500/40 text-blue-700 dark:text-blue-300"
+                                : "bg-zinc-100 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400"
                               }`}
                           >
                             {opt.badge}
@@ -2374,23 +2374,23 @@ export default function CreateTournamentForm({
                         </div>
 
                         <div>
-                          <h4 className="text-xs font-black text-white font-display uppercase tracking-tight">
+                          <h4 className="text-xs font-black text-zinc-900 dark:text-white font-display uppercase tracking-tight">
                             {opt.label}
                           </h4>
-                          <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                             {opt.desc}
                           </p>
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-2 border-t border-zinc-800/60 flex items-center justify-between text-[10px] font-bold">
-                        <span className={isSelected ? "text-blue-400" : "text-zinc-500"}>
+                      <div className="mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between text-[10px] font-bold">
+                        <span className={isSelected ? "text-blue-600 dark:text-blue-400" : "text-zinc-500"}>
                           {isSelected ? "Selecionado" : "Clique para selecionar"}
                         </span>
                         <div
                           className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isSelected
                               ? "border-blue-500 bg-blue-600 text-white"
-                              : "border-zinc-700 bg-zinc-900"
+                              : "border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900"
                             }`}
                         >
                           {isSelected && <Check className="h-2.5 w-2.5" />}
@@ -2403,16 +2403,16 @@ export default function CreateTournamentForm({
 
               {/* BLOCO ESPECÍFICO DO FORMATO FASE DE GRUPOS + ELIMINATÓRIAS */}
               {(tournamentFormat === "GROUPS" || tournamentFormat === "GROUPS_KNOCKOUT") && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-[#0d0d0d] border border-blue-500/30 shadow-lg space-y-4 animate-fadeIn mt-3">
-                  <div className="flex items-center gap-2.5 pb-2 border-b border-zinc-800">
-                    <div className="p-2 rounded-xl bg-blue-600/15 border border-blue-500/30 text-blue-400">
+                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-50 dark:bg-[#0d0d0d] border border-blue-500/20 dark:border-blue-500/30 shadow-sm dark:shadow-lg space-y-4 animate-fadeIn mt-3">
+                  <div className="flex items-center gap-2.5 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                    <div className="p-2 rounded-xl bg-blue-600/15 border border-blue-500/30 text-blue-500 dark:text-blue-400">
                       <Layers className="h-4 w-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-black text-white uppercase tracking-wider font-display">
+                      <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wider font-display">
                         Configuração da Fase de Grupos
                       </h4>
-                      <p className="text-[11px] text-zinc-400">
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                         Divisão matemática equilibrada e cruzamento olímpico automático no mata-mata
                       </p>
                     </div>
@@ -2420,13 +2420,13 @@ export default function CreateTournamentForm({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Quantidade de Grupos <span className="text-blue-500">*</span>
                       </label>
                       <select
                         value={numGroups}
                         onChange={(e) => setNumGroups(Number(e.target.value))}
-                        className="w-full bg-[#18181b] border border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                        className="w-full bg-white dark:bg-[#18181b] border border-zinc-300 dark:border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer [color-scheme:light_dark]"
                       >
                         <option value={2}>2 Grupos (Grupo A e Grupo B)</option>
                         <option value={3}>3 Grupos (A, B e C)</option>
@@ -2442,13 +2442,13 @@ export default function CreateTournamentForm({
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Classificados por Grupo <span className="text-blue-500">*</span>
                       </label>
                       <select
                         value={qualifiersPerGroup}
                         onChange={(e) => setQualifiersPerGroup(Number(e.target.value))}
-                        className="w-full bg-[#18181b] border border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                        className="w-full bg-white dark:bg-[#18181b] border border-zinc-300 dark:border-zinc-700/80 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer [color-scheme:light_dark]"
                       >
                         <option value={2}>2 melhores de cada grupo (Cruzamento Olímpico 1º A vs 2º B)</option>
                         <option value={1}>Apenas o 1º colocado de cada grupo</option>
@@ -2467,19 +2467,19 @@ export default function CreateTournamentForm({
               {(tournamentFormat === "KNOCKOUT" ||
                 tournamentFormat === "GROUPS" ||
                 tournamentFormat === "GROUPS_KNOCKOUT") && (
-                <div className="flex items-start gap-3 p-3.5 sm:p-4 rounded-xl bg-[#0d0d0d] border border-blue-500/20 hover:border-blue-500/40 transition-colors mt-3">
+                <div className="flex items-start gap-3 p-3.5 sm:p-4 rounded-xl bg-zinc-50 dark:bg-[#0d0d0d] border border-blue-500/20 hover:border-blue-500/40 transition-colors mt-3">
                   <input
                     type="checkbox"
                     id="has_third_place_match"
                     checked={hasThirdPlaceMatch}
                     onChange={(e) => setHasThirdPlaceMatch(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-zinc-900 cursor-pointer"
+                    className="mt-0.5 h-4 w-4 rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                   <label htmlFor="has_third_place_match" className="text-xs cursor-pointer select-none space-y-0.5">
-                    <span className="font-bold text-white block">
+                    <span className="font-bold text-zinc-900 dark:text-white block">
                       Habilitar disputa de 3º lugar?
                     </span>
-                    <span className="text-[11px] text-zinc-400 block leading-relaxed">
+                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400 block leading-relaxed">
                       Se ativado, cria automaticamente uma partida extra entre os perdedores das semifinais para definir o 3º colocado do torneio.
                     </span>
                   </label>
@@ -2490,21 +2490,21 @@ export default function CreateTournamentForm({
             {/* ======================================================== */}
             {/* BLOCO DINÂMICO: REGRAS DA PARTIDA POR MODALIDADE (JSONB) */}
             {/* ======================================================== */}
-            <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-[#0d0d0d] border border-blue-500/25 shadow-lg relative overflow-hidden">
+            <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-zinc-50 dark:bg-[#0d0d0d] border border-blue-500/25 shadow-sm dark:shadow-lg relative overflow-hidden">
               <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-zinc-800/80">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-zinc-200 dark:border-zinc-800/80">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-blue-600/15 border border-blue-500/25 text-blue-400 shrink-0">
+                  <div className="p-2 rounded-xl bg-blue-600/15 border border-blue-500/25 text-blue-500 dark:text-blue-400 shrink-0">
                     <Timer className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-black text-white uppercase tracking-wider font-display">
+                    <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wider font-display">
                       Regras da Partida & Pontuação
                     </h3>
-                    <p className="text-[11px] text-zinc-400">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                       Critérios específicos para disputas de{" "}
-                      <span className="text-blue-400 font-bold">
+                      <span className="text-blue-600 dark:text-blue-400 font-bold">
                         {SPORT_SELECT_OPTIONS.find((s) => s.id === sportType)?.label || sportType}
                       </span>
                     </p>
@@ -2512,7 +2512,7 @@ export default function CreateTournamentForm({
                 </div>
 
                 <div className="self-start sm:self-auto">
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 inline-flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 inline-flex items-center gap-1.5">
                     {sportType === "FUTSAL" || (sportType as string) === "FUTEBOL" ? (
                       <>
                         <span>⏱️</span> Regras de Tempo
@@ -2536,7 +2536,7 @@ export default function CreateTournamentForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* halves_count */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Número de Tempos <span className="text-blue-500">*</span>
                       </label>
                       <input
@@ -2545,7 +2545,7 @@ export default function CreateTournamentForm({
                         max="4"
                         value={halvesCount}
                         onChange={(e) => setHalvesCount(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-4 py-2.5 bg-[#080808] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all shadow-inner"
                         placeholder="2"
                       />
                       <span className="text-[10px] text-zinc-500 block">
@@ -2555,7 +2555,7 @@ export default function CreateTournamentForm({
 
                     {/* half_duration_minutes */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Duração de Cada Tempo (minutos) <span className="text-blue-500">*</span>
                       </label>
                       <input
@@ -2564,7 +2564,7 @@ export default function CreateTournamentForm({
                         max="60"
                         value={halfDurationMinutes}
                         onChange={(e) => setHalfDurationMinutes(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-4 py-2.5 bg-[#080808] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all shadow-inner"
                         placeholder="20"
                       />
                       <span className="text-[10px] text-zinc-500 block">
@@ -2576,17 +2576,17 @@ export default function CreateTournamentForm({
                   {/* Radios / Checkboxes: has_extra_time & has_penalties */}
                   <div className="space-y-3 pt-1">
                     {/* has_extra_time */}
-                    <div className="p-3.5 rounded-xl bg-[#080808] border border-[#27272a] space-y-2.5 transition-all">
+                    <div className="p-3.5 rounded-xl bg-white dark:bg-[#080808] border border-zinc-200 dark:border-[#27272a] space-y-2.5 transition-all shadow-sm">
                       <label className="flex items-center justify-between cursor-pointer select-none">
                         <div className="flex items-center gap-2.5 pr-2">
                           <input
                             type="checkbox"
                             checked={hasExtraTime}
                             onChange={(e) => setHasExtraTime(e.target.checked)}
-                            className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
                           />
                           <div>
-                            <span className="text-xs font-bold text-zinc-200 block">
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                               Prever Prorrogação em caso de empate
                             </span>
                             <span className="text-[10px] text-zinc-500 block">
@@ -2594,15 +2594,15 @@ export default function CreateTournamentForm({
                             </span>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 ${hasExtraTime ? "bg-blue-500/20 text-blue-400" : "bg-zinc-800 text-zinc-500"}`}>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 ${hasExtraTime ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"}`}>
                           {hasExtraTime ? "Ativo" : "Não"}
                         </span>
                       </label>
 
                       {/* extra_time_duration (renderizado se true) */}
                       {hasExtraTime && (
-                        <div className="pt-2.5 border-t border-zinc-800/80 animate-fadeIn pl-6">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 block mb-1">
+                        <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800/80 animate-fadeIn pl-6">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block mb-1">
                             Duração da Prorrogação (minutos por tempo)
                           </label>
                           <input
@@ -2611,7 +2611,7 @@ export default function CreateTournamentForm({
                             max="30"
                             value={extraTimeDuration}
                             onChange={(e) => setExtraTimeDuration(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-full sm:w-48 px-3.5 py-2 bg-[#121214] border border-blue-500/40 focus:border-blue-500 rounded-lg text-xs text-zinc-100 outline-none"
+                            className="w-full sm:w-48 px-3.5 py-2 bg-white dark:bg-[#121214] border border-blue-500/40 focus:border-blue-500 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 outline-none"
                             placeholder="5"
                           />
                         </div>
@@ -2619,17 +2619,17 @@ export default function CreateTournamentForm({
                     </div>
 
                     {/* has_penalties */}
-                    <div className="p-3.5 rounded-xl bg-[#080808] border border-[#27272a] transition-all">
+                    <div className="p-3.5 rounded-xl bg-white dark:bg-[#080808] border border-zinc-200 dark:border-[#27272a] transition-all shadow-sm">
                       <label className="flex items-center justify-between cursor-pointer select-none">
                         <div className="flex items-center gap-2.5 pr-2">
                           <input
                             type="checkbox"
                             checked={hasPenalties}
                             onChange={(e) => setHasPenalties(e.target.checked)}
-                            className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
                           />
                           <div>
-                            <span className="text-xs font-bold text-zinc-200 block">
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                               Decisão por Pênaltis
                             </span>
                             <span className="text-[10px] text-zinc-500 block">
@@ -2637,7 +2637,7 @@ export default function CreateTournamentForm({
                             </span>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 ${hasPenalties ? "bg-emerald-500/20 text-emerald-400" : "bg-zinc-800 text-zinc-500"}`}>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 ${hasPenalties ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"}`}>
                           {hasPenalties ? "Sim" : "Não"}
                         </span>
                       </label>
@@ -2652,19 +2652,19 @@ export default function CreateTournamentForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* best_of_sets */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Disputa de Sets <span className="text-blue-500">*</span>
                       </label>
                       <div className="relative">
                         <select
                           value={bestOfSets}
                           onChange={(e) => setBestOfSets(parseInt(e.target.value) || 3)}
-                          className="w-full px-4 py-2.5 bg-[#080808] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10 shadow-inner"
+                          className="w-full px-4 py-2.5 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-10 shadow-inner [color-scheme:light_dark]"
                         >
-                          <option value={3} className="bg-[#1a1a1a] text-white">
+                          <option value={3}>
                             Melhor de 3 Sets (Vence quem fizer 2)
                           </option>
-                          <option value={5} className="bg-[#1a1a1a] text-white">
+                          <option value={5}>
                             Melhor de 5 Sets (Vence quem fizer 3)
                           </option>
                         </select>
@@ -2677,7 +2677,7 @@ export default function CreateTournamentForm({
 
                     {/* points_per_set */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Pontos por Set Regular <span className="text-blue-500">*</span>
                       </label>
                       <input
@@ -2686,7 +2686,7 @@ export default function CreateTournamentForm({
                         max="50"
                         value={pointsPerSet}
                         onChange={(e) => setPointsPerSet(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-4 py-2.5 bg-[#080808] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all shadow-inner"
                         placeholder={sportType === "VOLEI" ? "25" : "21"}
                       />
                       <span className="text-[10px] text-zinc-500 block">
@@ -2700,7 +2700,7 @@ export default function CreateTournamentForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* tie_break_points */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Pontos no Tie-Break (Set Desempate) <span className="text-blue-500">*</span>
                       </label>
                       <input
@@ -2709,7 +2709,7 @@ export default function CreateTournamentForm({
                         max="30"
                         value={tieBreakPoints}
                         onChange={(e) => setTieBreakPoints(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-4 py-2.5 bg-[#080808] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all shadow-inner"
                         placeholder="15"
                       />
                       <span className="text-[10px] text-zinc-500 block">
@@ -2718,17 +2718,17 @@ export default function CreateTournamentForm({
                     </div>
 
                     {/* requires_two_point_advantage */}
-                    <div className="p-3.5 rounded-xl bg-[#080808] border border-[#27272a] flex flex-col justify-center">
+                    <div className="p-3.5 rounded-xl bg-white dark:bg-[#080808] border border-zinc-200 dark:border-[#27272a] flex flex-col justify-center shadow-sm">
                       <label className="flex items-center justify-between cursor-pointer select-none">
                         <div className="flex items-center gap-2.5 pr-2">
                           <input
                             type="checkbox"
                             checked={requiresTwoPointAdvantage}
                             onChange={(e) => setRequiresTwoPointAdvantage(e.target.checked)}
-                            className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
                           />
                           <div>
-                            <span className="text-xs font-bold text-zinc-200 block">
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                               Vantagem de 2 Pontos
                             </span>
                             <span className="text-[10px] text-zinc-500 block leading-tight">
@@ -2736,7 +2736,7 @@ export default function CreateTournamentForm({
                             </span>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 ${requiresTwoPointAdvantage ? "bg-blue-500/20 text-blue-400" : "bg-zinc-800 text-zinc-500"}`}>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded shrink-0 ${requiresTwoPointAdvantage ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"}`}>
                           {requiresTwoPointAdvantage ? "Sim" : "Não"}
                         </span>
                       </label>
@@ -2751,7 +2751,7 @@ export default function CreateTournamentForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* target_score */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Pontuação Alvo (Meta para Vencer) <span className="text-blue-500">*</span>
                       </label>
                       <input
@@ -2761,7 +2761,7 @@ export default function CreateTournamentForm({
                         step="10"
                         value={targetScore}
                         onChange={(e) => setTargetScore(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-4 py-2.5 bg-[#080808] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all shadow-inner"
                         placeholder="200"
                       />
                       <span className="text-[10px] text-zinc-500 block">
@@ -2771,7 +2771,7 @@ export default function CreateTournamentForm({
 
                     {/* max_rounds */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                      <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                         Limite Máximo de Rodadas / Mãos <span className="text-blue-500">*</span>
                       </label>
                       <input
@@ -2780,7 +2780,7 @@ export default function CreateTournamentForm({
                         max="50"
                         value={maxRounds}
                         onChange={(e) => setMaxRounds(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-4 py-2.5 bg-[#080808] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 outline-none transition-all shadow-inner"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none transition-all shadow-inner"
                         placeholder="10"
                       />
                       <span className="text-[10px] text-zinc-500 block">
@@ -2792,14 +2792,14 @@ export default function CreateTournamentForm({
               )}
 
               {/* Exceções / Regras Dinâmicas por Fase (Oitavas, Quartas, Semifinal, Final, etc.) */}
-              <div className="pt-4 mt-3 border-t border-[#27272a] space-y-3">
+              <div className="pt-4 mt-3 border-t border-zinc-200 dark:border-[#27272a] space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
                       <span>Regras Dinâmicas por Fase (Exceções)</span>
                     </h4>
-                    <p className="text-[11px] text-zinc-400">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                       Defina regras específicas para fases avançadas (ex: Semifinal ou Final em Melhor de 5).
                     </p>
                   </div>
@@ -2832,7 +2832,7 @@ export default function CreateTournamentForm({
                         },
                       ]);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 self-start sm:self-auto"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 text-xs font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 self-start sm:self-auto shadow-sm"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Adicionar exceção/regra por fase</span>
@@ -2848,7 +2848,7 @@ export default function CreateTournamentForm({
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="flex-1 max-w-xs space-y-1">
-                            <label className="text-[11px] font-black uppercase tracking-wider text-amber-300 block">
+                            <label className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 block">
                               Fase do Torneio
                             </label>
                             <select
@@ -2861,7 +2861,7 @@ export default function CreateTournamentForm({
                                   )
                                 );
                               }}
-                              className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm font-bold text-white outline-none cursor-pointer"
+                              className="w-full px-3 py-2 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-amber-500 rounded-xl text-sm font-bold text-zinc-900 dark:text-white outline-none cursor-pointer [color-scheme:light_dark]"
                             >
                               {PHASE_EXCEPTION_OPTIONS.map((opt) => (
                                 <option
@@ -2871,7 +2871,6 @@ export default function CreateTournamentForm({
                                     opt.value !== item.phase &&
                                     phaseExceptions.some((other) => other.phase === opt.value)
                                   }
-                                  className="bg-[#1a1a1a] text-white"
                                 >
                                   {opt.label}
                                 </option>
@@ -2886,7 +2885,7 @@ export default function CreateTournamentForm({
                                 prev.filter((row) => row.id !== item.id)
                               )
                             }
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold transition-all cursor-pointer self-end sm:self-center"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-bold transition-all cursor-pointer self-end sm:self-center"
                             title="Remover regra desta fase"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -2896,7 +2895,7 @@ export default function CreateTournamentForm({
 
                         {sportType === "FUTSAL" || (sportType as string) === "FUTEBOL" ? (
                           <div className="space-y-1 max-w-xs">
-                            <label className="text-xs font-bold text-zinc-300 block">
+                            <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
                               Duração de cada tempo nesta fase (min)
                             </label>
                             <input
@@ -2912,13 +2911,13 @@ export default function CreateTournamentForm({
                                   )
                                 );
                               }}
-                              className="w-full px-3.5 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                              className="w-full px-3.5 py-2 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none"
                             />
                           </div>
                         ) : sportType === "PING_PONG" || sportType === "VOLEI" || (sportType as string) === "TENIS" ? (
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="space-y-1">
-                              <label className="text-xs font-bold text-zinc-300 block">
+                              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
                                 Melhor de (Sets)
                               </label>
                               <select
@@ -2931,7 +2930,7 @@ export default function CreateTournamentForm({
                                     )
                                   );
                                 }}
-                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none cursor-pointer"
+                                className="w-full px-3 py-2 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none cursor-pointer [color-scheme:light_dark]"
                               >
                                 <option value={1}>1 Set Único</option>
                                 <option value={3}>Melhor de 3 Sets</option>
@@ -2941,7 +2940,7 @@ export default function CreateTournamentForm({
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-xs font-bold text-zinc-300 block">
+                              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
                                 Pontos por Set
                               </label>
                               <input
@@ -2957,12 +2956,12 @@ export default function CreateTournamentForm({
                                     )
                                   );
                                 }}
-                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                                className="w-full px-3 py-2 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none"
                               />
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-xs font-bold text-zinc-300 block">
+                              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
                                 Set Decisivo (Tie-break)
                               </label>
                               <input
@@ -2978,14 +2977,14 @@ export default function CreateTournamentForm({
                                     )
                                   );
                                 }}
-                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                                className="w-full px-3 py-2 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none"
                               />
                             </div>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <label className="text-xs font-bold text-zinc-300 block">
+                              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
                                 Formato da Fase (Dominó)
                               </label>
                               <select
@@ -2998,7 +2997,7 @@ export default function CreateTournamentForm({
                                     )
                                   );
                                 }}
-                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none cursor-pointer"
+                                className="w-full px-3 py-2 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none cursor-pointer [color-scheme:light_dark]"
                               >
                                 <option value={1}>Set Único</option>
                                 <option value={3}>Melhor de 3</option>
@@ -3007,7 +3006,7 @@ export default function CreateTournamentForm({
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-xs font-bold text-zinc-300 block">
+                              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
                                 Pontuação Alvo nesta Fase
                               </label>
                               <input
@@ -3023,7 +3022,7 @@ export default function CreateTournamentForm({
                                     )
                                   );
                                 }}
-                                className="w-full px-3 py-2 bg-[#080808] border border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-100 outline-none"
+                                className="w-full px-3 py-2 bg-white dark:bg-[#080808] border border-zinc-300 dark:border-[#333] focus:border-amber-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 outline-none"
                               />
                             </div>
                           </div>
@@ -3039,7 +3038,7 @@ export default function CreateTournamentForm({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Número de Vagas com Rótulo e Unidade Dinâmicos */}
               <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                   {counterMeta.label}
                 </label>
                 <div className="flex items-center gap-2">
@@ -3047,18 +3046,18 @@ export default function CreateTournamentForm({
                     type="button"
                     onClick={handleDecrementTeams}
                     disabled={maxTeams <= 2}
-                    className="w-12 h-11 rounded-xl bg-[#0f0f0f] border border-[#333] hover:border-blue-500 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-12 h-11 rounded-xl bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] hover:border-blue-500 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Diminuir vagas"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
 
-                  <div className="flex-1 h-11 bg-[#0f0f0f] border border-[#333] rounded-xl flex items-center justify-center px-3 shadow-inner">
+                  <div className="flex-1 h-11 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] rounded-xl flex items-center justify-center px-3 shadow-inner">
                     <Users className="h-4 w-4 text-blue-500 mr-2 shrink-0" />
-                    <span className="text-base font-black text-white font-display">
+                    <span className="text-base font-black text-zinc-900 dark:text-white font-display">
                       {maxTeams}
                     </span>
-                    <span className="text-xs text-zinc-500 font-bold ml-1.5 truncate">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold ml-1.5 truncate">
                       {counterMeta.unit}
                     </span>
                   </div>
@@ -3067,7 +3066,7 @@ export default function CreateTournamentForm({
                     type="button"
                     onClick={handleIncrementTeams}
                     disabled={maxTeams >= 64}
-                    className="w-12 h-11 rounded-xl bg-[#0f0f0f] border border-[#333] hover:border-blue-500 text-zinc-300 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-12 h-11 rounded-xl bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] hover:border-blue-500 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Aumentar vagas"
                   >
                     <Plus className="h-4 w-4" />
@@ -3077,7 +3076,7 @@ export default function CreateTournamentForm({
 
               {/* Valor da Inscrição (por time/dupla/jogador) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                   VALOR DA INSCRIÇÃO (POR {counterMeta.singular.toUpperCase()})
                 </label>
                 <div className="relative">
@@ -3095,12 +3094,12 @@ export default function CreateTournamentForm({
                     placeholder="100.00"
                     className={`w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all shadow-inner ${
                       hasPaidRegistrations
-                        ? "opacity-60 cursor-not-allowed border-zinc-800 bg-zinc-950 text-zinc-400"
-                        : "bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-zinc-100 placeholder:text-zinc-600"
+                        ? "opacity-60 cursor-not-allowed border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950 text-zinc-400"
+                        : "bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
                     }`}
                   />
                 </div>
-                <span className="text-[10px] text-zinc-500 block">
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block">
                   {hasPaidRegistrations ? (
                     <span className="text-red-500 text-sm flex items-center gap-1.5 font-medium mt-1">
                       <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
@@ -3115,10 +3114,10 @@ export default function CreateTournamentForm({
 
             {/* ÁREA DE RECEBIMENTO: Dropdown de Tipo de Chave Pix + Máscara Dinâmica */}
             {isPaidTournament ? (
-              <div className="space-y-2 pt-2 border-t border-[#27272a]/60 animate-fadeIn">
+              <div className="space-y-2 pt-2 border-t border-zinc-200 dark:border-[#27272a]/60 animate-fadeIn">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-emerald-400" />
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-200 block">
+                  <CreditCard className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 block">
                     Dados PIX para Repasse (Organizador) <span className="text-blue-500">*</span>
                   </label>
                 </div>
@@ -3126,17 +3125,17 @@ export default function CreateTournamentForm({
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                   {/* Dropdown Tipo de Chave Pix */}
                   <div className="sm:col-span-4 space-y-1">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                       Tipo de Chave <span className="text-blue-500">*</span>
                     </label>
                     <div className="relative">
                       <select
                         value={pixKeyType}
                         onChange={(e) => handlePixKeyTypeChange(e.target.value)}
-                        className="w-full pl-3 pr-8 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 rounded-xl text-xs text-zinc-100 outline-none transition-all appearance-none cursor-pointer"
+                        className="w-full pl-3 pr-8 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 outline-none transition-all appearance-none cursor-pointer"
                       >
                         {PIX_KEY_TYPES.map((t) => (
-                          <option key={t.id} value={t.id} className="bg-[#1a1a1a] text-white">
+                          <option key={t.id} value={t.id} className="bg-white dark:bg-[#1a1a1a] text-zinc-900 dark:text-white">
                             {t.label}
                           </option>
                         ))}
@@ -3147,7 +3146,7 @@ export default function CreateTournamentForm({
 
                   {/* Campo de Chave com Máscara Dinâmica */}
                   <div className="sm:col-span-8 space-y-1">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                       Chave PIX <span className="text-blue-500">*</span>
                     </label>
                     <div className="relative">
@@ -3156,18 +3155,18 @@ export default function CreateTournamentForm({
                         value={organizerPixKey}
                         onChange={(e) => setOrganizerPixKey(formatPixKey(e.target.value, pixKeyType))}
                         placeholder={PIX_KEY_TYPES.find((t) => t.id === pixKeyType)?.placeholder || "Digite a chave PIX"}
-                        className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner font-mono"
+                        className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner font-mono"
                       />
                     </div>
                   </div>
                 </div>
 
-                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
                   O valor arrecadado das inscrições aprovadas (após taxas) será transferido pelo sistema para esta chave PIX.
                 </p>
               </div>
             ) : (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2.5 animate-fadeIn">
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2.5 animate-fadeIn">
                 <Check className="h-4 w-4 shrink-0" />
                 <span>
                   <strong>Torneio Gratuito:</strong> Inscrições livres de taxa. Dados PIX para repasse não são necessários.
@@ -3176,26 +3175,26 @@ export default function CreateTournamentForm({
             )}
 
             {/* BLOCO DE PREMIAÇÃO (OPCIONAL) */}
-            <div className="space-y-3 pt-4 border-t border-[#27272a]/60 animate-fadeIn">
+            <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-[#27272a]/60 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-amber-400" />
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-200 block">
+                  <Award className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 block">
                     Premiação (Opcional)
                   </label>
                 </div>
-                <span className="text-[10px] font-bold text-amber-500/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-500/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
                   Pódio do Torneio
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 Descreva os prêmios oferecidos para os melhores colocados (troféus, medalhas, dinheiro ou brindes). Apenas os prêmios preenchidos serão exibidos na página pública do torneio.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* 1º Lugar */}
-                <div className="space-y-1.5 p-3 rounded-xl bg-[#0a0a0a] border border-amber-500/30 focus-within:border-amber-500/70 transition-colors">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <div className="space-y-1.5 p-3 rounded-xl bg-amber-500/5 dark:bg-[#0a0a0a] border border-amber-500/30 focus-within:border-amber-500/70 transition-colors">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                     <span className="text-base leading-none" role="img" aria-label="1º Lugar">🥇</span>
                     <span>1º Lugar</span>
                   </label>
@@ -3204,13 +3203,13 @@ export default function CreateTournamentForm({
                     value={prizeFirst}
                     onChange={(e) => setPrizeFirst(e.target.value)}
                     placeholder="Ex: R$ 500,00 + Troféu"
-                    className="w-full px-3 py-2 bg-[#121214] border border-[#27272a] focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                   />
                 </div>
 
                 {/* 2º Lugar */}
-                <div className="space-y-1.5 p-3 rounded-xl bg-[#0a0a0a] border border-slate-400/30 focus-within:border-slate-400/70 transition-colors">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <div className="space-y-1.5 p-3 rounded-xl bg-slate-500/5 dark:bg-[#0a0a0a] border border-slate-400/30 focus-within:border-slate-400/70 transition-colors">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <span className="text-base leading-none" role="img" aria-label="2º Lugar">🥈</span>
                     <span>2º Lugar</span>
                   </label>
@@ -3219,13 +3218,13 @@ export default function CreateTournamentForm({
                     value={prizeSecond}
                     onChange={(e) => setPrizeSecond(e.target.value)}
                     placeholder="Ex: R$ 250,00 + Medalha"
-                    className="w-full px-3 py-2 bg-[#121214] border border-[#27272a] focus:border-slate-400 focus:ring-1 focus:ring-slate-400/50 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-slate-400 focus:ring-1 focus:ring-slate-400/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                   />
                 </div>
 
                 {/* 3º Lugar */}
-                <div className="space-y-1.5 p-3 rounded-xl bg-[#0a0a0a] border border-amber-700/30 focus-within:border-amber-700/70 transition-colors">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                <div className="space-y-1.5 p-3 rounded-xl bg-amber-700/5 dark:bg-[#0a0a0a] border border-amber-700/30 focus-within:border-amber-700/70 transition-colors">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-600 flex items-center gap-1.5">
                     <span className="text-base leading-none" role="img" aria-label="3º Lugar">🥉</span>
                     <span>3º Lugar</span>
                   </label>
@@ -3234,34 +3233,34 @@ export default function CreateTournamentForm({
                     value={prizeThird}
                     onChange={(e) => setPrizeThird(e.target.value)}
                     placeholder="Ex: Medalha"
-                    className="w-full px-3 py-2 bg-[#121214] border border-[#27272a] focus:border-amber-700 focus:ring-1 focus:ring-amber-700/50 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-amber-700 focus:ring-1 focus:ring-amber-700/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                   />
                 </div>
               </div>
             </div>
 
             {/* BLOCO DE RESTRIÇÕES DE INSCRIÇÃO (OPCIONAL) */}
-            <div className="space-y-4 pt-4 border-t border-[#27272a]/60 animate-fadeIn">
+            <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-[#27272a]/60 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-purple-400" />
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-200 block">
+                  <Shield className="h-4 w-4 text-purple-500 dark:text-purple-400" />
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 block">
                     Restrições de Inscrição (Opcional)
                   </label>
                 </div>
-                <span className="text-[10px] font-bold text-purple-400/80 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400/80 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                   Regras de Elegibilidade
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 Configure restrições de faixa etária e limites de atletas no elenco. Se deixados em branco, o torneio aceitará qualquer idade e elenco padrão.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {/* 1. Nível Técnico / Rank */}
-                <div className={`p-3.5 rounded-xl bg-[#0a0a0a] border border-blue-500/20 space-y-2 flex flex-col justify-between ${isTeamFormat ? "sm:col-span-2" : ""}`}>
+                <div className={`p-3.5 rounded-xl bg-zinc-50 dark:bg-[#0a0a0a] border border-blue-500/20 space-y-2 flex flex-col justify-between ${isTeamFormat ? "sm:col-span-2" : ""}`}>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black uppercase tracking-wider text-blue-300 flex items-center gap-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-300 flex items-center gap-1.5">
                       <span role="img" aria-label="Nível Técnico">🎯</span>
                       <span>Nível Técnico / Rank</span>
                     </label>
@@ -3269,37 +3268,37 @@ export default function CreateTournamentForm({
                       <select
                         value={skillLevel}
                         onChange={(e) => setSkillLevel(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#121214] border border-[#27272a] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 rounded-lg text-xs text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-9 shadow-inner"
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 outline-none transition-all appearance-none cursor-pointer pr-9 shadow-inner"
                       >
-                        <option value="ALL" className="bg-[#1a1a1a] text-white">
+                        <option value="ALL" className="bg-white dark:bg-[#1a1a1a] text-zinc-900 dark:text-white">
                           Livre (Todos os Níveis)
                         </option>
-                        <option value="BEGINNER" className="bg-[#1a1a1a] text-white">
+                        <option value="BEGINNER" className="bg-white dark:bg-[#1a1a1a] text-zinc-900 dark:text-white">
                           Iniciante / Amador
                         </option>
-                        <option value="INTERMEDIATE" className="bg-[#1a1a1a] text-white">
+                        <option value="INTERMEDIATE" className="bg-white dark:bg-[#1a1a1a] text-zinc-900 dark:text-white">
                           Intermediário
                         </option>
-                        <option value="ADVANCED" className="bg-[#1a1a1a] text-white">
+                        <option value="ADVANCED" className="bg-white dark:bg-[#1a1a1a] text-zinc-900 dark:text-white">
                           Avançado / Pro
                         </option>
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
                     </div>
                   </div>
-                  <span className="text-[10px] text-zinc-500 block leading-tight">
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block leading-tight">
                     Define o nível de experiência recomendado ou exigido para os atletas participantes.
                   </span>
                 </div>
                 {/* 1. Restrição de Idade */}
-                <div className="p-3.5 rounded-xl bg-[#0a0a0a] border border-purple-500/20 space-y-2">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-purple-400" />
+                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-[#0a0a0a] border border-purple-500/20 space-y-2">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-300 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-purple-500 dark:text-purple-400" />
                     <span>Faixa Etária dos Atletas</span>
                   </label>
                   <div className={`grid grid-cols-2 gap-2.5 ${!isTeamFormat ? "sm:max-w-md" : ""}`}>
                     <div>
-                      <span className="text-[10px] text-zinc-500 block mb-1">Idade Mínima</span>
+                      <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block mb-1">Idade Mínima</span>
                       <input
                         type="number"
                         min="5"
@@ -3307,11 +3306,11 @@ export default function CreateTournamentForm({
                         value={minAge}
                         onChange={(e) => setMinAge(e.target.value)}
                         placeholder="Ex: 16"
-                        className="w-full px-3 py-2 bg-[#121214] border border-[#27272a] focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                       />
                     </div>
                     <div>
-                      <span className="text-[10px] text-zinc-500 block mb-1">Idade Máxima</span>
+                      <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block mb-1">Idade Máxima</span>
                       <input
                         type="number"
                         min="5"
@@ -3319,27 +3318,27 @@ export default function CreateTournamentForm({
                         value={maxAge}
                         onChange={(e) => setMaxAge(e.target.value)}
                         placeholder="Ex: 40"
-                        className="w-full px-3 py-2 bg-[#121214] border border-[#27272a] focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                       />
                     </div>
                   </div>
-                  <span className="text-[10px] text-zinc-500 block leading-tight">
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block leading-tight">
                     Deixe vazio se a competição for livre para todas as idades.
                   </span>
                 </div>
 
                 {/* 2. Tamanho do Elenco (Mín. e Máx. de Jogadores) - Apenas para modalidades de equipe */}
                 {isTeamFormat && (
-                  <div className="p-3.5 rounded-xl bg-[#0a0a0a] border border-cyan-500/20 space-y-2 flex flex-col justify-between animate-fadeIn">
+                  <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-[#0a0a0a] border border-cyan-500/20 space-y-2 flex flex-col justify-between animate-fadeIn">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-cyan-400" />
+                      <label className="text-[11px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-300 flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-400" />
                         <span>Tamanho do Elenco (Atletas por Equipe)</span>
                       </label>
 
                       <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <span className="text-[10px] text-zinc-500 block mb-1">Mín. de Jogadores</span>
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block mb-1">Mín. de Jogadores</span>
                           <input
                             type="number"
                             min="1"
@@ -3347,11 +3346,11 @@ export default function CreateTournamentForm({
                             value={minPlayers}
                             onChange={(e) => setMinPlayers(e.target.value)}
                             placeholder="5"
-                            className="w-full px-3 py-2 bg-[#121214] border border-[#27272a] focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                            className="w-full px-3 py-2 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                           />
                         </div>
                         <div>
-                          <span className="text-[10px] text-zinc-500 block mb-1">Máx. de Jogadores</span>
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block mb-1">Máx. de Jogadores</span>
                           <input
                             type="number"
                             min="1"
@@ -3359,12 +3358,12 @@ export default function CreateTournamentForm({
                             value={maxPlayers}
                             onChange={(e) => setMaxPlayers(e.target.value)}
                             placeholder="12"
-                            className="w-full px-3 py-2 bg-[#121214] border border-[#27272a] focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                            className="w-full px-3 py-2 bg-white dark:bg-[#121214] border border-zinc-300 dark:border-[#27272a] focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all shadow-inner"
                           />
                         </div>
                       </div>
                     </div>
-                    <span className="text-[10px] text-zinc-500 block leading-tight">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block leading-tight">
                       Controla a quantidade mínima e máxima de atletas (titulares e reservas).
                     </span>
                   </div>
@@ -3381,7 +3380,7 @@ export default function CreateTournamentForm({
           <div className="space-y-6 animate-fadeIn">
             {/* Regras e Regulamento em Texto */}
             <div className="space-y-1.5">
-              <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+              <label className="text-xs font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                 Regras e Regulamento em Texto (Opcional)
               </label>
               <textarea
@@ -3389,20 +3388,20 @@ export default function CreateTournamentForm({
                 value={rules}
                 onChange={(e) => setRules(e.target.value)}
                 placeholder="Descreva pontuação máxima, critérios de desempate, tolerância para atrasos (W.O.) e diretrizes gerais..."
-                className="w-full px-4 py-3 bg-[#0f0f0f] border border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all resize-y shadow-inner"
+                className="w-full px-4 py-3 bg-white dark:bg-[#0f0f0f] border border-zinc-300 dark:border-[#333] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all resize-y shadow-inner"
               />
             </div>
 
             {/* NOVO CAMPO: Upload de Regulamento em PDF com Integração ao Supabase Storage */}
-            <div className="space-y-2 p-4 rounded-2xl bg-[#0f0f0f] border border-[#27272a]">
+            <div className="space-y-2 p-4 rounded-2xl bg-zinc-50 dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-red-400" />
-                  <label className="text-xs font-black uppercase tracking-wider text-zinc-200 block">
+                  <FileText className="h-4 w-4 text-red-500 dark:text-red-400" />
+                  <label className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200 block">
                     Regulamento Oficial em PDF (Opcional)
                   </label>
                 </div>
-                <span className="text-[10px] text-zinc-500">PDF até 15MB</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400">PDF até 15MB</span>
               </div>
 
               <input
@@ -3417,12 +3416,12 @@ export default function CreateTournamentForm({
               />
 
               {rulebookFile ? (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-300 text-xs">
                   <div className="flex items-center gap-2.5 truncate">
-                    <FileText className="h-5 w-5 text-red-400 shrink-0" />
+                    <FileText className="h-5 w-5 text-red-500 dark:text-red-400 shrink-0" />
                     <div className="truncate">
-                      <p className="font-bold truncate text-zinc-100">{rulebookFile.name}</p>
-                      <p className="text-[10px] text-zinc-400">
+                      <p className="font-bold truncate text-zinc-900 dark:text-zinc-100">{rulebookFile.name}</p>
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
                         {(rulebookFile.size / (1024 * 1024)).toFixed(2)} MB • Pronto para envio
                       </p>
                     </div>
@@ -3430,23 +3429,23 @@ export default function CreateTournamentForm({
                   <button
                     type="button"
                     onClick={handleRemoveRulebook}
-                    className="p-1 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
+                    className="p-1 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
                     title="Remover arquivo PDF"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ) : rulebookUrl ? (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs">
                   <div className="flex items-center gap-2.5 truncate">
-                    <FileText className="h-5 w-5 text-red-400 shrink-0" />
+                    <FileText className="h-5 w-5 text-red-500 dark:text-red-400 shrink-0" />
                     <div className="truncate">
-                      <p className="font-bold truncate text-zinc-100">Regulamento Oficial Vinculado</p>
+                      <p className="font-bold truncate text-zinc-900 dark:text-zinc-100">Regulamento Oficial Vinculado</p>
                       <a
                         href={rulebookUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] text-blue-400 hover:underline flex items-center gap-1 mt-0.5"
+                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mt-0.5"
                       >
                         <span>Visualizar PDF Atual</span>
                         <ExternalLink className="h-3 w-3" />
@@ -3457,14 +3456,14 @@ export default function CreateTournamentForm({
                     <button
                       type="button"
                       onClick={() => rulebookInputRef.current?.click()}
-                      className="px-2.5 py-1 text-[11px] rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors cursor-pointer"
+                      className="px-2.5 py-1 text-[11px] rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
                     >
                       Trocar
                     </button>
                     <button
                       type="button"
                       onClick={handleRemoveRulebook}
-                      className="p-1 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                       title="Remover regulamento"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -3474,10 +3473,10 @@ export default function CreateTournamentForm({
               ) : (
                 <div
                   onClick={() => rulebookInputRef.current?.click()}
-                  className="p-4 rounded-xl border border-dashed border-[#333] hover:border-blue-500/50 bg-[#141416] hover:bg-[#18181b] flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all text-center group"
+                  className="p-4 rounded-xl border border-dashed border-zinc-300 dark:border-[#333] hover:border-blue-500/50 bg-white dark:bg-[#141416] hover:bg-zinc-50 dark:hover:bg-[#18181b] flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all text-center group"
                 >
-                  <FileUp className="h-6 w-6 text-zinc-500 group-hover:text-blue-400 transition-colors" />
-                  <p className="text-xs font-bold text-zinc-300 group-hover:text-white transition-colors">
+                  <FileUp className="h-6 w-6 text-zinc-400 dark:text-zinc-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
+                  <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
                     Clique para anexar o Regulamento em PDF
                   </p>
                   <span className="text-[10px] text-zinc-500">
@@ -3488,27 +3487,27 @@ export default function CreateTournamentForm({
             </div>
 
             {/* BLOCO: Dados Exigidos dos Atletas (CPF e Telefone/WhatsApp por membro) */}
-            <div className="space-y-3 pt-2 border-t border-[#27272a]/60">
+            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-[#27272a]/60">
               <div>
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-emerald-400" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                  <Shield className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
                     Dados Exigidos dos Atletas
                   </h3>
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                   {`Defina quais documentos ou contatos obrigatórios devem ser informados ${isSolo ? "pelo atleta" : "para cada integrante do elenco"} (o e-mail já é padrão para vinculação de contas).`}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Toggle 1: Exigir CPF de cada atleta */}
-                <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 transition-all cursor-pointer select-none">
+                <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all cursor-pointer select-none">
                   <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-zinc-200 block">
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                       Exigir CPF de cada atleta
                     </span>
-                    <span className="text-[10px] text-zinc-500 block">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block">
                       {`Torna o CPF obrigatório ${isSolo ? "para o atleta" : "em cada linha de membro e capitão"}`}
                     </span>
                   </div>
@@ -3518,7 +3517,7 @@ export default function CreateTournamentForm({
                     aria-checked={requireCpf}
                     onClick={() => setRequireCpf((prev) => !prev)}
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                      requireCpf ? "bg-emerald-500" : "bg-zinc-700"
+                      requireCpf ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
                     }`}
                   >
                     <span
@@ -3530,12 +3529,12 @@ export default function CreateTournamentForm({
                 </label>
 
                 {/* Toggle 2: Exigir Telefone/WhatsApp de cada atleta */}
-                <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 transition-all cursor-pointer select-none">
+                <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all cursor-pointer select-none">
                   <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-zinc-200 block">
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                       Exigir Telefone/WhatsApp de cada atleta
                     </span>
-                    <span className="text-[10px] text-zinc-500 block">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block">
                       {`Torna o WhatsApp obrigatório ${isSolo ? "para o atleta" : "para todos os membros da equipe"}`}
                     </span>
                   </div>
@@ -3545,7 +3544,7 @@ export default function CreateTournamentForm({
                     aria-checked={requirePhone}
                     onClick={() => setRequirePhone((prev) => !prev)}
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                      requirePhone ? "bg-emerald-500" : "bg-zinc-700"
+                      requirePhone ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-700"
                     }`}
                   >
                     <span
@@ -3559,16 +3558,16 @@ export default function CreateTournamentForm({
             </div>
 
             {/* SEÇÃO INTACTA: Campos Personalizados de Inscrição (Estilo Google Forms) */}
-            <div className="space-y-3 pt-2 border-t border-[#27272a]/60">
+            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-[#27272a]/60">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-400" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                    <FileText className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
                       Campos Personalizados de Inscrição
                     </h3>
                   </div>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Crie perguntas personalizadas para os atletas responderem no formulário de inscrição.
                   </p>
                 </div>
@@ -3576,7 +3575,7 @@ export default function CreateTournamentForm({
                 <button
                   type="button"
                   onClick={handleAddCustomField}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 hover:text-blue-300 text-xs font-black uppercase tracking-wider transition-all cursor-pointer self-start sm:self-auto"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 hover:border-blue-500/50 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs font-black uppercase tracking-wider transition-all cursor-pointer self-start sm:self-auto"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Adicionar Pergunta</span>
@@ -3584,11 +3583,11 @@ export default function CreateTournamentForm({
               </div>
 
               {customFields.length === 0 ? (
-                <div className="p-4 rounded-2xl bg-[#0f0f0f] border border-dashed border-[#27272a] text-center space-y-1">
-                  <p className="text-xs text-zinc-400 font-medium">
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#0f0f0f] border border-dashed border-zinc-200 dark:border-[#27272a] text-center space-y-1">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
                     Nenhuma pergunta personalizada adicionada.
                   </p>
-                  <p className="text-[11px] text-zinc-600">
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
                     Os atletas responderão apenas aos campos padrão (Nome, Contato/WhatsApp).
                   </p>
                 </div>
@@ -3604,14 +3603,14 @@ export default function CreateTournamentForm({
                     return (
                       <div
                         key={field.id}
-                        className="p-4 rounded-2xl bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 transition-all space-y-3 shadow-inner"
+                        className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all space-y-3 shadow-inner"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-black flex items-center justify-center">
+                            <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-black flex items-center justify-center">
                               {index + 1}
                             </span>
-                            <span className="text-xs font-bold text-zinc-300 uppercase tracking-wide">
+                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
                               Pergunta #{index + 1}
                             </span>
                           </div>
@@ -3619,7 +3618,7 @@ export default function CreateTournamentForm({
                           <button
                             type="button"
                             onClick={() => handleRemoveCustomField(field.id)}
-                            className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                             title="Remover pergunta"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -3629,21 +3628,21 @@ export default function CreateTournamentForm({
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                           {/* Texto da Pergunta (label) */}
                           <div className="sm:col-span-7 space-y-1">
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
-                              Texto da Pergunta <span className="text-red-400">*</span>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
+                              Texto da Pergunta <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
                               value={field.label}
                               onChange={(e) => handleUpdateCustomField(field.id, { label: e.target.value })}
                               placeholder="Ex: Tamanho da Camisa, Traz Raquete?"
-                              className="w-full px-3.5 py-2.5 bg-[#141416] border border-[#27272a] focus:border-blue-500 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all"
+                              className="w-full px-3.5 py-2.5 bg-white dark:bg-[#141416] border border-zinc-300 dark:border-[#27272a] focus:border-blue-500 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all"
                             />
                           </div>
 
                           {/* Tipo da Pergunta (type) */}
                           <div className="sm:col-span-5 space-y-1">
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                               Tipo de Resposta
                             </label>
                             <div className="relative">
@@ -3654,22 +3653,22 @@ export default function CreateTournamentForm({
                                     type: e.target.value as CustomFieldType,
                                   })
                                 }
-                                className="w-full pl-3.5 pr-8 py-2.5 bg-[#141416] border border-[#27272a] focus:border-blue-500 rounded-xl text-xs text-zinc-200 outline-none transition-all appearance-none cursor-pointer"
+                                className="w-full pl-3.5 pr-8 py-2.5 bg-white dark:bg-[#141416] border border-zinc-300 dark:border-[#27272a] focus:border-blue-500 rounded-xl text-xs text-zinc-900 dark:text-zinc-200 outline-none transition-all appearance-none cursor-pointer"
                               >
                                 <option value="text">Texto Curto</option>
                                 <option value="textarea">Texto Longo</option>
                                 <option value="select">Múltipla Escolha</option>
                                 <option value="checkbox">Caixa de Seleção / Checkbox</option>
                               </select>
-                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
+                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
                             </div>
                           </div>
                         </div>
 
                         {/* Opções de Múltipla Escolha (se o tipo for select) */}
                         {field.type === "select" && (
-                          <div className="space-y-1.5 pt-1 border-t border-[#27272a]/40">
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                          <div className="space-y-1.5 pt-1 border-t border-zinc-200 dark:border-[#27272a]/40">
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                               Opções de Escolha (separadas por vírgula)
                             </label>
                             <input
@@ -3679,15 +3678,15 @@ export default function CreateTournamentForm({
                                 handleUpdateCustomField(field.id, { optionsString: e.target.value })
                               }
                               placeholder="Ex: P, M, G, GG ou Canhoto, Destro"
-                              className="w-full px-3.5 py-2.5 bg-[#141416] border border-[#27272a] focus:border-blue-500 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all"
+                              className="w-full px-3.5 py-2.5 bg-white dark:bg-[#141416] border border-zinc-300 dark:border-[#27272a] focus:border-blue-500 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all"
                             />
                             {parsedOptions.length > 0 && (
                               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                <span className="text-[10px] text-zinc-500 font-bold">Prévia:</span>
+                                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold">Prévia:</span>
                                 {parsedOptions.map((opt, i) => (
                                   <span
                                     key={i}
-                                    className="px-2 py-0.5 rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-300 text-[10px] font-medium"
+                                    className="px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-300 text-[10px] font-medium"
                                   >
                                     {opt}
                                   </span>
@@ -3698,7 +3697,7 @@ export default function CreateTournamentForm({
                         )}
 
                         {/* Toggle / Checkbox de Obrigatório (required) */}
-                        <div className="flex items-center justify-between pt-1 border-t border-[#27272a]/40">
+                        <div className="flex items-center justify-between pt-1 border-t border-zinc-200 dark:border-[#27272a]/40">
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input
                               type="checkbox"
@@ -3706,13 +3705,13 @@ export default function CreateTournamentForm({
                               onChange={(e) =>
                                 handleUpdateCustomField(field.id, { required: e.target.checked })
                               }
-                              className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
                             />
-                            <span className="text-xs font-semibold text-zinc-300">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                               Resposta Obrigatória
                             </span>
                           </label>
-                          <span className="text-[10px] text-zinc-500">
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
                             {field.required ? "Atleta deve responder para se inscrever" : "Opcional"}
                           </span>
                         </div>
@@ -3724,16 +3723,16 @@ export default function CreateTournamentForm({
             </div>
 
             {/* SEÇÃO INTACTA: Patrocinadores do Evento */}
-            <div className="space-y-3 pt-2 border-t border-[#27272a]/60">
+            <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-[#27272a]/60">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-amber-400" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-zinc-200">
+                    <Building2 className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
                       Patrocinadores do Evento
                     </h3>
                   </div>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Adicione marcas e apoiadores oficiais para exibir na vitrine do torneio e no chaveamento.
                   </p>
                 </div>
@@ -3741,7 +3740,7 @@ export default function CreateTournamentForm({
                 <button
                   type="button"
                   onClick={handleAddSponsor}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600/15 hover:bg-amber-600/25 border border-amber-500/30 hover:border-amber-500/50 text-amber-400 hover:text-amber-300 text-xs font-black uppercase tracking-wider transition-all cursor-pointer self-start sm:self-auto"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/50 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 text-xs font-black uppercase tracking-wider transition-all cursor-pointer self-start sm:self-auto"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Adicionar Patrocinador</span>
@@ -3749,11 +3748,11 @@ export default function CreateTournamentForm({
               </div>
 
               {sponsors.length === 0 ? (
-                <div className="p-4 rounded-2xl bg-[#0f0f0f] border border-dashed border-[#27272a] text-center space-y-1">
-                  <p className="text-xs text-zinc-400 font-medium">
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#0f0f0f] border border-dashed border-zinc-200 dark:border-[#27272a] text-center space-y-1">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
                     Nenhum patrocinador cadastrado.
                   </p>
-                  <p className="text-[11px] text-zinc-600">
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
                     Torneios com patrocinadores ganham mais visibilidade e credibilidade.
                   </p>
                 </div>
@@ -3762,14 +3761,14 @@ export default function CreateTournamentForm({
                   {sponsors.map((sponsor, index) => (
                     <div
                       key={sponsor.id}
-                      className="p-4 rounded-2xl bg-[#0f0f0f] border border-[#27272a] hover:border-zinc-700 transition-all space-y-3 shadow-inner"
+                      className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#0f0f0f] border border-zinc-200 dark:border-[#27272a] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all space-y-3 shadow-inner"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black flex items-center justify-center">
+                          <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black flex items-center justify-center">
                             {index + 1}
                           </span>
-                          <span className="text-xs font-bold text-zinc-300 uppercase tracking-wide">
+                          <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
                             Patrocinador #{index + 1}
                           </span>
                         </div>
@@ -3777,7 +3776,7 @@ export default function CreateTournamentForm({
                         <button
                           type="button"
                           onClick={() => handleRemoveSponsor(sponsor.id)}
-                          className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                           title="Remover patrocinador"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -3787,21 +3786,21 @@ export default function CreateTournamentForm({
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                         {/* Nome da Empresa/Marca */}
                         <div className="sm:col-span-6 space-y-1">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
-                            Nome da Empresa/Marca <span className="text-red-400">*</span>
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
+                            Nome da Empresa/Marca <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
                             value={sponsor.name}
                             onChange={(e) => handleUpdateSponsor(sponsor.id, { name: e.target.value })}
                             placeholder="Ex: Auto Posto Central, Red Bull"
-                            className="w-full px-3.5 py-2.5 bg-[#141416] border border-[#27272a] focus:border-amber-500 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all"
+                            className="w-full px-3.5 py-2.5 bg-white dark:bg-[#141416] border border-zinc-300 dark:border-[#27272a] focus:border-amber-500 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all"
                           />
                         </div>
 
                         {/* Link / Instagram */}
                         <div className="sm:col-span-6 space-y-1">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                             Link / Instagram (Opcional)
                           </label>
                           <input
@@ -3809,19 +3808,19 @@ export default function CreateTournamentForm({
                             value={sponsor.link || ""}
                             onChange={(e) => handleUpdateSponsor(sponsor.id, { link: e.target.value })}
                             placeholder="https://instagram.com/marca ou site"
-                            className="w-full px-3.5 py-2.5 bg-[#141416] border border-[#27272a] focus:border-amber-500 rounded-xl text-xs text-zinc-100 placeholder:text-zinc-600 outline-none transition-all"
+                            className="w-full px-3.5 py-2.5 bg-white dark:bg-[#141416] border border-zinc-300 dark:border-[#27272a] focus:border-amber-500 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 outline-none transition-all"
                           />
                         </div>
                       </div>
 
                       {/* Upload da Logo */}
-                      <div className="space-y-1.5 pt-1 border-t border-[#27272a]/40">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      <div className="space-y-1.5 pt-1 border-t border-zinc-200 dark:border-[#27272a]/40">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                           Logo da Marca (Opcional)
                         </label>
                         <div className="flex items-center gap-3">
                           {sponsor.previewUrl ? (
-                            <div className="relative w-14 h-14 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center p-1 overflow-hidden shrink-0">
+                            <div className="relative w-14 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 flex items-center justify-center p-1 overflow-hidden shrink-0">
                               <img
                                 src={sponsor.previewUrl}
                                 alt={sponsor.name || "Logo"}
@@ -3843,14 +3842,14 @@ export default function CreateTournamentForm({
                               </button>
                             </div>
                           ) : (
-                            <div className="w-14 h-14 rounded-xl bg-[#141416] border border-dashed border-[#27272a] flex items-center justify-center text-zinc-600 shrink-0">
+                            <div className="w-14 h-14 rounded-xl bg-zinc-100 dark:bg-[#141416] border border-dashed border-zinc-300 dark:border-[#27272a] flex items-center justify-center text-zinc-400 dark:text-zinc-600 shrink-0">
                               <ImageIcon className="h-5 w-5" />
                             </div>
                           )}
 
                           <div className="flex-1">
-                            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold cursor-pointer transition-colors border border-zinc-700">
-                              <UploadCloud className="h-3.5 w-3.5 text-amber-400" />
+                            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-semibold cursor-pointer transition-colors border border-zinc-300 dark:border-zinc-700">
+                              <UploadCloud className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
                               <span>{sponsor.previewUrl ? "Alterar Logo" : "Escolher Logo (PNG, JPG, SVG)"}</span>
                               <input
                                 type="file"
@@ -3862,7 +3861,7 @@ export default function CreateTournamentForm({
                                 }}
                               />
                             </label>
-                            <p className="text-[10px] text-zinc-500 mt-1">
+                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
                               Recomendado: imagem transparente (PNG ou SVG) até 3MB.
                             </p>
                           </div>
@@ -3879,7 +3878,7 @@ export default function CreateTournamentForm({
         {/* ======================================================== */}
         {/* NAVEGAÇÃO MULTI-STEP (Anterior / Próximo / Salvar) */}
         {/* ======================================================== */}
-        <div className="pt-4 border-t border-[#27272a]/80 flex items-center justify-between gap-3">
+        <div className="pt-4 border-t border-zinc-200 dark:border-[#27272a]/80 flex items-center justify-between gap-3">
           {currentStep > 1 ? (
             <button
               key="wizard-prev-button"
@@ -3889,7 +3888,7 @@ export default function CreateTournamentForm({
                 e.stopPropagation();
                 handlePrevStep(e);
               }}
-              className="px-4 sm:px-5 py-3 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-zinc-900 hover:bg-zinc-800 text-xs sm:text-sm font-bold text-zinc-200 hover:text-white transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-4 sm:px-5 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Anterior</span>
