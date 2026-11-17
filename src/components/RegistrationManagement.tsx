@@ -106,11 +106,19 @@ export default function RegistrationManagement({
     } as Tournament;
   }, [currentTournament, propTournament, dbTournament, effectiveTournamentId]);
 
+  const isOwnerByRecord = Boolean(
+    user?.id && activeTournament?.owner_id && user.id === activeTournament.owner_id
+  );
+
   // Validação de acesso financeiro (Dono, Admin ou prop explícita)
-  const hasFinancialAccess =
-    canManageFinancesProp !== undefined
-      ? canManageFinancesProp
-      : permissions.canManageFinances;
+  const hasFinancialAccess = Boolean(
+    isAdmin ||
+      permissions.isOwner ||
+      permissions.isAdmin ||
+      permissions.canManageFinances ||
+      canManageFinancesProp ||
+      isOwnerByRecord
+  );
 
   const effectiveStatus = String(
     tournamentStatus || activeTournament?.status || ""
@@ -124,12 +132,15 @@ export default function RegistrationManagement({
     "CONCLUIDO",
   ].includes(effectiveStatus);
 
+  const effectiveIsReadOnly = isTournamentCompleted || (isReadOnly && !hasFinancialAccess);
+
   const isOrganizerOrAdmin = Boolean(
-    isAdmin ||
+    hasFinancialAccess ||
+      isAdmin ||
       permissions.isOwner ||
       permissions.isAdmin ||
       canManageFinancesProp ||
-      (user?.id && activeTournament?.owner_id && user.id === activeTournament.owner_id)
+      isOwnerByRecord
   );
 
   // Regra exclusiva de remoção: organizador/admin pode remover em qualquer status EXCETO quando COMPLETED
@@ -532,7 +543,7 @@ export default function RegistrationManagement({
 
   React.useEffect(() => {
     if (errorToastMessage) {
-      const timer = setTimeout(() => setErrorToastMessage(null), 5000);
+      const timer = setTimeout(() => setErrorToastMessage(null), 8000);
       return () => clearTimeout(timer);
     }
   }, [errorToastMessage]);
@@ -589,9 +600,16 @@ export default function RegistrationManagement({
       (t) =>
         t.cancellation_status !== "REFUNDED" &&
         t.payment_status !== "CANCELED" &&
+        t.payment_status !== "CANCELLED" &&
+        t.payment_status !== "PAID" &&
+        t.payment_status !== "APPROVED" &&
         t.status !== "CANCELED" &&
         t.status !== "CANCELLED" &&
-        (t.payment_status === "WAITING_PIX" || t.payment_status === "WAITING_APPROVAL" || Boolean(t.payment_proof_url))
+        t.status !== "PAID" &&
+        t.status !== "CONFIRMED" &&
+        (t.payment_status === "WAITING_PIX" ||
+          t.payment_status === "WAITING_APPROVAL" ||
+          Boolean(t.payment_proof_url))
     );
   }, [localTeams]);
 
@@ -664,7 +682,8 @@ export default function RegistrationManagement({
         statusFilter === "ALL" ||
         (statusFilter === "APPROVED" && (pStatus === "APPROVED" || pStatus === "PAID")) ||
         (statusFilter === "PENDING" && pStatus === "PENDING") ||
-        (statusFilter === "WAITING_PIX" && pStatus === "WAITING_PIX");
+        (statusFilter === "WAITING_PIX" &&
+          (pStatus === "WAITING_PIX" || pStatus === "WAITING_APPROVAL" || Boolean(t.payment_proof_url)));
 
       const query = searchQuery.toLowerCase().trim();
       const matchesQuery =
@@ -1118,17 +1137,31 @@ export default function RegistrationManagement({
 
   // Função para Aprovar Pix com Repasse Manual (/api/manual-split)
   const handleApprovePix = async (teamId: string) => {
-    if (isReadOnly || !hasFinancialAccess) {
-      alert("Você não possui permissão financeira para aprovar inscrições.");
+    console.log("Tentando aprovar equipa:", teamId);
+    if (effectiveIsReadOnly) {
+      setErrorToastMessage("Ação bloqueada: este torneio está finalizado ou em modo somente leitura.");
+      return;
+    }
+    if (!hasFinancialAccess) {
+      setErrorToastMessage("Você não possui permissão financeira para aprovar inscrições.");
       return;
     }
     setIsApprovingId(teamId);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const reqHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (accessToken) {
+        reqHeaders["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch("/api/manual-split", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ team_id: teamId }),
+        headers: reqHeaders,
+        body: JSON.stringify({ team_id: teamId, teamId }),
       });
 
       const result = await response.json().catch(() => ({}));
@@ -1136,18 +1169,6 @@ export default function RegistrationManagement({
       if (!response.ok) {
         throw new Error(result?.error || "Erro ao processar repasse e aprovação Pix.");
       }
-
-      // Garante a gravação no Supabase com payment_status PAID e payout_status MANUAL_PENDING
-      await supabase
-        .from("teams")
-        .update({
-          status: "PAID",
-          payment_status: "PAID",
-          payout_status: result.payoutStatus || "MANUAL_PENDING",
-          payout_amount: result.amountTransferred ?? result.payout_amount,
-          amount_paid: result.amount_paid ?? selectedTeamDetails?.amount_paid,
-        })
-        .eq("id", teamId);
 
       // Atualiza o estado local imediatamente
       setLocalTeams((prev) =>
@@ -1159,7 +1180,7 @@ export default function RegistrationManagement({
                 payment_status: "PAID",
                 payout_status: result.payoutStatus || "MANUAL_PENDING",
                 payout_amount: result.amountTransferred ?? result.payout_amount,
-          amount_paid: result.amount_paid ?? selectedTeamDetails?.amount_paid,
+                amount_paid: result.amount_paid ?? selectedTeamDetails?.amount_paid,
               }
             : t
         )
@@ -1183,17 +1204,21 @@ export default function RegistrationManagement({
       // Revalida dados com o banco de dados
       fetchTeamsFromDb();
     } catch (err: any) {
-      console.error("Erro ao aprovar Pix com split manual:", err);
+      console.error("[RegistrationManagement] Erro ao aprovar Pix:", err);
 
-      // Fallback de contingência caso a rota de split falhe
+      // Fallback de contingência caso a rota de split falhe por motivo não-autoritativo
       try {
-        await supabase
+        const { error: fbErr } = await supabase
           .from("teams")
           .update({
             status: "PAID",
             payment_status: "PAID",
           })
           .eq("id", teamId);
+
+        if (fbErr) {
+          throw fbErr;
+        }
 
         setLocalTeams((prev) =>
           prev.map((t) =>
@@ -1203,6 +1228,16 @@ export default function RegistrationManagement({
           )
         );
 
+        if (selectedTeamDetails?.id === teamId) {
+          setSelectedTeamDetails((prev) =>
+            prev ? { ...prev, status: "PAID", payment_status: "PAID" } : null
+          );
+        }
+
+        if (viewingReceiptTeam?.id === teamId) {
+          setViewingReceiptTeam(null);
+        }
+
         try {
           await notifyRegistrationApproved({ teamId, newStatus: "PAID" });
         } catch (notifErr) {
@@ -1211,7 +1246,13 @@ export default function RegistrationManagement({
         setToastMessage("Inscrição confirmada (PAID)! Atenção: split financeiro pendente.");
         fetchTeamsFromDb();
       } catch (dbErr: any) {
-        setToastMessage(err?.message || "Erro ao aprovar pagamento Pix.");
+        const apiErrText = err?.message ? `Erro da API: ${err.message}` : "";
+        const rlsErrText = dbErr?.message ? `Erro de RLS/Banco: ${dbErr.message}` : "";
+        const finalErrMsg =
+          [apiErrText, rlsErrText].filter(Boolean).join(" | ") ||
+          "Erro ao aprovar pagamento Pix (verifique permissões/RLS).";
+        console.error("[RegistrationManagement] Falha total ao aprovar Pix:", dbErr);
+        setErrorToastMessage(finalErrMsg);
       }
     } finally {
       setIsApprovingId(null);
@@ -2044,7 +2085,7 @@ export default function RegistrationManagement({
     <div className="w-full min-w-0 space-y-6 text-[#e4e4e7] animate-fadeIn pb-12">
       {/* Toast de Erro (Vermelho) */}
       {errorToastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-red-950/95 border border-red-500/60 text-red-100 text-xs font-bold shadow-2xl shadow-red-950/50 flex items-center gap-3 animate-fadeIn max-w-md">
+        <div className="fixed bottom-6 right-6 z-[10001] p-4 rounded-xl bg-red-950/95 border border-red-500/60 text-red-100 text-xs font-bold shadow-2xl shadow-red-950/50 flex items-center gap-3 animate-fadeIn max-w-md">
           <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
           <span className="leading-relaxed">{errorToastMessage}</span>
           <button
@@ -2058,7 +2099,7 @@ export default function RegistrationManagement({
 
       {/* Toast de Notificação */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-zinc-900 border border-blue-500/40 text-white text-xs font-bold shadow-2xl flex items-center gap-3 animate-fadeIn">
+        <div className="fixed bottom-6 right-6 z-[10001] p-4 rounded-xl bg-zinc-900 border border-blue-500/40 text-white text-xs font-bold shadow-2xl flex items-center gap-3 animate-fadeIn">
           <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
           <button
@@ -2767,12 +2808,12 @@ export default function RegistrationManagement({
                         </button>
                       )}
 
-                      {isWaitingPix && hasFinancialAccess && !isReadOnly && (
+                      {(isWaitingApproval || isWaitingPix) && hasFinancialAccess && !effectiveIsReadOnly && (
                         <button
                           type="button"
                           disabled={isApprovingId === team.id}
                           onClick={() => handleApprovePix(team.id)}
-                          className="w-full py-2.5 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                           {isApprovingId === team.id ? (
                             <>
@@ -2788,7 +2829,18 @@ export default function RegistrationManagement({
                         </button>
                       )}
 
-                      {isWaitingPix && (!hasFinancialAccess || isReadOnly) && (
+                      {isWaitingApproval && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTeamDetails(team)}
+                          className="w-full py-2.5 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Receipt className="h-3.5 w-3.5" />
+                          <span>Detalhar Inscrição</span>
+                        </button>
+                      )}
+
+                      {isWaitingPix && (!hasFinancialAccess || effectiveIsReadOnly) && (
                         <button
                           type="button"
                           onClick={() => setSelectedTeamDetails(team)}
@@ -2800,54 +2852,37 @@ export default function RegistrationManagement({
                       )}
 
                       {isPending && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTeamDetails(team)}
-                          className="w-full py-2.5 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Receipt className="h-3.5 w-3.5" />
-                          <span>Conferir Pix</span>
-                        </button>
-                      )}
-
-                      {/* Botão Vermelho: Excluir / Libertar Vaga para Pendentes e Aguardando Pix */}
-                      {(isPending || isWaitingPix) && canRemove && (
-                        <button
-                          type="button"
-                          disabled={isDeletingTeamId === team.id}
-                          onClick={() => handleDeleteOrFreeSpot(team)}
-                          className="w-full py-2 px-3 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
-                          title="Excluir inscrição pendente e libertar vaga na competição"
-                        >
-                          {isDeletingTeamId === team.id ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              <span>Libertando Vaga...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                              <span>Excluir / Libertar Vaga</span>
-                            </>
+                        <div className="space-y-2">
+                          {hasFinancialAccess && !effectiveIsReadOnly && (
+                            <button
+                              type="button"
+                              disabled={isApprovingId === team.id}
+                              onClick={() => handleApprovePix(team.id)}
+                              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              {isApprovingId === team.id ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  <span>Aprovando...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  <span>Aprovar</span>
+                                </>
+                              )}
+                            </button>
                           )}
-                        </button>
-                      )}
 
-                      {/* Botão Vermelho Direto no Card: Remover Inscrição (Confirmadas / Canceladas) */}
-                      {!(isPending || isWaitingPix) && canRemove && (
-                        <button
-                          type="button"
-                          disabled={isDeletingTeamId === team.id}
-                          onClick={() => {
-                            setSelectedTeamDetails(team);
-                            setShowDeleteConfirmModal(true);
-                          }}
-                          className="w-full py-2 px-3 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
-                          title="Remover / Excluir inscrição desta equipe do torneio"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                          <span>Remover Inscrição</span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTeamDetails(team)}
+                            className="w-full py-2.5 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-yellow-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Receipt className="h-3.5 w-3.5" />
+                            <span>Detalhar Inscrição</span>
+                          </button>
+                        </div>
                       )}
                     </>
                   )}
@@ -3128,6 +3163,18 @@ export default function RegistrationManagement({
 
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             <div className="inline-flex items-center justify-end gap-2">
+                              {!isApproved && hasFinancialAccess && !effectiveIsReadOnly && (
+                                <button
+                                  type="button"
+                                  disabled={isApprovingId === team.id}
+                                  onClick={() => handleApprovePix(team.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+                                  title="Aprovar inscrição e confirmar pagamento Pix"
+                                >
+                                  <span>{isApprovingId === team.id ? "Aprovando..." : "Aprovar"}</span>
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 onClick={() => setSelectedTeamDetails(team)}
@@ -4046,34 +4093,9 @@ export default function RegistrationManagement({
                   className="w-full py-2.5 px-4 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-zinc-900/60 hover:bg-zinc-800 text-xs font-bold text-zinc-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Eye className="h-4 w-4 text-blue-400" />
-                  <span>Ver Comprovante Anexado</span>
+                  <span>Ver Comprovante</span>
                 </button>
               )}
-
-              {/* Botão Excluir / Libertar Vaga para Pendentes */}
-              {(selectedTeamDetails.payment_status === "PENDING" ||
-                selectedTeamDetails.payment_status === "WAITING_PIX" ||
-                selectedTeamDetails.payment_status === "WAITING_APPROVAL" ||
-                !selectedTeamDetails.payment_status) &&
-                canRemove && (
-                  <button
-                    type="button"
-                    disabled={isDeletingTeamId === selectedTeamDetails.id}
-                    onClick={async () => {
-                      const teamToDelete = selectedTeamDetails;
-                      setSelectedTeamDetails(null);
-                      await handleDeleteOrFreeSpot(teamToDelete);
-                    }}
-                    className="w-full py-2.5 px-4 rounded-xl bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {isDeletingTeamId === selectedTeamDetails.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                    <span>Excluir / Libertar Vaga</span>
-                  </button>
-                )}
 
               {selectedTeamDetails.cancellation_status === "REQUESTED_BY_ATHLETE" ||
               selectedTeamDetails.cancellation_status === "REFUND_REQUESTED" ? (
@@ -4101,20 +4123,38 @@ export default function RegistrationManagement({
                     Cancelamento solicitado pelo atleta • Requer permissão financeira do organizador.
                   </div>
                 )
-              ) : (selectedTeamDetails.payment_status !== "APPROVED" && selectedTeamDetails.payment_status !== "PAID") ? (
-                hasFinancialAccess && !isReadOnly ? (
+              ) : (selectedTeamDetails.payment_status !== "APPROVED" &&
+                selectedTeamDetails.payment_status !== "PAID" &&
+                selectedTeamDetails.status !== "APPROVED" &&
+                selectedTeamDetails.status !== "PAID" &&
+                selectedTeamDetails.status !== "CONFIRMED" &&
+                (selectedTeamDetails.payment_status === "WAITING_PIX" ||
+                  selectedTeamDetails.payment_status === "WAITING_APPROVAL" ||
+                  selectedTeamDetails.payment_status === "PENDING" ||
+                  !selectedTeamDetails.payment_status ||
+                  Boolean(selectedTeamDetails.payment_proof_url))) ? (
+                hasFinancialAccess && !effectiveIsReadOnly ? (
                   <button
                     type="button"
                     disabled={isApprovingId === selectedTeamDetails.id}
-                    onClick={() => handleApprovePix(selectedTeamDetails.id)}
-                    className="w-full py-3 px-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleApprovePix(selectedTeamDetails.id);
+                    }}
+                    className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/25 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isApprovingId === selectedTeamDetails.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Aprovando Inscrição...</span>
+                      </>
                     ) : (
-                      <CheckCircle2 className="h-4 w-4" />
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Aprovar Inscrição</span>
+                      </>
                     )}
-                    <span>Aprovar Pagamento Pix</span>
                   </button>
                 ) : (
                   <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-xs font-medium text-center">
@@ -4123,25 +4163,28 @@ export default function RegistrationManagement({
                 )
               ) : null}
 
+              {/* Danger Zone: Único botão de exclusão no fundo do modal */}
               {canRemove && (
-                <button
-                  type="button"
-                  disabled={isDeletingTeamId === selectedTeamDetails.id}
-                  onClick={() => setShowDeleteConfirmModal(true)}
-                  className="w-full py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isDeletingTeamId === selectedTeamDetails.id ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Excluindo Inscrição...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Excluir Inscrição Definitivamente</span>
-                    </>
-                  )}
-                </button>
+                <div className="pt-2 border-t border-zinc-800/60">
+                  <button
+                    type="button"
+                    disabled={isDeletingTeamId === selectedTeamDetails.id}
+                    onClick={() => setShowDeleteConfirmModal(true)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDeletingTeamId === selectedTeamDetails.id ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Excluindo Inscrição...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Excluir / Remover Inscrição</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -4289,8 +4332,20 @@ export default function RegistrationManagement({
                           <h4 className="text-base font-black text-white font-display tracking-tight">
                             {team.name}
                           </h4>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-orange-500/10 text-orange-400 border border-orange-500/25">
-                            WAITING_PIX
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
+                              team.payment_status === "WAITING_APPROVAL" || Boolean(team.payment_proof_url)
+                                ? "bg-blue-500/10 text-blue-400 border-blue-500/25"
+                                : team.payment_status === "WAITING_PIX"
+                                  ? "bg-orange-500/10 text-orange-400 border-orange-500/25"
+                                  : "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                            }`}
+                          >
+                            {team.payment_status === "WAITING_APPROVAL" || Boolean(team.payment_proof_url)
+                              ? "EM ANÁLISE"
+                              : team.payment_status === "WAITING_PIX"
+                                ? "AGUARDANDO PIX"
+                                : "PENDENTE"}
                           </span>
                         </div>
                         <p className="text-xs text-zinc-400 mt-0.5">
@@ -4346,8 +4401,12 @@ export default function RegistrationManagement({
                     {/* Botão de Aprovação logo abaixo de cada imagem */}
                     <button
                       type="button"
-                      disabled={isApprovingId === team.id || isReadOnly}
-                      onClick={() => handleApprovePix(team.id)}
+                      disabled={isApprovingId === team.id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleApprovePix(team.id);
+                      }}
                       className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-600/25 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {isApprovingId === team.id ? (
@@ -4474,7 +4533,18 @@ export default function RegistrationManagement({
                 Fechar
               </button>
 
-              {(viewingReceiptTeam.payment_status === "WAITING_PIX" || viewingReceiptTeam.payment_status === "WAITING_APPROVAL" || Boolean(viewingReceiptTeam.payment_proof_url)) && hasFinancialAccess && !isReadOnly && (
+              {viewingReceiptTeam.payment_status !== "APPROVED" &&
+                viewingReceiptTeam.payment_status !== "PAID" &&
+                viewingReceiptTeam.status !== "APPROVED" &&
+                viewingReceiptTeam.status !== "PAID" &&
+                viewingReceiptTeam.status !== "CONFIRMED" &&
+                (viewingReceiptTeam.payment_status === "WAITING_PIX" ||
+                  viewingReceiptTeam.payment_status === "WAITING_APPROVAL" ||
+                  viewingReceiptTeam.payment_status === "PENDING" ||
+                  !viewingReceiptTeam.payment_status ||
+                  Boolean(viewingReceiptTeam.payment_proof_url)) &&
+                hasFinancialAccess &&
+                !isReadOnly && (
                 <button
                   type="button"
                   disabled={isApprovingId === viewingReceiptTeam.id}

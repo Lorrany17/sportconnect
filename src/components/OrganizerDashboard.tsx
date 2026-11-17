@@ -113,11 +113,18 @@ export default function OrganizerDashboard({
   // Hook genérico de permissões RBAC
   const permissions = useTournamentPermissions(targetTournamentId);
 
+  const isTournamentOwnerByRecord = Boolean(
+    user?.id &&
+      (propTournament?.owner_id === user.id ||
+        dbTournament?.owner_id === user.id ||
+        context.currentTournament?.owner_id === user.id)
+  );
+
   // Permissões granulares computadas
-  const canEditSettings = isSuperAdmin || permissions.canEditSettings;
-  const canManageFinances = isSuperAdmin || permissions.canManageFinances;
-  const canEditScores = isSuperAdmin || permissions.canEditScores;
-  const canShare = isSuperAdmin || permissions.isOwner || permissions.isAdmin;
+  const canEditSettings = isSuperAdmin || isTournamentOwnerByRecord || permissions.canEditSettings;
+  const canManageFinances = isSuperAdmin || isTournamentOwnerByRecord || permissions.canManageFinances;
+  const canEditScores = isSuperAdmin || isTournamentOwnerByRecord || permissions.canEditScores;
+  const canShare = isSuperAdmin || isTournamentOwnerByRecord || permissions.isOwner || permissions.isAdmin;
 
   // Lê parâmetros da URL caso o usuário recarregue na aba de um módulo específico
   useEffect(() => {

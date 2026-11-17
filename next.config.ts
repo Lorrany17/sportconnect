@@ -28,9 +28,10 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://http2.mlstatic.com",
+      // Adicionado encrypted-tbn0.gstatic.com ao img-src
+      "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://http2.mlstatic.com https://encrypted-tbn0.gstatic.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com",
-      "frame-src 'self' https://sdk.mercadopago.com",
+      "frame-src 'self' https://sdk.mercadopago.com https://www.google.com https://maps.google.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -44,13 +45,18 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "*.supabase.co",
+        hostname: "iytppkctmvtezbesxiaw.supabase.co", // Domínio exato do projeto
         pathname: "/storage/v1/object/**",
       },
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
       },
+      // Novo bloco para autorizar o domínio da sua foto
+      {
+        protocol: "https",
+        hostname: "encrypted-tbn0.gstatic.com",
+      }
     ],
   },
   async headers() {

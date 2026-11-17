@@ -43,7 +43,7 @@ import PublicRegistrationForm from "@/components/PublicRegistrationForm";
 import PublicHeader from "@/components/PublicHeader";
 import PixCheckoutForm from "@/components/PixCheckoutForm";
 import { cancelRegistration } from "@/app/actions/registration";
-import { translateTournamentFormat, formatTournamentDate } from "@/utils/formatMap";
+import { translateTournamentFormat, formatTournamentDate, getGoogleMapsEmbedUrl } from "@/utils/formatMap";
 
 export default function DetalhesTorneioPage() {
   const params = useParams();
@@ -1267,29 +1267,71 @@ export default function DetalhesTorneioPage() {
                       {tournament.location || "O endereço exato será divulgado pela comissão organizadora."}
                     </p>
 
-                    {tournament.location ? (
-                      <div className="relative rounded-xl overflow-hidden border border-zinc-700 bg-zinc-900 shadow-md">
-                        <iframe
-                          width="100%"
-                          height="240"
-                          className="rounded-xl border-0 w-full block"
-                          src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                            tournament.location
-                          )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                          frameBorder="0"
-                          scrolling="no"
-                          title="Localização do Torneio"
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-[140px] w-full rounded-xl border border-zinc-800 bg-[#121214] flex flex-col items-center justify-center p-4 text-center">
-                        <MapPin className="h-6 w-6 text-zinc-600 mb-2" />
-                        <p className="text-xs text-zinc-500 font-medium">
-                          Mapa indisponível até o endereço ser confirmado
-                        </p>
-                      </div>
-                    )}
+                    {(() => {
+                      const { embedUrl, externalUrl } = getGoogleMapsEmbedUrl(tournament.location);
+
+                      if (embedUrl) {
+                        return (
+                          <div className="space-y-2.5">
+                            <div className="relative h-[240px] w-full rounded-xl overflow-hidden border border-zinc-700 bg-zinc-900 shadow-md">
+                              <iframe
+                                width="100%"
+                                height="100%"
+                                className="rounded-xl border-0 w-full h-full block"
+                                src={embedUrl}
+                                title="Localização do Torneio"
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                                allowFullScreen
+                              />
+                            </div>
+                            {externalUrl && (
+                              <a
+                                href={externalUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#00a2ff] hover:text-blue-400 hover:underline transition-colors"
+                              >
+                                <MapPin className="h-3.5 w-3.5" />
+                                <span>Ver no Google Maps</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      if (externalUrl) {
+                        return (
+                          <a
+                            href={externalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-[150px] w-full rounded-xl border border-zinc-700/80 hover:border-[#00a2ff]/60 bg-[#121214] hover:bg-zinc-900/90 flex flex-col items-center justify-center p-4 text-center gap-2 transition-all group shadow-sm"
+                          >
+                            <div className="p-2.5 rounded-full bg-[#00a2ff]/15 border border-[#00a2ff]/30 text-[#00a2ff] group-hover:scale-110 transition-transform">
+                              <MapPin className="h-5 w-5" />
+                            </div>
+                            <span className="text-xs font-black uppercase tracking-wider text-white group-hover:text-[#00a2ff] flex items-center gap-1.5">
+                              <span>Ver no Google Maps</span>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="text-[11px] text-zinc-400">
+                              Clique para abrir a localização no mapa oficial
+                            </span>
+                          </a>
+                        );
+                      }
+
+                      return (
+                        <div className="h-[140px] w-full rounded-xl border border-zinc-800 bg-[#121214] flex flex-col items-center justify-center p-4 text-center">
+                          <MapPin className="h-6 w-6 text-zinc-600 mb-2" />
+                          <p className="text-xs text-zinc-500 font-medium">
+                            Mapa indisponível até o endereço ser confirmado
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 

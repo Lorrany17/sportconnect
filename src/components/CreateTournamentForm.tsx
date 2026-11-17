@@ -2218,7 +2218,7 @@ export default function CreateTournamentForm({
                       width="100%"
                       height="150"
                       className="rounded-md border border-zinc-700 w-full block"
-                      src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(
                         debouncedAddress
                       )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                       frameBorder="0"

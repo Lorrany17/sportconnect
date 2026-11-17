@@ -490,16 +490,16 @@ export default function PublicRegistrationForm({
         },
         ...(isDuplasSport && partnerName.trim()
           ? [
-              {
-                name: partnerName.trim(),
-                email: partnerEmail.trim().toLowerCase(),
-                is_captain: false,
-                cpf: partnerCpf.trim() || null,
-                phone: partnerPhone.trim() || null,
-              },
-            ]
+            {
+              name: partnerName.trim(),
+              email: partnerEmail.trim().toLowerCase(),
+              is_captain: false,
+              cpf: partnerCpf.trim() || null,
+              phone: partnerPhone.trim() || null,
+            },
+          ]
           : isTeamSport
-          ? athletes
+            ? athletes
               .filter((ath) => ath.name.trim())
               .map((ath) => ({
                 name: ath.name.trim(),
@@ -508,7 +508,7 @@ export default function PublicRegistrationForm({
                 cpf: ath.cpf?.trim() || null,
                 phone: ath.phone?.trim() || null,
               }))
-          : []),
+            : []),
       ];
 
       const skillLevelLabelMap: Record<string, string> = {
@@ -555,24 +555,24 @@ export default function PublicRegistrationForm({
           String(tournament.gender_category || "").toUpperCase() === "MASCULINO"
             ? "Masculino"
             : String(tournament.gender_category || "").toUpperCase() === "FEMININO"
-            ? "Feminino"
-            : "Misto",
+              ? "Feminino"
+              : "Misto",
         custom_registration_answers: enrichedCustomAnswers,
         declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
       };
 
       let { data: insertedTeam, error: insertError } = createdTeam?.id
         ? await supabase
-            .from("teams")
-            .update(payload)
-            .eq("id", createdTeam.id)
-            .select()
-            .single()
+          .from("teams")
+          .update(payload)
+          .eq("id", createdTeam.id)
+          .select()
+          .single()
         : await supabase
-            .from("teams")
-            .insert(payload)
-            .select()
-            .single();
+          .from("teams")
+          .insert(payload)
+          .select()
+          .single();
 
       if (
         insertError &&
@@ -585,16 +585,16 @@ export default function PublicRegistrationForm({
         delete safePayload.amount_paid;
         const retryRes = createdTeam?.id
           ? await supabase
-              .from("teams")
-              .update(safePayload)
-              .eq("id", createdTeam.id)
-              .select()
-              .single()
+            .from("teams")
+            .update(safePayload)
+            .eq("id", createdTeam.id)
+            .select()
+            .single()
           : await supabase
-              .from("teams")
-              .insert(safePayload)
-              .select()
-              .single();
+            .from("teams")
+            .insert(safePayload)
+            .select()
+            .single();
         insertedTeam = retryRes.data;
         insertError = retryRes.error;
       }
@@ -710,10 +710,10 @@ export default function PublicRegistrationForm({
           if (newlyCreatedTeamId) {
             try {
               await supabase.from("teams").delete().eq("id", newlyCreatedTeamId);
-            } catch {}
+            } catch { }
             try {
               await deleteOrphanTeam(newlyCreatedTeamId);
-            } catch {}
+            } catch { }
             newlyCreatedTeamId = null;
           }
           throw tmError;
@@ -747,7 +747,7 @@ export default function PublicRegistrationForm({
       if (typeof window !== "undefined") {
         try {
           localStorage.removeItem(storageKey);
-        } catch {}
+        } catch { }
       }
 
       try {
@@ -756,17 +756,17 @@ export default function PublicRegistrationForm({
           tournamentName: tournament.name,
           teamName: finalName,
         });
-      } catch {}
+      } catch { }
 
       return mappedTeam;
     } catch (err) {
       if (newlyCreatedTeamId) {
         try {
           await supabase.from("teams").delete().eq("id", newlyCreatedTeamId);
-        } catch {}
+        } catch { }
         try {
           await deleteOrphanTeam(newlyCreatedTeamId);
-        } catch {}
+        } catch { }
       }
       throw err;
     }
@@ -1144,15 +1144,15 @@ export default function PublicRegistrationForm({
           cpf?: string | null;
           phone?: string | null;
         }[] = [
-          {
-            user_id: user.id,
-            name: p1,
-            email: user.email || "",
-            is_captain: true,
-            cpf: captainCpf.trim() || null,
-            phone: contact.trim() || null,
-          },
-        ];
+            {
+              user_id: user.id,
+              name: p1,
+              email: user.email || "",
+              is_captain: true,
+              cpf: captainCpf.trim() || null,
+              phone: contact.trim() || null,
+            },
+          ];
 
         for (const member of otherEditMembers) {
           let matchedUserId: string | null = null;
@@ -1214,7 +1214,7 @@ export default function PublicRegistrationForm({
           category: updatedTeamData.category || "Geral",
           contact: contact.trim(),
           custom_registration_answers: formattedCustomAnswers,
-        declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
+          declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
         };
 
         setTeams((prev: Team[]) =>
@@ -1224,7 +1224,7 @@ export default function PublicRegistrationForm({
         if (typeof window !== "undefined") {
           try {
             localStorage.removeItem(storageKey);
-          } catch {}
+          } catch { }
         }
 
         onSuccess?.();
@@ -1302,11 +1302,10 @@ export default function PublicRegistrationForm({
       {toast && (
         <div className="fixed top-6 right-6 z-[9999] animate-fadeIn max-w-sm w-full px-4 pointer-events-none">
           <div
-            className={`flex items-center justify-between gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md pointer-events-auto ${
-              toast.type === "error"
-                ? "bg-red-950/95 border-red-500/40 text-red-100 shadow-red-500/10"
-                : "bg-emerald-950/95 border-emerald-500/40 text-emerald-100 shadow-emerald-500/10"
-            }`}
+            className={`flex items-center justify-between gap-3 p-4 rounded-2xl shadow-2xl border backdrop-blur-md pointer-events-auto ${toast.type === "error"
+              ? "bg-red-950/95 border-red-500/40 text-red-100 shadow-red-500/10"
+              : "bg-emerald-950/95 border-emerald-500/40 text-emerald-100 shadow-emerald-500/10"
+              }`}
           >
             <div className="flex items-center gap-2.5">
               <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
@@ -1514,7 +1513,7 @@ export default function PublicRegistrationForm({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
-                          Nome do Capitão <span className="text-orange-500">*</span>
+                          Nome Completo do Capitão <span className="text-orange-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -1528,7 +1527,7 @@ export default function PublicRegistrationForm({
 
                       <div className="space-y-1.5">
                         <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
-                          Nome do Parceiro <span className="text-orange-500">*</span>
+                          Nome Completo do Parceiro <span className="text-orange-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -2090,8 +2089,8 @@ export default function PublicRegistrationForm({
                         {isEditMode
                           ? "Salvando Alterações..."
                           : receiptFile
-                          ? "Enviando Comprovante e Registrando..."
-                          : "Registrando Equipe..."}
+                            ? "Enviando Comprovante e Registrando..."
+                            : "Registrando Equipe..."}
                       </span>
                     </>
                   ) : isEditMode ? (

@@ -580,6 +580,91 @@ export function formatTournamentDate(
   return formatted;
 }
 
+/**
+ * Converte um endereço textual, URL de partilha do Google Maps ou tag <iframe>
+ * para um URL de embed seguro (`https://www.google.com/maps/...`) e um link externo.
+ */
+export function getGoogleMapsEmbedUrl(locationInput?: string | null): {
+  embedUrl: string | null;
+  externalUrl: string | null;
+} {
+  if (!locationInput) {
+    return { embedUrl: null, externalUrl: null };
+  }
+
+  let raw = String(locationInput).trim();
+  if (!raw) {
+    return { embedUrl: null, externalUrl: null };
+  }
+
+  // Se o organizador colou uma tag <iframe src="...">, extrai apenas o src
+  const iframeSrcMatch = raw.match(/src=["']([^"']+)["']/i);
+  if (iframeSrcMatch?.[1]) {
+    raw = iframeSrcMatch[1].trim();
+  }
+
+  const isHttpUrl = /^https?:\/\//i.test(raw);
+
+  if (isHttpUrl) {
+    // Já é um link oficial de embed do Google Maps
+    if (raw.includes("google.com/maps/embed")) {
+      return {
+        embedUrl: raw.replace(/^http:\/\//i, "https://"),
+        externalUrl: raw,
+      };
+    }
+
+    // Links curtos (goo.gl / maps.app.goo.gl) não permitem embed direto sem redirect -> usa fallback clicável
+    if (raw.includes("goo.gl/") || raw.includes("maps.app.goo.gl")) {
+      return {
+        embedUrl: null,
+        externalUrl: raw,
+      };
+    }
+
+    // Tenta extrair coordenadas @lat,lng ou ?q=... de URLs padrão do Google Maps
+    try {
+      const urlObj = new URL(raw);
+      const qParam = urlObj.searchParams.get("q") || urlObj.searchParams.get("query");
+      if (qParam) {
+        return {
+          embedUrl: `https://www.google.com/maps?q=${encodeURIComponent(qParam)}&t=&z=15&ie=UTF8&iwloc=&output=embed`,
+          externalUrl: raw,
+        };
+      }
+
+      const coordMatch = raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (coordMatch) {
+        const coords = `${coordMatch[1]},${coordMatch[2]}`;
+        return {
+          embedUrl: `https://www.google.com/maps?q=${encodeURIComponent(coords)}&t=&z=15&ie=UTF8&iwloc=&output=embed`,
+          externalUrl: raw,
+        };
+      }
+
+      const placeMatch = urlObj.pathname.match(/\/maps\/place\/([^/]+)/);
+      if (placeMatch?.[1]) {
+        const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, " "));
+        return {
+          embedUrl: `https://www.google.com/maps?q=${encodeURIComponent(placeName)}&t=&z=15&ie=UTF8&iwloc=&output=embed`,
+          externalUrl: raw,
+        };
+      }
+    } catch {
+      return { embedUrl: null, externalUrl: raw };
+    }
+
+    return { embedUrl: null, externalUrl: raw };
+  }
+
+  // Endereço textual padrão (ex: "Ginásio Poliesportivo, Picos - PI")
+  return {
+    embedUrl: `https://www.google.com/maps?q=${encodeURIComponent(raw)}&t=&z=15&ie=UTF8&iwloc=&output=embed`,
+    externalUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(raw)}`,
+  };
+}
+
+
 
 
 

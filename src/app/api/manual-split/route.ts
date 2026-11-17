@@ -76,7 +76,24 @@ export async function POST(request: Request) {
     const isSuperAdmin = profile?.is_admin === true;
     const isTournamentOwner = tournament.owner_id === authUser.id;
 
+    let isTournamentStaffAdmin = false;
     if (!isSuperAdmin && !isTournamentOwner) {
+      const userEmail = (authUser.email || "").toLowerCase().trim();
+      const orFilter = userEmail
+        ? `user_id.eq.${authUser.id},email.ilike.${userEmail}`
+        : `user_id.eq.${authUser.id}`;
+      const { data: staffRows } = await adminClient
+        .from("tournament_staff")
+        .select("role")
+        .eq("tournament_id", tournament.id)
+        .or(orFilter);
+
+      isTournamentStaffAdmin = (staffRows || []).some(
+        (s: any) => String(s.role || "").toUpperCase().trim() === "ADMIN"
+      );
+    }
+
+    if (!isSuperAdmin && !isTournamentOwner && !isTournamentStaffAdmin) {
       return NextResponse.json(
         { error: "403 Forbidden: Você não tem permissão para acionar o split manual desta equipe." },
         { status: 403 }
