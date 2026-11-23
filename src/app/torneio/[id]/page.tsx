@@ -472,17 +472,15 @@ export default function DetalhesTorneioPage() {
   const renderEditRegistrationButton = () => {
     if (tournament?.status !== "OPEN") return null;
     return (
-      <div className="space-y-1">
-        <button
-          type="button"
-          onClick={handleEditRegistration}
-          className="w-full py-2.5 px-4 rounded-xl border border-blue-500/30 hover:border-blue-500/60 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-          title="Editar dados da inscrição"
-        >
-          <Pencil className="h-3.5 w-3.5 text-blue-400" />
-          <span>Editar Inscrição</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleEditRegistration}
+        className="w-full py-2.5 px-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+        title="Editar dados da inscrição"
+      >
+        <Pencil className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+        <span className="truncate">Editar Inscrição</span>
+      </button>
     );
   };
 
@@ -808,7 +806,7 @@ export default function DetalhesTorneioPage() {
                   ) : (
                     <>
                       <Share2 className="h-3.5 w-3.5" />
-                      <span>📸 Compartilhar banner</span>
+                      <span>Compartilhar banner</span>
                     </>
                   )}
                 </button>
@@ -1510,9 +1508,25 @@ export default function DetalhesTorneioPage() {
                       <div className="text-3xl font-black text-white font-display text-emerald-400">
                         {formatFee(tournament.entry_fee)}
                       </div>
-                      <p className="text-xs text-zinc-400">
-                        Garante vaga oficial na tabela e acesso a toda a infraestrutura da arena.
-                      </p>
+                      {!registrationStatus ? (
+                        <p className="text-xs text-zinc-400">
+                          Garante vaga oficial na tabela e acesso a toda a infraestrutura da arena.
+                        </p>
+                      ) : (registrationStatus === "WAITING_PIX" || registrationStatus === "PENDING") ? (
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            <span>Inscrição pendente de pagamento</span>
+                          </span>
+                        </div>
+                      ) : registrationStatus === "WAITING_APPROVAL" ? (
+                        <div className="pt-0.5">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-300 text-[11px] font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                            <span>Comprovante em análise pela organização</span>
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
 
                     {/* Alerta de Login se clicou deslogado */}
@@ -1524,7 +1538,7 @@ export default function DetalhesTorneioPage() {
                     )}
 
                     {/* Botão de Inscrição / Call to Action */}
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-3 pt-1">
                       {registrationStatus ? (
                         (cancellationStatus === "CANCELLATION_REQUESTED" ||
                           cancellationStatus === "REFUND_REQUESTED" ||
@@ -1539,47 +1553,19 @@ export default function DetalhesTorneioPage() {
                               href={`https://wa.me/${organizerPhone}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                              className="w-full py-2.5 px-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                             >
-                              <MessageCircle className="h-4 w-4 shrink-0" />
-                              <span>Falar com o Organizador</span>
+                              <MessageCircle className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                              <span>Falar com Organizador</span>
                             </a>
-                          </div>
-                        ) : cancellationStatus === "REFUND_REQUESTED" ? (
-                          <div className="space-y-2">
-                            <button
-                              type="button"
-                              disabled
-                              className="w-full py-4 px-6 rounded-xl bg-amber-500/15 border border-amber-500/35 cursor-not-allowed text-amber-400 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center"
-                            >
-                              <AlertTriangle className="h-5 w-5 text-amber-400 animate-pulse" />
-                              <span>Reembolso Solicitado</span>
-                            </button>
-                            <p className="text-[11px] text-amber-300 text-center font-medium">
-                              Cancelamento pós-pagamento solicitado • O reembolso deve ser negociado diretamente com a organização.
-                            </p>
-                          </div>
-                        ) : cancellationStatus === "REQUESTED_BY_ATHLETE" ? (
-                          <div className="space-y-2">
-                            <button
-                              type="button"
-                              disabled
-                              className="w-full py-4 px-6 rounded-xl bg-amber-500/15 border border-amber-500/35 cursor-not-allowed text-amber-400 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center"
-                            >
-                              <Clock className="h-5 w-5 text-amber-400 animate-pulse" />
-                              <span>Cancelamento Solicitado</span>
-                            </button>
-                            <p className="text-[11px] text-amber-300 text-center font-medium">
-                              O organizador foi notificado para realizar o estorno do Pix.
-                            </p>
                           </div>
                         ) : cancellationStatus === "REFUNDED" ? (
                           <button
                             type="button"
                             disabled
-                            className="w-full py-4 px-6 rounded-xl bg-red-500/15 border border-red-500/35 cursor-not-allowed text-red-400 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center"
+                            className="w-full py-3.5 px-5 rounded-xl bg-red-500/15 border border-red-500/35 cursor-not-allowed text-red-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 text-center"
                           >
-                            <Ban className="h-5 w-5 text-red-400" />
+                            <Ban className="h-4 w-4 text-red-400" />
                             <span>Inscrição Cancelada / Estornada</span>
                           </button>
                         ) : registrationStatus === "APPROVED" || registrationStatus === "PAID" ? (
@@ -1587,123 +1573,91 @@ export default function DetalhesTorneioPage() {
                             <button
                               type="button"
                               disabled
-                              className={`w-full py-4 px-6 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center ${tournament.status === "IN_PROGRESS" ||
+                              className={`w-full py-3.5 px-5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 text-center ${tournament.status === "IN_PROGRESS" ||
                                 tournament.status === "EM_ANDAMENTO" ||
                                 tournament.status === "LIVE"
                                 ? "bg-blue-600 border border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)] animate-pulse"
-                                : "bg-emerald-500/20 border border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                                : "bg-emerald-500/15 border border-emerald-500/35 text-emerald-300"
                                 }`}
                             >
-
                               {tournament.status === "IN_PROGRESS" ||
                                 tournament.status === "EM_ANDAMENTO" ||
                                 tournament.status === "LIVE" ? (
-                                <Trophy className="h-5 w-5 text-amber-300" />
+                                <Trophy className="h-4 w-4 text-amber-300" />
                               ) : (
-                                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                               )}
                               <span>
                                 {tournament.status === "IN_PROGRESS" ||
                                   tournament.status === "EM_ANDAMENTO" ||
                                   tournament.status === "LIVE"
-                                  ? "CAMPEONATO EM ANDAMENTO"
-                                  : "INSCRIÇÃO CONFIRMADA! ✅"}
+                                  ? "Campeonato em Andamento"
+                                  : "Inscrição Confirmada"}
                               </span>
                             </button>
 
-                            {tournament.status === "OPEN" && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={handleCancelRegistration}
-                                  className="w-full py-2.5 px-4 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-                                >
-                                  <Ban className="h-3.5 w-3.5 text-red-400" />
-                                  <span>Cancelar Minha Inscrição</span>
-                                </button>
-                                {renderEditRegistrationButton()}
-                              </>
-                            )}
-                            <a
-                              href={`https://wa.me/${organizerPhone}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-                              title="Tirar dúvidas sobre o campeonato via WhatsApp"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                              <span>Falar com o Organizador</span>
-                            </a>
+                            <div className={tournament.status === "OPEN" ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
+                              {renderEditRegistrationButton()}
+                              <a
+                                href={`https://wa.me/${organizerPhone}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-2.5 px-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                title="Tirar dúvidas sobre o campeonato via WhatsApp"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                                <span className="truncate">Falar com Organizador</span>
+                              </a>
+                            </div>
                           </div>
                         ) : registrationStatus === "WAITING_APPROVAL" ? (
                           <div className="space-y-2.5">
-                            <div className="w-full py-4 px-6 rounded-xl bg-blue-500/15 border border-blue-500/35 text-blue-300 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-                              <Clock className="h-5 w-5 text-blue-400 animate-pulse" />
-                              <span>Comprovante em Análise ⏳</span>
+                            <div className="w-full py-3.5 px-5 rounded-xl bg-blue-500/15 border border-blue-500/35 text-blue-300 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 text-center">
+                              <Clock className="h-4 w-4 text-blue-400 animate-pulse" />
+                              <span>Comprovante em Análise</span>
                             </div>
-                            <p className="text-[11px] text-zinc-400 text-center font-medium">
-                              Seu comprovante foi enviado com sucesso e está em análise pelo organizador.
-                            </p>
-                            {tournament.status === "OPEN" && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={handleCancelRegistration}
-                                  className="w-full py-2.5 px-4 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-                                >
-                                  <Ban className="h-3.5 w-3.5 text-red-400" />
-                                  <span>Cancelar Minha Inscrição</span>
-                                </button>
-                                {renderEditRegistrationButton()}
-                              </>
-                            )}
-                            <a
-                              href={`https://wa.me/${organizerPhone}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-                              title="Tirar dúvidas sobre o campeonato via WhatsApp"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                              <span>Falar com o Organizador</span>
-                            </a>
+
+                            <div className={tournament.status === "OPEN" ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
+                              {renderEditRegistrationButton()}
+                              <a
+                                href={`https://wa.me/${organizerPhone}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-2.5 px-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                title="Tirar dúvidas sobre o campeonato via WhatsApp"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                                <span className="truncate">Falar com Organizador</span>
+                              </a>
+                            </div>
                           </div>
                         ) : registrationStatus === "WAITING_PIX" || registrationStatus === "PENDING" ? (
                           <div className="space-y-2.5">
-                            {/* Botão Finalizar Pagamento / Anexar Comprovante */}
+                            {/* Botão Primário Único: Pagar ou Anexar Comprovante */}
                             <button
                               type="button"
                               onClick={() => setShowResumeCheckout(true)}
-                              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500 hover:from-orange-400 hover:to-amber-300 text-neutral-950 font-black text-sm uppercase tracking-wider transition-all shadow-lg shadow-orange-500/25 active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2 animate-pulse"
+                              className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-500 hover:from-orange-400 hover:to-amber-300 text-neutral-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-lg shadow-orange-500/25 active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
                               title="Finalizar pagamento Pix ou anexar comprovante"
                             >
-                              <CreditCard className="h-5 w-5" />
-                              <span>FINALIZAR PAGAMENTO / ANEXAR COMPROVANTE</span>
+                              <CreditCard className="h-4 w-4 shrink-0" />
+                              <span className="truncate">Pagar ou Anexar Comprovante</span>
                             </button>
 
-                            {tournament.status === "OPEN" && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={handleCancelRegistration}
-                                  className="w-full py-2.5 px-4 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-500/5 hover:bg-red-500/15 text-red-400 hover:text-red-300 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-                                >
-                                  <Ban className="h-3.5 w-3.5 text-red-400" />
-                                  <span>Cancelar Minha Inscrição</span>
-                                </button>
-                                {renderEditRegistrationButton()}
-                              </>
-                            )}
-                            <a
-                              href={`https://wa.me/${organizerPhone}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95"
-                              title="Tirar dúvidas sobre o campeonato via WhatsApp"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                              <span>Falar com o Organizador</span>
-                            </a>
+                            {/* Botões Secundários Neutros em 2 Colunas */}
+                            <div className={tournament.status === "OPEN" ? "grid grid-cols-2 gap-2" : "grid grid-cols-1"}>
+                              {renderEditRegistrationButton()}
+                              <a
+                                href={`https://wa.me/${organizerPhone}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-2.5 px-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                                title="Tirar dúvidas sobre o campeonato via WhatsApp"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                                <span className="truncate">Falar com Organizador</span>
+                              </a>
+                            </div>
                           </div>
                         ) : null
                       ) : (tournament.status === "CANCELLED" || tournament.status === "CANCELADO") ? (
@@ -1737,7 +1691,7 @@ export default function DetalhesTorneioPage() {
                       ) : tournament.status === "CLOSED" ? (
                         <div className="w-full py-4 px-6 rounded-xl bg-zinc-800/90 border border-zinc-700 text-zinc-400 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 text-center shadow-sm">
                           <Lock className="h-4 w-4 text-zinc-400" />
-                          <span>🔒 Inscrições Encerradas</span>
+                          <span>Inscrições Encerradas</span>
                         </div>
                       ) : (
                         <button
@@ -1749,32 +1703,28 @@ export default function DetalhesTorneioPage() {
                           <span>Inscrever Minha Equipe</span>
                         </button>
                       )}
-
-                      {/* Ação secundária: Ver Chaveamento */}
-                      <button
-                        type="button"
-                        onClick={handleViewBracket}
-                        className="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 text-xs font-bold text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
-                      >
-                        <Trophy className="h-3.5 w-3.5 text-[#00a2ff]" />
-                        <span>Ver Chaveamento Oficial</span>
-                      </button>
-
-                      {/* Ação de compartilhamento: Gerar Cartaz */}
-                      <button
-                        type="button"
-                        onClick={handleGeneratePoster}
-                        disabled={isGenerating}
-                        className="w-full py-3 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-bold text-emerald-300 hover:text-emerald-200 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                      >
-                        <Share2 className="h-3.5 w-3.5 text-emerald-400" />
-                        <span>📸 Compartilhar banner</span>
-                      </button>
                     </div>
 
-                    <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-500 text-center space-y-1">
-                      <p>Inscrições sujeitas à aprovação pela comissão organizadora.</p>
-                      <p>Dúvidas? Entre em contato com o suporte SportConnect.</p>
+                    <div className="pt-4 border-t border-zinc-800/80 text-center space-y-2.5">
+                      {registrationStatus &&
+                        tournament.status === "OPEN" &&
+                        cancellationStatus !== "CANCELLATION_REQUESTED" &&
+                        cancellationStatus !== "REFUND_REQUESTED" &&
+                        cancellationStatus !== "REQUESTED_BY_ATHLETE" &&
+                        cancellationStatus !== "REFUNDED" && (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={handleCancelRegistration}
+                              className="text-xs text-zinc-500 hover:text-red-400 transition-colors cursor-pointer font-medium"
+                            >
+                              Cancelar Minha Inscrição
+                            </button>
+                          </div>
+                        )}
+                      <p className="text-[11px] text-zinc-500">
+                        Inscrições sujeitas à aprovação da organização.
+                      </p>
                     </div>
                   </div>
                 </div>

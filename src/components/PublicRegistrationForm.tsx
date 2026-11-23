@@ -17,6 +17,7 @@ import {
   FileText,
   Mail,
   Upload,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Tournament, SportType, Team } from "@/types";
 import { supabase } from "@/lib/supabase";
@@ -123,6 +124,7 @@ export default function PublicRegistrationForm({
   const [captainName, setCaptainName] = useState(
     user?.user_metadata?.full_name || user?.user_metadata?.name || ""
   );
+  const [captainEmail, setCaptainEmail] = useState(user?.email || "");
   const [partnerName, setPartnerName] = useState("");
   const [partnerEmail, setPartnerEmail] = useState("");
   const [contact, setContact] = useState("");
@@ -178,50 +180,96 @@ export default function PublicRegistrationForm({
 
     if (activeInitialData) {
       setTeamName(activeInitialData.name || "");
+      const savedAnswers = activeInitialData.custom_registration_answers || {};
+      const savedAthleteMembers: any[] = Array.isArray(savedAnswers.__athlete_members)
+        ? savedAnswers.__athlete_members
+        : [];
+      const savedCapFromJson = savedAthleteMembers.find((m: any) => m.is_captain);
+      const savedNonCapFromJson = savedAthleteMembers.find((m: any) => !m.is_captain);
+      const savedCapFromMembers = Array.isArray(activeInitialData.members)
+        ? activeInitialData.members.find((m: any) => m.is_captain)
+        : null;
+      const savedNonCapFromMembers = Array.isArray(activeInitialData.members)
+        ? activeInitialData.members.find((m: any) => !m.is_captain)
+        : null;
+
       const cap =
         activeInitialData.player1 ||
         activeInitialData.manager_name ||
+        savedCapFromJson?.name ||
+        savedCapFromMembers?.name ||
         (Array.isArray(activeInitialData.players) ? activeInitialData.players[0] : "") ||
         user?.user_metadata?.full_name ||
         user?.user_metadata?.name ||
         "";
       setCaptainName(cap);
 
+      const resolvedCapEmail =
+        activeInitialData.captainEmail ??
+        savedCapFromMembers?.email ??
+        savedCapFromJson?.email ??
+        savedAnswers["E-mail do Capitão"] ??
+        savedAnswers["E-mail"] ??
+        user?.email ??
+        "";
+      setCaptainEmail(resolvedCapEmail);
+
       const p2 =
         activeInitialData.player2 ||
+        savedNonCapFromJson?.name ||
+        savedNonCapFromMembers?.name ||
         (Array.isArray(activeInitialData.players) ? activeInitialData.players[1] : "") ||
         "";
       setPartnerName(p2);
 
-      if (activeInitialData.partnerEmail !== undefined) {
-        setPartnerEmail(activeInitialData.partnerEmail || "");
-      } else if (Array.isArray(activeInitialData.members)) {
-        const nonCaptain = activeInitialData.members.find((m: any) => !m.is_captain);
-        setPartnerEmail(nonCaptain?.email || "");
-      }
+      const resolvedPartnerEmail =
+        activeInitialData.partnerEmail ??
+        savedNonCapFromMembers?.email ??
+        savedNonCapFromJson?.email ??
+        savedAnswers["E-mail do Jogador 2"] ??
+        "";
+      setPartnerEmail(resolvedPartnerEmail);
 
       setContact(activeInitialData.contact || activeInitialData.manager_phone || activeInitialData.phone || "");
-      setCustomAnswers(activeInitialData.custom_registration_answers || {});
+      setCustomAnswers(savedAnswers);
       if (activeInitialData.declared_skill_level !== undefined) {
         setDeclaredSkillLevel(activeInitialData.declared_skill_level || "");
       }
 
-      if (Array.isArray(activeInitialData.members) && activeInitialData.members.length > 0) {
-        const nonCapMembers = activeInitialData.members
-          .filter((m: any) => !m.is_captain)
-          .map((m: any) => ({
-            name: m.name || "",
-            email: m.email || "",
-            cpf: m.cpf || "",
-            phone: m.phone || "",
-          }));
-        const capMember = activeInitialData.members.find((m: any) => m.is_captain);
-        if (capMember?.cpf) setCaptainCpf(capMember.cpf);
-        if (capMember?.phone && !activeInitialData.contact) setContact(capMember.phone);
-        const firstNonCap = activeInitialData.members.find((m: any) => !m.is_captain);
+      if (
+        (Array.isArray(activeInitialData.members) && activeInitialData.members.length > 0) ||
+        savedAthleteMembers.length > 0
+      ) {
+        const dbNonCap = Array.isArray(activeInitialData.members)
+          ? activeInitialData.members.filter((m: any) => !m.is_captain)
+          : [];
+        const jsonNonCap = savedAthleteMembers.filter((m: any) => !m.is_captain);
+        const maxLen = Math.max(dbNonCap.length, jsonNonCap.length);
+        const mergedNonCap: { name: string; email: string; cpf?: string; phone?: string }[] = [];
+
+        for (let idx = 0; idx < maxLen; idx++) {
+          const dbM = dbNonCap[idx] || {};
+          const jsM = jsonNonCap[idx] || {};
+          mergedNonCap.push({
+            name: dbM.name || jsM.name || (Array.isArray(activeInitialData.roster) ? activeInitialData.roster[idx + 1] : "") || "",
+            email: dbM.email || jsM.email || "",
+            cpf: dbM.cpf || jsM.cpf || "",
+            phone: dbM.phone || jsM.phone || "",
+          });
+        }
+
+        const capCpf = savedCapFromMembers?.cpf || savedCapFromJson?.cpf || savedAnswers["CPF do Capitão"] || savedAnswers["CPF"] || "";
+        if (capCpf) setCaptainCpf(capCpf);
+        const capPhone = savedCapFromMembers?.phone || savedCapFromJson?.phone || "";
+        if (capPhone && !activeInitialData.contact) setContact(capPhone);
+
+        const firstNonCap = mergedNonCap[0];
         if (firstNonCap?.cpf) setPartnerCpf(firstNonCap.cpf);
+        else if (savedAnswers["CPF do Jogador 2"]) setPartnerCpf(savedAnswers["CPF do Jogador 2"]);
         if (firstNonCap?.phone) setPartnerPhone(firstNonCap.phone);
-        setAthletes(nonCapMembers);
+        else if (savedAnswers["Telefone do Jogador 2"]) setPartnerPhone(savedAnswers["Telefone do Jogador 2"]);
+
+        setAthletes(mergedNonCap);
       } else if (Array.isArray(activeInitialData.roster) && activeInitialData.roster.length > 1) {
         setAthletes(
           activeInitialData.roster.slice(1).map((rName: string) => ({
@@ -232,8 +280,15 @@ export default function PublicRegistrationForm({
       } else {
         setAthletes([]);
       }
+    } else {
+      if (!captainName && (user?.user_metadata?.full_name || user?.user_metadata?.name)) {
+        setCaptainName(user?.user_metadata?.full_name || user?.user_metadata?.name || "");
+      }
+      if (!captainEmail && user?.email) {
+        setCaptainEmail(user.email);
+      }
     }
-  }, [isOpen, activeInitialData, user?.user_metadata?.full_name, user?.user_metadata?.name]);
+  }, [isOpen, activeInitialData, user?.user_metadata?.full_name, user?.user_metadata?.name, user?.email]);
 
   // 1. Chave Única de Armazenamento para Auto-Save no LocalStorage
   const storageKey = `sportconnect_draft_${tournament.id}`;
@@ -255,6 +310,7 @@ export default function PublicRegistrationForm({
         if (draft && typeof draft === "object") {
           if (draft.teamName !== undefined) setTeamName(draft.teamName);
           if (draft.captainName !== undefined) setCaptainName(draft.captainName);
+          if (draft.captainEmail !== undefined) setCaptainEmail(draft.captainEmail);
           if (draft.partnerName !== undefined) setPartnerName(draft.partnerName);
           if (draft.partnerEmail !== undefined) setPartnerEmail(draft.partnerEmail);
           if (draft.partnerCpf !== undefined) setPartnerCpf(draft.partnerCpf);
@@ -303,6 +359,7 @@ export default function PublicRegistrationForm({
         const draftData = {
           teamName,
           captainName,
+          captainEmail,
           partnerName,
           partnerEmail,
           partnerCpf,
@@ -325,6 +382,7 @@ export default function PublicRegistrationForm({
   }, [
     teamName,
     captainName,
+    captainEmail,
     partnerName,
     partnerEmail,
     partnerCpf,
@@ -338,6 +396,28 @@ export default function PublicRegistrationForm({
     isOpen,
     storageKey,
   ]);
+
+  // Função rápida para inverter os dados entre Capitão e Parceiro
+  const handleSwapCaptainAndPartner = () => {
+    const prevCapName = captainName;
+    const prevCapEmail = captainEmail;
+    const prevCapCpf = captainCpf;
+    const prevCapPhone = contact;
+
+    setCaptainName(partnerName);
+    setPartnerName(prevCapName);
+
+    setCaptainEmail(partnerEmail);
+    setPartnerEmail(prevCapEmail);
+
+    setCaptainCpf(partnerCpf);
+    setPartnerCpf(prevCapCpf);
+
+    if (partnerPhone || prevCapPhone) {
+      setContact(partnerPhone || prevCapPhone);
+      setPartnerPhone(prevCapPhone);
+    }
+  };
 
   // Função para limpar rascunho manualmente
   const handleClearDraft = () => {
@@ -426,6 +506,7 @@ export default function PublicRegistrationForm({
     p1: string;
     p2: string;
     compiledRoster: string[];
+    captainEmail: string;
     captainCpf: string;
     contact: string;
     partnerName: string;
@@ -443,6 +524,7 @@ export default function PublicRegistrationForm({
     p1: string;
     p2: string;
     compiledRoster: string[];
+    captainEmail: string;
     captainCpf: string;
     contact: string;
     partnerName: string;
@@ -464,6 +546,7 @@ export default function PublicRegistrationForm({
       p1,
       p2,
       compiledRoster,
+      captainEmail: paramCaptainEmail,
       captainCpf,
       contact,
       partnerName,
@@ -475,6 +558,8 @@ export default function PublicRegistrationForm({
       declaredSkillLevel,
       uploadedReceiptPath,
     } = params;
+
+    const effectiveCapEmail = (paramCaptainEmail || captainEmail || user.email || "").trim().toLowerCase();
 
     let newlyCreatedTeamId: string | null = null;
 
@@ -572,7 +657,7 @@ export default function PublicRegistrationForm({
       const rosterDetails = [
         {
           name: p1,
-          email: user.email || "",
+          email: effectiveCapEmail,
           is_captain: true,
           cpf: captainCpf.trim() || null,
           phone: contact.trim() || null,
@@ -614,7 +699,7 @@ export default function PublicRegistrationForm({
 
       const enrichedCustomAnswers: Record<string, any> = {
         ...(contact.trim() ? { "Contato (WhatsApp)": contact.trim() } : {}),
-        ...(user.email ? { "E-mail": user.email } : {}),
+        ...(effectiveCapEmail ? { "E-mail do Capitão": effectiveCapEmail, "E-mail": effectiveCapEmail } : {}),
         ...(captainCpf.trim() ? { [!isDuplasSport && !isTeamSport ? "CPF" : "CPF do Capitão"]: captainCpf.trim() } : {}),
         ...(isDuplasSport && partnerName.trim() ? { "Jogador 2 (Parceiro)": partnerName.trim() } : {}),
         ...(isDuplasSport && partnerEmail.trim() ? { "E-mail do Jogador 2": partnerEmail.trim().toLowerCase() } : {}),
@@ -712,11 +797,32 @@ export default function PublicRegistrationForm({
       }[] = [];
 
       // A. Capitão informado no formulário (único com is_captain: true)
+      const resolveUserIdByEmail = async (emailStr: string): Promise<string | null> => {
+        const clean = (emailStr || "").trim().toLowerCase();
+        if (!clean) return null;
+        if (user.email && clean === user.email.trim().toLowerCase()) {
+          return user.id;
+        }
+        try {
+          const { data: profileFound } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("email", clean)
+            .maybeSingle();
+          return profileFound?.id || null;
+        } catch (pErr) {
+          console.warn("Aviso ao buscar perfil por email:", pErr);
+          return null;
+        }
+      };
+
+      const captainMatchedUserId = await resolveUserIdByEmail(effectiveCapEmail);
+
       teamMembersToInsert.push({
         team_id: insertedTeam.id,
-        user_id: user.id,
+        user_id: captainMatchedUserId,
         name: p1,
-        email: user.email || "",
+        email: effectiveCapEmail,
         is_captain: true,
         cpf: captainCpf.trim() || null,
         phone: contact.trim() || null,
@@ -751,22 +857,7 @@ export default function PublicRegistrationForm({
       }
 
       for (const member of otherMembers) {
-        let matchedUserId: string | null = null;
-        if (member.email) {
-          try {
-            const { data: profileFound } = await supabase
-              .from("profiles")
-              .select("id")
-              .eq("email", member.email)
-              .maybeSingle();
-
-            if (profileFound?.id) {
-              matchedUserId = profileFound.id;
-            }
-          } catch (pErr) {
-            console.warn("Aviso ao buscar perfil por email:", pErr);
-          }
-        }
+        const matchedUserId = await resolveUserIdByEmail(member.email);
 
         teamMembersToInsert.push({
           team_id: insertedTeam.id,
@@ -1183,6 +1274,27 @@ export default function PublicRegistrationForm({
 
       // Se estiver em modo de edição de inscrição existente, chama a Server Action com trava de chaveamento
       if (isEditMode && activeInitialData?.id) {
+        const resolveEditUserIdByEmail = async (emailStr: string): Promise<string | null> => {
+          const clean = (emailStr || "").trim().toLowerCase();
+          if (!clean) return null;
+          if (user.email && clean === user.email.trim().toLowerCase()) {
+            return user.id;
+          }
+          try {
+            const { data: profileFound } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("email", clean)
+              .maybeSingle();
+            return profileFound?.id || null;
+          } catch {
+            return null;
+          }
+        };
+
+        const cleanCapEditEmail = (captainEmail || user.email || "").trim().toLowerCase();
+        const capEditUserId = await resolveEditUserIdByEmail(cleanCapEditEmail);
+
         const otherEditMembers: {
           name: string;
           email: string;
@@ -1217,30 +1329,18 @@ export default function PublicRegistrationForm({
           cpf?: string | null;
           phone?: string | null;
         }[] = [
-            {
-              user_id: user.id,
-              name: p1,
-              email: user.email || "",
-              is_captain: true,
-              cpf: captainCpf.trim() || null,
-              phone: contact.trim() || null,
-            },
-          ];
+          {
+            user_id: capEditUserId,
+            name: p1,
+            email: cleanCapEditEmail,
+            is_captain: true,
+            cpf: captainCpf.trim() || null,
+            phone: contact.trim() || null,
+          },
+        ];
 
         for (const member of otherEditMembers) {
-          let matchedUserId: string | null = null;
-          if (member.email) {
-            try {
-              const { data: profileFound } = await supabase
-                .from("profiles")
-                .select("id")
-                .eq("email", member.email)
-                .maybeSingle();
-              if (profileFound?.id) matchedUserId = profileFound.id;
-            } catch {
-              // ignore
-            }
-          }
+          const matchedUserId = await resolveEditUserIdByEmail(member.email);
           editMembersPayload.push({
             user_id: matchedUserId,
             name: member.name,
@@ -1251,6 +1351,17 @@ export default function PublicRegistrationForm({
           });
         }
 
+        const enrichedEditCustomAnswers: Record<string, any> = {
+          ...formattedCustomAnswers,
+          ...(contact.trim() ? { "Contato (WhatsApp)": contact.trim() } : {}),
+          ...(cleanCapEditEmail ? { "E-mail do Capitão": cleanCapEditEmail, "E-mail": cleanCapEditEmail } : {}),
+          ...(captainCpf.trim() ? { [!isDuplasSport && !isTeamSport ? "CPF" : "CPF do Capitão"]: captainCpf.trim() } : {}),
+          ...(isDuplasSport && partnerName.trim() ? { "Jogador 2 (Parceiro)": partnerName.trim() } : {}),
+          ...(isDuplasSport && partnerEmail.trim() ? { "E-mail do Jogador 2": partnerEmail.trim().toLowerCase() } : {}),
+          ...(isDuplasSport && partnerCpf.trim() ? { "CPF do Jogador 2": partnerCpf.trim() } : {}),
+          ...(isDuplasSport && partnerPhone.trim() ? { "Telefone do Jogador 2": partnerPhone.trim() } : {}),
+        };
+
         const res = await updateRegistration(activeInitialData.id, {
           name: finalName,
           manager_name: p1,
@@ -1258,7 +1369,7 @@ export default function PublicRegistrationForm({
           player2: p2 || "",
           roster: compiledRoster,
           contact: contact.trim(),
-          custom_registration_answers: formattedCustomAnswers,
+          custom_registration_answers: enrichedEditCustomAnswers,
           declared_skill_level: isAllSkillLevels ? declaredSkillLevel : null,
           members: editMembersPayload,
         });
@@ -1373,6 +1484,7 @@ export default function PublicRegistrationForm({
           p1,
           p2,
           compiledRoster,
+          captainEmail,
           captainCpf,
           contact,
           partnerName,
@@ -1394,6 +1506,7 @@ export default function PublicRegistrationForm({
         p1,
         p2,
         compiledRoster,
+        captainEmail,
         captainCpf,
         contact,
         partnerName,
@@ -1657,6 +1770,21 @@ export default function PublicRegistrationForm({
                       />
                     </div>
 
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] font-bold text-zinc-400">
+                        Integrantes da Dupla (Capitão e Parceiro)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSwapCaptainAndPartner}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700 hover:border-orange-500/50 text-[11px] font-bold text-orange-400 hover:text-orange-300 transition-all cursor-pointer active:scale-95"
+                        title="Inverter dados entre Capitão e Parceiro"
+                      >
+                        <ArrowLeftRight className="h-3 w-3" />
+                        <span>Trocar Capitão ↔ Parceiro</span>
+                      </button>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
@@ -1687,25 +1815,48 @@ export default function PublicRegistrationForm({
                       </div>
                     </div>
 
-                    {/* E-mail do Parceiro para vínculo automático de perfil */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
-                          E-mail do Parceiro
-                        </label>
-                        <span className="text-[10px] text-zinc-500">
-                          Vincula estatísticas automaticamente
-                        </span>
+                    {/* E-mail do Capitão e E-mail do Parceiro para vínculo automático de perfil */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                            E-mail do Capitão
+                          </label>
+                          <span className="text-[10px] text-zinc-500">
+                            Vínculo de conta
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                          <input
+                            type="email"
+                            value={captainEmail}
+                            onChange={(e) => setCaptainEmail(e.target.value)}
+                            placeholder="capitao@exemplo.com"
+                            className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          />
+                        </div>
                       </div>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                        <input
-                          type="email"
-                          value={partnerEmail}
-                          onChange={(e) => setPartnerEmail(e.target.value)}
-                          placeholder="parceiro@exemplo.com (caso possua conta)"
-                          className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
-                        />
+
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black uppercase tracking-wider text-zinc-300 block">
+                            E-mail do Parceiro
+                          </label>
+                          <span className="text-[10px] text-zinc-500">
+                            Vínculo de conta
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                          <input
+                            type="email"
+                            value={partnerEmail}
+                            onChange={(e) => setPartnerEmail(e.target.value)}
+                            placeholder="parceiro@exemplo.com"
+                            className="w-full pl-10 pr-4 py-3 bg-[#0f0f0f] border border-[#27272a] focus:border-orange-500 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all shadow-inner"
+                          />
+                        </div>
                       </div>
                     </div>
 

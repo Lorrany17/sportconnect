@@ -761,13 +761,12 @@ export default function AdminPage() {
                 type="button"
                 onClick={() => sendWebSocketPing()}
                 disabled={isPinging}
-                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all shadow-sm cursor-pointer ${
-                  wsStatus === "SUBSCRIBED"
+                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all shadow-sm cursor-pointer ${wsStatus === "SUBSCRIBED"
                     ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
                     : wsStatus === "CONNECTING"
-                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
-                    : "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
-                }`}
+                      ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                      : "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
+                  }`}
                 title="Clique para testar o Ping WebSocket (RTT)"
               >
                 {wsStatus === "SUBSCRIBED" ? (
@@ -922,11 +921,10 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setActiveTab("overview")}
-              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === "overview"
+              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === "overview"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
                   : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
-              }`}
+                }`}
             >
               <BarChart3 className="h-4 w-4" />
               <span>Visão Geral</span>
@@ -935,11 +933,10 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setActiveTab("tournaments")}
-              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === "tournaments"
+              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === "tournaments"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
                   : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
-              }`}
+                }`}
             >
               <Trophy className="h-4 w-4" />
               <span>Gestão de Campeonatos ({tournaments.length})</span>
@@ -948,11 +945,10 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setActiveTab("users")}
-              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                activeTab === "users"
+              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === "users"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
                   : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
-              }`}
+                }`}
             >
               <Users className="h-4 w-4" />
               <span>Gestão de Utilizadores ({usersList.length})</span>
@@ -961,11 +957,10 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setActiveTab("websocket")}
-              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap relative ${
-                activeTab === "websocket"
+              className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap relative ${activeTab === "websocket"
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-600/25 border border-purple-400/30"
                   : "bg-[#141416] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-[#27272a]"
-              }`}
+                }`}
             >
               <Radio className="h-4 w-4 text-emerald-400" />
               <span>Monitor & Diagnóstico WebSocket</span>
@@ -1272,11 +1267,10 @@ export default function AdminPage() {
                           return (
                             <tr
                               key={t.id}
-                              className={`transition-colors group ${
-                                highlightedTournId === t.id
+                              className={`transition-colors group ${highlightedTournId === t.id
                                   ? "bg-purple-950/40 ring-1 ring-purple-500 animate-pulse"
                                   : "hover:bg-zinc-800/40"
-                              }`}
+                                }`}
                             >
                               <td className="py-4 px-6">
                                 <div className="flex items-center gap-3">
@@ -1670,13 +1664,12 @@ export default function AdminPage() {
                       <span>Status do Canal</span>
                     </span>
                     <span
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        wsStatus === "SUBSCRIBED"
+                      className={`h-2.5 w-2.5 rounded-full ${wsStatus === "SUBSCRIBED"
                           ? "bg-emerald-500 shadow-lg shadow-emerald-500/50"
                           : wsStatus === "CONNECTING"
-                          ? "bg-amber-500 animate-pulse"
-                          : "bg-red-500"
-                      }`}
+                            ? "bg-amber-500 animate-pulse"
+                            : "bg-red-500"
+                        }`}
                     />
                   </div>
                   <div className="text-2xl font-black text-white font-mono tracking-tight">
@@ -1859,11 +1852,10 @@ export default function AdminPage() {
                             key={f}
                             type="button"
                             onClick={() => setLogFilter(f)}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${
-                              logFilter === f
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer ${logFilter === f
                                 ? "bg-purple-600 text-white shadow-sm"
                                 : "text-zinc-400 hover:text-white"
-                            }`}
+                              }`}
                           >
                             {f}
                           </button>
@@ -1904,12 +1896,12 @@ export default function AdminPage() {
                           log.type === "postgres"
                             ? "bg-blue-500/15 border-blue-500/40 text-blue-300"
                             : log.type === "broadcast"
-                            ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
-                            : log.type === "presence"
-                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-                            : log.type === "error"
-                            ? "bg-red-500/15 border-red-500/40 text-red-300"
-                            : "bg-zinc-800 border-zinc-700 text-zinc-400";
+                              ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
+                              : log.type === "presence"
+                                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                                : log.type === "error"
+                                  ? "bg-red-500/15 border-red-500/40 text-red-300"
+                                  : "bg-zinc-800 border-zinc-700 text-zinc-400";
 
                         const isExpanded = expandedLogId === log.id;
 

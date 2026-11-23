@@ -380,13 +380,21 @@ export async function updateRegistration(
     if (updates.player2 !== undefined) updatePayload.player2 = updates.player2;
     if (updates.roster !== undefined) updatePayload.roster = updates.roster;
     if (updates.contact !== undefined) updatePayload.contact = updates.contact;
-    if (updates.custom_registration_answers !== undefined) {
-      // Higienização: remove variáveis internas que comecem com duplo underscore (ex: __athlete_members)
+    if (updates.custom_registration_answers !== undefined || Array.isArray(updates.members)) {
       const sanitizedAnswers: Record<string, any> = {};
       for (const [key, val] of Object.entries(updates.custom_registration_answers || {})) {
         if (!key.startsWith("__")) {
           sanitizedAnswers[key] = val;
         }
+      }
+      if (Array.isArray(updates.members) && updates.members.length > 0) {
+        sanitizedAnswers.__athlete_members = updates.members.map((m) => ({
+          name: m.name || "",
+          email: (m.email || "").trim().toLowerCase(),
+          is_captain: Boolean(m.is_captain),
+          cpf: m.cpf || null,
+          phone: m.phone || null,
+        }));
       }
       updatePayload.custom_registration_answers = sanitizedAnswers;
     }
@@ -406,21 +414,58 @@ export async function updateRegistration(
       return { success: false, error: `Erro ao atualizar inscrição: ${updateErr.message}` };
     }
 
-    // 4. Se a lista de membros foi informada, atualiza a tabela team_members
+    // 4. Se a lista de membros foi informada, atualiza a tabela team_members (sem a coluna inexistente 'name')
     if (Array.isArray(updates.members)) {
       try {
         await supabase.from("team_members").delete().eq("team_id", teamId);
-        const rows = updates.members.map((m) => ({
-          team_id: teamId,
-          user_id: m.user_id || null,
-          name: m.name,
-          email: m.email || "",
-          is_captain: Boolean(m.is_captain),
-          ...(m.cpf !== undefined ? { cpf: m.cpf || null } : {}),
-          ...(m.phone !== undefined ? { phone: m.phone || null } : {}),
-        }));
+        const rows: Record<string, any>[] = [];
+
+        for (const m of updates.members) {
+          const cleanEmail = (m.email || "").trim().toLowerCase();
+          let resolvedUserId: string | null = m.user_id || null;
+
+          if (cleanEmail && !resolvedUserId) {
+            try {
+              const { data: profileFound } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("email", cleanEmail)
+                .maybeSingle();
+              if (profileFound?.id) {
+                resolvedUserId = profileFound.id;
+              }
+            } catch {
+              // ignore
+            }
+          }
+
+          rows.push({
+            team_id: teamId,
+            user_id: resolvedUserId,
+            email: cleanEmail,
+            is_captain: Boolean(m.is_captain),
+            ...(m.cpf ? { cpf: m.cpf } : {}),
+            ...(m.phone ? { phone: m.phone } : {}),
+          });
+        }
+
         if (rows.length > 0) {
-          const { error: tmErr } = await supabase.from("team_members").insert(rows);
+          let { error: tmErr } = await supabase.from("team_members").insert(rows);
+          if (
+            tmErr &&
+            (tmErr.code === "42703" ||
+              tmErr.code === "PGRST204" ||
+              String(tmErr.message).toLowerCase().includes("column"))
+          ) {
+            const basicRows = rows.map((r) => ({
+              team_id: r.team_id,
+              user_id: r.user_id,
+              email: r.email,
+              is_captain: r.is_captain,
+            }));
+            const retryTm = await supabase.from("team_members").insert(basicRows);
+            tmErr = retryTm.error;
+          }
           if (tmErr) {
             console.error("Erro ao vincular membros em team_members:", tmErr);
             return { success: false, error: `Erro ao vincular membros da equipe: ${tmErr.message}` };
@@ -948,20 +993,20 @@ export async function addManualTeam(params: AddManualTeamParams): Promise<AddMan
           }
         }
 
-        const memberRecord = {
+        const dbMemberRecord = {
           team_id: insertedTeam.id,
           user_id: matchedUserId,
-          name: m.name,
           email: cleanEmail,
           is_captain: Boolean(m.is_captain),
           ...(m.cpf ? { cpf: m.cpf } : {}),
           ...(m.phone ? { phone: m.phone } : {}),
         };
 
-        dbMembersPayload.push(memberRecord);
+        dbMembersPayload.push(dbMemberRecord);
         insertedMembersResult.push({
           id: `${insertedTeam.id}-${idx}`,
-          ...memberRecord,
+          name: m.name,
+          ...dbMemberRecord,
         });
       }
 
@@ -972,7 +1017,6 @@ export async function addManualTeam(params: AddManualTeamParams): Promise<AddMan
           const fallbackMembersPayload = dbMembersPayload.map((item) => ({
             team_id: item.team_id,
             user_id: item.user_id,
-            name: item.name,
             email: item.email,
             is_captain: item.is_captain,
           }));
