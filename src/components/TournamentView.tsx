@@ -448,33 +448,45 @@ export function KnockoutTree({
     isThirdPlace = false
   ) => {
     const canEditRound = Boolean(isEditMode && isFirstRound && !isThirdPlace);
-    const team1Id = match.team1_id || match.team_a_id || match.teamA?.id;
-    const team2Id = match.team2_id || match.team_b_id || match.teamB?.id;
+    const rawTeam1Id = match.team1_id || match.team_a_id || match.teamA?.id;
+    const rawTeam2Id = match.team2_id || match.team_b_id || match.teamB?.id;
+    const team1Id =
+      rawTeam1Id && rawTeam1Id !== "bye" && !String(rawTeam1Id).startsWith("placeholder-")
+        ? rawTeam1Id
+        : null;
+    const team2Id =
+      rawTeam2Id && rawTeam2Id !== "bye" && !String(rawTeam2Id).startsWith("placeholder-")
+        ? rawTeam2Id
+        : null;
 
-    const team1 =
-      team1Id && !String(team1Id).startsWith("placeholder-")
-        ? teamsMap.get(team1Id) ||
-          (match.teamA &&
-          match.teamA.name &&
-          match.teamA.name.toLowerCase() !== "a definir"
-            ? match.teamA
-            : null) ||
-          (team1Id !== "bye"
-            ? { id: team1Id, name: `Equipe #${team1Id.slice(0, 6)}`, players: [] }
-            : null)
-        : null;
-    const team2 =
-      team2Id && !String(team2Id).startsWith("placeholder-")
-        ? teamsMap.get(team2Id) ||
-          (match.teamB &&
-          match.teamB.name &&
-          match.teamB.name.toLowerCase() !== "a definir"
-            ? match.teamB
-            : null) ||
-          (team2Id !== "bye"
-            ? { id: team2Id, name: `Equipe #${team2Id.slice(0, 6)}`, players: [] }
-            : null)
-        : null;
+    const isValidTeamObj = (t?: Team | null) => {
+      if (!t || !t.name) return false;
+      const lower = t.name.toLowerCase().trim();
+      return (
+        t.id !== "bye" &&
+        !String(t.id || "").startsWith("placeholder-") &&
+        lower !== "a definir" &&
+        !lower.includes("chapéu") &&
+        !lower.includes("folga")
+      );
+    };
+
+    const team1 = team1Id
+      ? teamsMap.get(team1Id) ||
+        (isValidTeamObj(match.teamA) ? match.teamA : null) || {
+          id: team1Id,
+          name: `Equipe #${team1Id.slice(0, 6)}`,
+          players: [],
+        }
+      : null;
+    const team2 = team2Id
+      ? teamsMap.get(team2Id) ||
+        (isValidTeamObj(match.teamB) ? match.teamB : null) || {
+          id: team2Id,
+          name: `Equipe #${team2Id.slice(0, 6)}`,
+          players: [],
+        }
+      : null;
 
     const statusNorm = String(match.status || "").toUpperCase().trim();
     const isLive =
@@ -1658,9 +1670,32 @@ export function GroupStages({
             </h3>
           </div>
           {knockoutMatches.length > 0 ? (
-            <span className="text-xs font-bold text-emerald-400 print:hidden">
-              Cruzamento Olímpico Ativo (1º vs 2º)
-            </span>
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
+              <span className="text-xs font-bold text-emerald-400">
+                Cruzamento Olímpico Ativo (1º vs 2º)
+              </span>
+              {isOrganizerUser && (
+                <button
+                  type="button"
+                  disabled={isGeneratingKnockout}
+                  onClick={handleGenerateKnockoutClick}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                  title="Regerar apenas as partidas eliminatórias preservando intacta a Fase de Grupos"
+                >
+                  {isGeneratingKnockout ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Regerando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Regerar Eliminatórias</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           ) : (
             <button
               type="button"

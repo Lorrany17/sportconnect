@@ -107,8 +107,16 @@ export default function OrganizerDashboard({
   // Determina o ID do torneio em foco para RBAC
   const targetTournamentId =
     propTournament?.id ||
+    dbTournament?.id ||
     context.currentTournamentId ||
-    dbTournament?.id;
+    undefined;
+
+  useEffect(() => {
+    const explicitId = propTournament?.id || dbTournament?.id;
+    if (explicitId && context.currentTournamentId !== explicitId) {
+      context.setCurrentTournamentId(explicitId);
+    }
+  }, [propTournament?.id, dbTournament?.id, context.currentTournamentId, context.setCurrentTournamentId]);
 
   // Hook genérico de permissões RBAC
   const permissions = useTournamentPermissions(targetTournamentId);
@@ -1206,6 +1214,7 @@ export default function OrganizerDashboard({
 
         {currentView === "referee" && (
           <RefereePanel
+            tournamentId={currentTour?.id || targetTournamentId || undefined}
             matches={context.matches}
             onUpdateScore={context.handleUpdateScore}
             onSubtractPoint={context.handleSubtractPoint}

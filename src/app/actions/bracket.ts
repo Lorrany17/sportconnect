@@ -709,28 +709,41 @@ export async function generateKnockoutFromGroups(
       return { success: false, error: `Erro ao carregar partidas: ${matchesErr?.message || "Sem dados"}` };
     }
 
-    const existingKnockout = allMatches.filter(
-      (m: any) => String(m.phase || "").toUpperCase() === "KNOCKOUT" || Boolean(m.next_match_id)
-    );
-    if (existingKnockout.length > 0) {
-      return {
-        success: false,
-        error: "O chaveamento eliminatório (Mata-Mata) já foi gerado para este torneio.",
-      };
-    }
+    const isGroupStageMatch = (m: any) => {
+      if (m.group_name) return true;
+      const ph = String(m.phase || "").toUpperCase().trim();
+      return (
+        ph === "GROUP_STAGE" ||
+        ph.startsWith("GROUP") ||
+        ph.includes("GRUPO")
+      );
+    };
 
-    const groupMatches = allMatches.filter(
-      (m: any) =>
-        String(m.phase || "").toUpperCase() === "GROUP_STAGE" ||
-        String(m.phase || "").toLowerCase().includes("grupo") ||
-        (!m.next_match_id && String(m.phase || "").toUpperCase() !== "KNOCKOUT")
-    );
+    const groupMatches = allMatches.filter(isGroupStageMatch);
+    const existingKnockout = allMatches.filter((m: any) => !isGroupStageMatch(m));
 
     if (groupMatches.length === 0) {
       return {
         success: false,
         error: "Nenhuma partida da Fase de Grupos foi encontrada para este torneio.",
       };
+    }
+
+    // Se já existirem partidas eliminatórias anteriores (ex: regeração do mata-mata),
+    // remove APENAS as partidas eliminatórias preservando 100% da Fase de Grupos
+    if (existingKnockout.length > 0) {
+      const knockoutIds = existingKnockout.map((m: any) => m.id).filter(Boolean);
+      if (knockoutIds.length > 0) {
+        const { error: delKoErr } = await supabase
+          .from("matches")
+          .delete()
+          .in("id", knockoutIds)
+          .eq("tournament_id", tournament_id)
+          .is("group_name", null);
+        if (delKoErr) {
+          console.warn("Aviso ao limpar partidas eliminatórias anteriores:", delKoErr.message);
+        }
+      }
     }
 
     const pendingGroupMatches = groupMatches.filter(
@@ -903,12 +916,21 @@ export async function generateKnockoutFromGroups(
       return `Rodada ${roundNum}`;
     };
 
+    const getKnockoutPhaseCode = (matchCount: number) => {
+      if (matchCount === 1) return "final";
+      if (matchCount === 2) return "semi_finals";
+      if (matchCount === 4) return "quarter_finals";
+      if (matchCount === 8) return "round_of_16";
+      return "KNOCKOUT";
+    };
+
     const matchesByRound = new Map<number, any[]>();
 
     for (let r = totalRounds; r >= 1; r--) {
       const numMatchesInRound = bracketSize / Math.pow(2, r);
       const currentRoundList: any[] = [];
       const roundLabel = getKnockoutRoundLabel(numMatchesInRound, r);
+      const phaseCode = getKnockoutPhaseCode(numMatchesInRound);
 
       for (let i = 0; i < numMatchesInRound; i++) {
         const matchId = crypto.randomUUID();
@@ -934,14 +956,11 @@ export async function generateKnockoutFromGroups(
           id: matchId,
           tournament_id,
           round: r,
-          match_order: i + 1,
           next_match_id: nextMatchId,
-          team1_id: team1Id,
-          team2_id: team2Id,
           team_a_id: team1Id,
           team_b_id: team2Id,
           status: "SCHEDULED",
-          phase: "KNOCKOUT",
+          phase: phaseCode,
           group_name: null,
           winner_id: null as string | null,
           score_a: 0,
@@ -950,6 +969,8 @@ export async function generateKnockoutFromGroups(
           sets_b: 0,
           details: {
             round_label: roundLabel,
+            round_number: r,
+            match_index_in_round: i + 1,
           },
         });
       }
@@ -957,22 +978,21 @@ export async function generateKnockoutFromGroups(
       matchesByRound.set(r, currentRoundList);
     }
 
-    // Trata BYEs na primeira fase do Mata-Mata
+    // Trata BYEs na primeira fase do Mata-Mata (apenas se houver 1 time real contra null na Rodada 1)
     const round1Matches = matchesByRound.get(1) || [];
     const byeAdvancements: Array<{
       nextMatchId: string;
-      slot: "team1_id" | "team2_id";
       legacySlot: "team_a_id" | "team_b_id";
       winnerId: string;
     }> = [];
 
     for (let i = 0; i < round1Matches.length; i++) {
       const match = round1Matches[i];
-      const hasTeam1 = Boolean(match.team1_id);
-      const hasTeam2 = Boolean(match.team2_id);
+      const hasTeam1 = Boolean(match.team_a_id);
+      const hasTeam2 = Boolean(match.team_b_id);
 
       if ((hasTeam1 && !hasTeam2) || (!hasTeam1 && hasTeam2)) {
-        const survivingTeamId = (match.team1_id || match.team2_id) as string;
+        const survivingTeamId = (match.team_a_id || match.team_b_id) as string;
         match.status = "COMPLETED";
         match.winner_id = survivingTeamId;
 
@@ -983,13 +1003,10 @@ export async function generateKnockoutFromGroups(
             const nextMatch = round2Matches[nextMatchIdx];
             if (nextMatch) {
               const isEven = i % 2 === 0;
-              const slot = isEven ? "team1_id" : "team2_id";
               const legacySlot = isEven ? "team_a_id" : "team_b_id";
-              nextMatch[slot] = survivingTeamId;
               nextMatch[legacySlot] = survivingTeamId;
               byeAdvancements.push({
                 nextMatchId: match.next_match_id,
-                slot,
                 legacySlot,
                 winnerId: survivingTeamId,
               });
@@ -999,9 +1016,20 @@ export async function generateKnockoutFromGroups(
       }
     }
 
+    // Ordena da Rodada 1 até a Final com numeração sequencial de jogo (match_order)
     const knockoutMatchesToInsert: any[] = [];
-    for (let r = totalRounds; r >= 1; r--) {
-      knockoutMatchesToInsert.push(...(matchesByRound.get(r) || []));
+    let runningMatchOrder = 1;
+    for (let r = 1; r <= totalRounds; r++) {
+      const rList = matchesByRound.get(r) || [];
+      for (const m of rList) {
+        m.details = {
+          ...(m.details || {}),
+          match_order: runningMatchOrder,
+          match_title: `${m.details?.round_label || `Rodada ${r}`} - Jogo #${runningMatchOrder}`,
+        };
+        runningMatchOrder++;
+        knockoutMatchesToInsert.push(m);
+      }
     }
 
     // Se habilitada a disputa de 3º lugar e houver ao menos semifinais (bracketSize >= 4)
@@ -1014,11 +1042,7 @@ export async function generateKnockoutFromGroups(
         id: crypto.randomUUID(),
         tournament_id,
         round: totalRounds,
-        match_order: 99,
-        table_number: 2,
         next_match_id: null,
-        team1_id: null,
-        team2_id: null,
         team_a_id: null,
         team_b_id: null,
         status: "SCHEDULED",
@@ -1032,40 +1056,40 @@ export async function generateKnockoutFromGroups(
         details: {
           round_label: "Disputa de 3º Lugar",
           match_title: "Disputa de 3º Lugar",
+          is_third_place: true,
+          match_order: 99,
         },
       });
     }
 
+    // Insere da última rodada para a primeira para satisfazer eventual FK de next_match_id
+    const dbOrderedToInsert = [...knockoutMatchesToInsert].sort(
+      (a, b) => Number(b.round || 1) - Number(a.round || 1)
+    );
+
     const { error: insertErr } = await supabase
       .from("matches")
-      .insert(knockoutMatchesToInsert);
+      .insert(dbOrderedToInsert);
 
     if (insertErr) {
-      if (
-        insertErr.message?.includes("column") ||
-        insertErr.message?.includes("team1_id") ||
-        insertErr.message?.includes("round") ||
-        insertErr.message?.includes("winner_id") ||
-        insertErr.message?.includes("next_match_id")
-      ) {
-        const legacyMatches = knockoutMatchesToInsert.map((m) => ({
-          id: m.id,
-          tournament_id: m.tournament_id,
-          phase: "KNOCKOUT",
-          status: m.status,
-          team_a_id: m.team_a_id,
-          team_b_id: m.team_b_id,
-          score_a: 0,
-          score_b: 0,
-          sets_a: 0,
-          sets_b: 0,
-        }));
-        const { error: legacyErr } = await supabase.from("matches").insert(legacyMatches);
-        if (legacyErr) {
-          return { success: false, error: `Erro ao criar chaveamento eliminatório: ${legacyErr.message}` };
-        }
-      } else {
-        return { success: false, error: `Erro ao criar chaveamento eliminatório: ${insertErr.message}` };
+      const legacyMatches = dbOrderedToInsert.map((m) => ({
+        id: m.id,
+        tournament_id: m.tournament_id,
+        phase: m.phase || "KNOCKOUT",
+        round: m.round,
+        next_match_id: m.next_match_id,
+        winner_id: m.winner_id,
+        status: m.status,
+        team_a_id: m.team_a_id,
+        team_b_id: m.team_b_id,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+      }));
+      const { error: legacyErr } = await supabase.from("matches").insert(legacyMatches);
+      if (legacyErr) {
+        return { success: false, error: `Erro ao criar chaveamento eliminatório: ${legacyErr.message}` };
       }
     }
 
@@ -1074,7 +1098,6 @@ export async function generateKnockoutFromGroups(
         await supabase
           .from("matches")
           .update({
-            [adv.slot]: adv.winnerId,
             [adv.legacySlot]: adv.winnerId,
           })
           .eq("id", adv.nextMatchId);
@@ -1260,39 +1283,38 @@ export async function generateKnockoutStage(
       return { success: false, error: "Erro ao consultar partidas existentes." };
     }
 
-    // Verifica se já existem partidas eliminatórias cadastradas
-    const existingKnockout = allMatches.filter((m: any) => {
-      const ph = String(m.phase || "").toUpperCase();
-      return (
-        ph === "KNOCKOUT" ||
-        ph.includes("SEMI") ||
-        ph.includes("FINAL") ||
-        Boolean(m.next_match_id)
-      );
-    });
-
-    if (existingKnockout.length > 0) {
-      return {
-        success: false,
-        error: "O chaveamento eliminatório (Mata-Mata) já foi gerado para este torneio.",
-      };
-    }
-
-    // Filtra partidas da fase de grupos
-    const groupMatches = allMatches.filter((m: any) => {
-      const ph = String(m.phase || "").toUpperCase();
+    const isGroupStageMatch = (m: any) => {
+      if (m.group_name) return true;
+      const ph = String(m.phase || "").toUpperCase().trim();
       return (
         ph === "GROUP_STAGE" ||
-        ph.includes("GRUPO") ||
-        (!m.next_match_id && ph !== "KNOCKOUT" && !ph.includes("SEMI") && !ph.includes("FINAL"))
+        ph.startsWith("GROUP") ||
+        ph.includes("GRUPO")
       );
-    });
+    };
+
+    const groupMatches = allMatches.filter(isGroupStageMatch);
+    const existingKnockout = allMatches.filter((m: any) => !isGroupStageMatch(m));
 
     if (groupMatches.length === 0) {
       return {
         success: false,
         error: "Nenhuma partida da fase de grupos encontrada para este torneio.",
       };
+    }
+
+    // Se já existirem partidas eliminatórias anteriores (ex: regeração do mata-mata),
+    // remove APENAS as partidas eliminatórias preservando 100% da Fase de Grupos
+    if (existingKnockout.length > 0) {
+      const knockoutIds = existingKnockout.map((m: any) => m.id).filter(Boolean);
+      if (knockoutIds.length > 0) {
+        await supabase
+          .from("matches")
+          .delete()
+          .in("id", knockoutIds)
+          .eq("tournament_id", tournamentId)
+          .is("group_name", null);
+      }
     }
 
     // Verifica se todos os jogos de grupo estão encerrados
@@ -1397,62 +1419,10 @@ export async function generateKnockoutStage(
 
     const matchesToInsert: any[] = [
       {
-        id: semi1Id,
-        tournament_id: tournamentId,
-        round: 1,
-        match_order: 1,
-        table_number: 1,
-        next_match_id: finalId,
-        team1_id: team1Semi1,
-        team2_id: team2Semi1,
-        team_a_id: team1Semi1,
-        team_b_id: team2Semi1,
-        status: "SCHEDULED",
-        phase: "semi_finals",
-        group_name: null,
-        winner_id: null,
-        score_a: 0,
-        score_b: 0,
-        sets_a: 0,
-        sets_b: 0,
-        details: {
-          round_label: "Semifinal",
-          match_title: `Semifinal 1 (1º Grupo ${gA} vs 2º Grupo ${gB})`,
-        },
-      },
-      {
-        id: semi2Id,
-        tournament_id: tournamentId,
-        round: 1,
-        match_order: 2,
-        table_number: 2,
-        next_match_id: finalId,
-        team1_id: team1Semi2,
-        team2_id: team2Semi2,
-        team_a_id: team1Semi2,
-        team_b_id: team2Semi2,
-        status: "SCHEDULED",
-        phase: "semi_finals",
-        group_name: null,
-        winner_id: null,
-        score_a: 0,
-        score_b: 0,
-        sets_a: 0,
-        sets_b: 0,
-        details: {
-          round_label: "Semifinal",
-          match_title: `Semifinal 2 (1º Grupo ${gB} vs 2º Grupo ${gA})`,
-        },
-      },
-      {
         id: finalId,
         tournament_id: tournamentId,
         round: 2,
-        match_order: 3,
-        table_number: 1,
         next_match_id: null,
-        team1_id: null,
-        team2_id: null,
         team_a_id: null,
         team_b_id: null,
         status: "SCHEDULED",
@@ -1466,6 +1436,52 @@ export async function generateKnockoutStage(
         details: {
           round_label: "Grande Final",
           match_title: "Grande Final (Vencedor Semi 1 vs Vencedor Semi 2)",
+          match_order: 3,
+          table_number: 1,
+        },
+      },
+      {
+        id: semi1Id,
+        tournament_id: tournamentId,
+        round: 1,
+        next_match_id: finalId,
+        team_a_id: team1Semi1,
+        team_b_id: team2Semi1,
+        status: "SCHEDULED",
+        phase: "semi_finals",
+        group_name: null,
+        winner_id: null,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        details: {
+          round_label: "Semifinal",
+          match_title: `Semifinal 1 (1º Grupo ${gA} vs 2º Grupo ${gB})`,
+          match_order: 1,
+          table_number: 1,
+        },
+      },
+      {
+        id: semi2Id,
+        tournament_id: tournamentId,
+        round: 1,
+        next_match_id: finalId,
+        team_a_id: team1Semi2,
+        team_b_id: team2Semi2,
+        status: "SCHEDULED",
+        phase: "semi_finals",
+        group_name: null,
+        winner_id: null,
+        score_a: 0,
+        score_b: 0,
+        sets_a: 0,
+        sets_b: 0,
+        details: {
+          round_label: "Semifinal",
+          match_title: `Semifinal 2 (1º Grupo ${gB} vs 2º Grupo ${gA})`,
+          match_order: 2,
+          table_number: 2,
         },
       },
     ];
@@ -1482,11 +1498,7 @@ export async function generateKnockoutStage(
         id: thirdPlaceId,
         tournament_id: tournamentId,
         round: 2,
-        match_order: 4,
-        table_number: 2,
         next_match_id: null,
-        team1_id: null,
-        team2_id: null,
         team_a_id: null,
         team_b_id: null,
         status: "SCHEDULED",
@@ -1500,22 +1512,23 @@ export async function generateKnockoutStage(
         details: {
           round_label: "Disputa de 3º Lugar",
           match_title: "Disputa de 3º Lugar (Perdedor Semi 1 vs Perdedor Semi 2)",
+          is_third_place: true,
+          match_order: 4,
+          table_number: 2,
         },
       });
     }
 
     // Tratamento de BYE caso algum grupo não possua 2º colocado
     if (team1Semi1 && !team2Semi1) {
-      matchesToInsert[0].status = "COMPLETED";
-      matchesToInsert[0].winner_id = team1Semi1;
-      matchesToInsert[2].team1_id = team1Semi1;
-      matchesToInsert[2].team_a_id = team1Semi1;
+      matchesToInsert[1].status = "COMPLETED";
+      matchesToInsert[1].winner_id = team1Semi1;
+      matchesToInsert[0].team_a_id = team1Semi1;
     }
     if (team1Semi2 && !team2Semi2) {
-      matchesToInsert[1].status = "COMPLETED";
-      matchesToInsert[1].winner_id = team1Semi2;
-      matchesToInsert[2].team2_id = team1Semi2;
-      matchesToInsert[2].team_b_id = team1Semi2;
+      matchesToInsert[2].status = "COMPLETED";
+      matchesToInsert[2].winner_id = team1Semi2;
+      matchesToInsert[0].team_b_id = team1Semi2;
     }
 
     const { error: insertErr } = await supabase

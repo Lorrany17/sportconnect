@@ -63,6 +63,7 @@ export function classifyMatchStage(
 
   // 5. Verificação explícita de 3º Lugar
   const is3rdText =
+    Boolean(detailsObj?.is_third_place) ||
     fullText.includes("terceiro") ||
     fullText.includes("3º") ||
     fullText.includes("third");
@@ -108,16 +109,27 @@ export function classifyMatchStage(
     return { key: "quarter_finals", order: 30, title: "Quartas de Final" };
   }
 
-  // 7. Heurística baseada no número total de partidas de mata-mata
+  // 7. Heurística baseada no número total de partidas de mata-mata (excluindo 3º lugar)
+  const isPlaceholderMatch = (matchItem: Match) => {
+    const t1 = matchItem.team1_id || matchItem.team_a_id;
+    const t2 = matchItem.team2_id || matchItem.team_b_id;
+    const noValidIds = (!t1 || t1 === "bye") && (!t2 || t2 === "bye");
+    const namesArePlaceholders =
+      (!matchItem.teamA?.name ||
+        matchItem.teamA.name.toLowerCase().includes("definir") ||
+        matchItem.teamA.name.toLowerCase().includes("chapéu") ||
+        matchItem.teamA.name.toLowerCase().includes("folga")) &&
+      (!matchItem.teamB?.name ||
+        matchItem.teamB.name.toLowerCase().includes("definir") ||
+        matchItem.teamB.name.toLowerCase().includes("chapéu") ||
+        matchItem.teamB.name.toLowerCase().includes("folga"));
+    return noValidIds || namesArePlaceholders;
+  };
+
   // Caso comum de 4 equipes classificadas (2 Semifinais + 1 Final = 3 partidas)
   if (allMatches.length === 3) {
-    const isPlaceholderMatch =
-      (!m.team1_id && !m.team2_id && !m.team_a_id && !m.team_b_id) ||
-      (m.teamA?.name?.toLowerCase().includes("definir") &&
-        m.teamB?.name?.toLowerCase().includes("definir")) ||
-      m.match_order === 3;
-
-    if (isPlaceholderMatch || m.round === 2 || Number(m.round) === 2) {
+    const matchOrderNum = Number(m.match_order ?? (m.details as any)?.match_order ?? 0);
+    if (isPlaceholderMatch(m) || matchOrderNum === 3 || Number(m.round) === 2) {
       return { key: "final", order: 50, title: "Grande Final" };
     }
     return { key: "semi_finals", order: 40, title: "Semifinais" };
@@ -161,6 +173,7 @@ export function isThirdPlaceMatch(m: Match): boolean {
   const matchTitle = String(detailsObj?.match_title || "").toLowerCase().trim();
   const full = `${ph} ${roundLabel} ${matchTitle}`;
   return (
+    Boolean(detailsObj?.is_third_place) ||
     ph === "third_place" ||
     ph === "terceiro_lugar" ||
     full.includes("third") ||
@@ -170,12 +183,37 @@ export function isThirdPlaceMatch(m: Match): boolean {
   );
 }
 
+function isMatchWithoutRealTeams(m: Match): boolean {
+  const t1 = m.team1_id || m.team_a_id;
+  const t2 = m.team2_id || m.team_b_id;
+  return (!t1 || t1 === "bye") && (!t2 || t2 === "bye");
+}
+
 /**
- * Extrai a partida de disputa de 3º lugar do conjunto de partidas (se existir)
+ * Extrai a partida de disputa de 3º lugar do conjunto de partidas (se existir).
+ * Também detecta automaticamente o 4º jogo órfão no caso legado de 4 classificados
+ * (2 Semifinais com times reais + 1 Final vazia + 1 Disputa de 3º vazia salvos com phase='KNOCKOUT').
  */
 export function getThirdPlaceMatch(matches: Match[]): Match | null {
   if (!matches || matches.length === 0) return null;
-  return matches.find(isThirdPlaceMatch) || null;
+  const explicit = matches.find(isThirdPlaceMatch);
+  if (explicit) return explicit;
+
+  const koCandidates = matches.filter((m) => {
+    if ((m as any).group_name) return false;
+    const ph = String(m.phase || "").toUpperCase().trim();
+    return ph !== "GROUP_STAGE" && ph !== "LEAGUE" && !ph.startsWith("GROUP");
+  });
+
+  if (koCandidates.length === 4) {
+    const withTeams = koCandidates.filter((m) => !isMatchWithoutRealTeams(m));
+    const emptyMatches = koCandidates.filter(isMatchWithoutRealTeams);
+    if (withTeams.length === 2 && emptyMatches.length === 2) {
+      return emptyMatches[1];
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -189,14 +227,19 @@ export function getThirdPlaceMatch(matches: Match[]): Match | null {
 export function organizeBracketRounds(matches: Match[]): BracketRoundGroup[] {
   if (!matches || matches.length === 0) return [];
 
+  const detectedThirdPlace = getThirdPlaceMatch(matches);
+
   // Filtra jogos de fase de grupos, pontos corridos e disputa de 3º lugar
   const knockoutMatches = matches.filter((m) => {
+    if ((m as any).group_name) return false;
     const ph = String(m.phase || "").toUpperCase().trim();
     return (
       ph !== "GROUP_STAGE" &&
       ph !== "LEAGUE" &&
       !ph.startsWith("GROUP_STAGE_") &&
-      !isThirdPlaceMatch(m)
+      !ph.startsWith("GROUP") &&
+      !isThirdPlaceMatch(m) &&
+      (!detectedThirdPlace || m.id !== detectedThirdPlace.id)
     );
   });
 
@@ -220,7 +263,9 @@ export function organizeBracketRounds(matches: Match[]): BracketRoundGroup[] {
   // Ordena os confrontos dentro de cada rodada
   groupsMap.forEach((g) => {
     g.matches.sort(
-      (a, b) => (Number(a.match_order) || 0) - (Number(b.match_order) || 0)
+      (a, b) =>
+        (Number(a.match_order ?? (a.details as any)?.match_order) || 0) -
+        (Number(b.match_order ?? (b.details as any)?.match_order) || 0)
     );
   });
 
@@ -238,6 +283,15 @@ export function organizeBracketRounds(matches: Match[]): BracketRoundGroup[] {
     sortedGroups[1].title = "Semifinais";
     sortedGroups[2].title = "Grande Final";
   }
+
+  // Numeração sequencial única de jogos (Jogo #1, Jogo #2 nas Semis -> Jogo #3 na Final)
+  let seqOrder = 1;
+  sortedGroups.forEach((g) => {
+    g.matches = g.matches.map((m) => ({
+      ...m,
+      match_order: seqOrder++,
+    }));
+  });
 
   return sortedGroups;
 }

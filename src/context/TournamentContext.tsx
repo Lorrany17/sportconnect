@@ -324,19 +324,38 @@ const mapMatchFromDb = (dbMatch: any, allTeams: Team[], dbMatches: any[]): Match
   const index = parts.length === 2 ? parseInt(parts[1], 10) : 1;
   const tableNumber = isNaN(index) ? 1 : index;
 
-  const prevPrefix = getPrevPrefix(prefix);
-  const isFirstRoundMatch = !prevPrefix || !dbMatches.some((dm) => {
-    const fid = getFriendlyIdFromUuid(dm.id);
-    return fid.startsWith(prevPrefix + "-");
-  });
+  const rawTeamAId = dbMatch.team_a_id || dbMatch.team1_id || null;
+  const rawTeamBId = dbMatch.team_b_id || dbMatch.team2_id || null;
+  const phaseUpper = String(dbMatch.phase || "").toUpperCase().trim();
+  const isGroupPhase =
+    Boolean(dbMatch.group_name) ||
+    phaseUpper === "GROUP_STAGE" ||
+    phaseUpper.startsWith("GROUP") ||
+    phaseUpper.includes("GRUPO");
+  const isLaterRound =
+    Number(dbMatch.round) > 1 ||
+    phaseUpper === "FINAL" ||
+    phaseUpper === "THIRD_PLACE" ||
+    phaseUpper.includes("TERCEIRO") ||
+    Boolean(dbMatch.details?.is_third_place) ||
+    dbMatches.some((dm) => dm.next_match_id === dbMatch.id);
+  const hasExactlyOneRealTeam =
+    (Boolean(rawTeamAId) && !rawTeamBId) || (!rawTeamAId && Boolean(rawTeamBId));
+  const isGenuineFirstRoundBye =
+    !isGroupPhase &&
+    !isLaterRound &&
+    hasExactlyOneRealTeam &&
+    (dbMatch.status === "COMPLETED" || dbMatch.status === "FINISHED");
 
-  const teamA = dbMatch.team_a_id === "bye"
+  const teamA = rawTeamAId === "bye"
     ? BYE_TEAM
-    : allTeams.find((t) => t.id === dbMatch.team_a_id) || (isFirstRoundMatch && dbMatch.team_a_id === null ? BYE_TEAM : getPlaceholderTeam(friendlyId, "A"));
+    : allTeams.find((t) => t.id === rawTeamAId) ||
+      (isGenuineFirstRoundBye && rawTeamAId === null ? BYE_TEAM : getPlaceholderTeam(friendlyId, "A"));
 
-  const teamB = dbMatch.team_b_id === "bye"
+  const teamB = rawTeamBId === "bye"
     ? BYE_TEAM
-    : allTeams.find((t) => t.id === dbMatch.team_b_id) || (isFirstRoundMatch && dbMatch.team_b_id === null ? BYE_TEAM : getPlaceholderTeam(friendlyId, "B"));
+    : allTeams.find((t) => t.id === rawTeamBId) ||
+      (isGenuineFirstRoundBye && rawTeamBId === null ? BYE_TEAM : getPlaceholderTeam(friendlyId, "B"));
 
   const phase = dbMatch.phase || getPhaseNameFromPrefix(prefix);
   const status = dbMatch.status as Match["status"];
@@ -405,10 +424,13 @@ const mapMatchFromDb = (dbMatch: any, allTeams: Team[], dbMatches: any[]): Match
     sets_a: setsA,
     sets_b: setsB,
     winnerId,
+    winner_id: dbMatch.winner_id || winnerId || null,
+    group_name: dbMatch.group_name || null,
+    details: dbMatch.details || undefined,
     team_a_id: dbMatch.team_a_id || dbMatch.team1_id,
     team_b_id: dbMatch.team_b_id || dbMatch.team2_id,
     round: dbMatch.round,
-    match_order: dbMatch.match_order,
+    match_order: dbMatch.match_order ?? dbMatch.details?.match_order,
     next_match_id: dbMatch.next_match_id,
     team1_id: dbMatch.team1_id || dbMatch.team_a_id,
     team2_id: dbMatch.team2_id || dbMatch.team_b_id,
@@ -539,7 +561,20 @@ export const TournamentContext = createContext<TournamentContextType | undefined
 
 export function TournamentProvider({ children }: { children: React.ReactNode }) {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [currentTournamentId, setCurrentTournamentId] = useState<string | null>(null);
+  const [currentTournamentId, setCurrentTournamentIdState] = useState<string | null>(null);
+  const currentTournamentIdRef = React.useRef<string | null>(null);
+
+  const setCurrentTournamentId = React.useCallback((id: string | null) => {
+    currentTournamentIdRef.current = id;
+    setCurrentTournamentIdState(id);
+    if (typeof window !== "undefined" && id) {
+      try {
+        localStorage.setItem("sc_current_tournament_id", id);
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
   const [currentSportType, setCurrentSportType] = useState<SportType>("DOMINO");
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -621,10 +656,27 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       setTournaments(mappedTournaments);
 
       if (mappedTournaments.length > 0) {
-        let selectedId = localStorage.getItem("sc_current_tournament_id");
+        let urlTourId: string | null = null;
+        if (typeof window !== "undefined" && window.location?.pathname) {
+          const segments = window.location.pathname.split("/").filter(Boolean);
+          for (const seg of segments) {
+            if (mappedTournaments.some((t) => t.id === seg)) {
+              urlTourId = seg;
+              break;
+            }
+          }
+        }
+
+        const activeRefId = currentTournamentIdRef.current;
+        let selectedId =
+          urlTourId ||
+          (activeRefId && mappedTournaments.some((t) => t.id === activeRefId)
+            ? activeRefId
+            : null) ||
+          localStorage.getItem("sc_current_tournament_id");
+
         if (!selectedId || !mappedTournaments.some((t) => t.id === selectedId)) {
           selectedId = mappedTournaments[0].id;
-          localStorage.setItem("sc_current_tournament_id", selectedId);
         }
         setCurrentTournamentId(selectedId);
       } else {

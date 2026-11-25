@@ -23,10 +23,12 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useTournament } from "@/context/TournamentContext";
+import { supabase } from "@/lib/supabase";
 import { formatPhaseName, getMatchRules } from "@/utils/formatMap";
 import { resetMatchAction } from "@/app/actions/bracket";
 
 export interface RefereePanelProps {
+  tournamentId?: string;
   matches: Match[];
   onUpdateScore: (
     matchId: string,
@@ -78,6 +80,7 @@ const SPORT_META: Record<
 };
 
 export default function RefereePanel({
+  tournamentId: propTournamentId,
   matches,
   onUpdateScore,
   onSubtractPoint,
@@ -90,6 +93,11 @@ export default function RefereePanel({
 }: RefereePanelProps) {
   const context = useTournament();
   const router = useRouter();
+  const activeTournamentId =
+    propTournamentId ||
+    context?.currentTournament?.id ||
+    context?.currentTournamentId ||
+    "";
   const currentSportType: SportType = sportType || context?.currentSportType || "DOMINO";
   const handleScorePoint = context?.handleScorePoint;
 
@@ -97,6 +105,155 @@ export default function RefereePanel({
   const [doublePoints, setDoublePoints] = useState<boolean>(false);
   const [isFinishing, setIsFinishing] = useState<boolean>(false);
   const [isResetting, setIsResetting] = useState<boolean>(false);
+  const [directMatches, setDirectMatches] = useState<Match[]>([]);
+
+  // Sincroniza o torneio ativo no contexto e busca confrontos estritamente filtrados por tournament_id
+  React.useEffect(() => {
+    setSelectedMatchId("");
+    setDirectMatches([]);
+
+    if (!activeTournamentId) return;
+
+    if (context?.currentTournamentId !== activeTournamentId && context?.setCurrentTournamentId) {
+      context.setCurrentTournamentId(activeTournamentId);
+    }
+
+    let isMounted = true;
+
+    const fetchActiveTournamentMatches = async () => {
+      try {
+        const [{ data: teamsRows }, { data: matchesRows }] = await Promise.all([
+          supabase
+            .from("teams")
+            .select("*")
+            .eq("tournament_id", activeTournamentId),
+          supabase
+            .from("matches")
+            .select("*, detailed_score, details")
+            .eq("tournament_id", activeTournamentId),
+        ]);
+
+        if (!isMounted || !matchesRows) return;
+
+        const teamsLookup = new Map<string, { id: string; name: string; players: string[]; createdAt: string }>();
+        (teamsRows || []).forEach((t: any) => {
+          teamsLookup.set(t.id, {
+            id: t.id,
+            name: t.name || "Equipe",
+            players: [t.player1 || "Jogador 1", t.player2 || ""].filter(Boolean),
+            createdAt: t.created_at || "",
+          });
+        });
+
+        const mapped: Match[] = matchesRows.map((dbM: any, idx: number) => {
+          const rawA = dbM.team_a_id || dbM.team1_id || null;
+          const rawB = dbM.team_b_id || dbM.team2_id || null;
+          const tA = (rawA && teamsLookup.get(rawA)) || {
+            id: rawA || `placeholder-${dbM.id}-A`,
+            name: rawA ? `Equipe #${String(rawA).slice(0, 6)}` : "A definir",
+            players: [],
+            createdAt: "",
+          };
+          const tB = (rawB && teamsLookup.get(rawB)) || {
+            id: rawB || `placeholder-${dbM.id}-B`,
+            name: rawB ? `Equipe #${String(rawB).slice(0, 6)}` : "A definir",
+            players: [],
+            createdAt: "",
+          };
+          const status = dbM.status as Match["status"];
+          const isSched =
+            status === "SCHEDULED" ||
+            (status as string) === "AGENDADA" ||
+            (status as string) === "PROGRAMADA";
+          const sA = isSched ? 0 : Number(dbM.score_a || 0);
+          const sB = isSched ? 0 : Number(dbM.score_b || 0);
+          const stA = isSched ? 0 : Number(dbM.sets_a || 0);
+          const stB = isSched ? 0 : Number(dbM.sets_b || 0);
+          const tableNum =
+            Number(dbM.details?.table_number || dbM.details?.match_order || dbM.match_order) ||
+            idx + 1;
+
+          return {
+            id: dbM.id,
+            uuid: dbM.id,
+            db_id: dbM.id,
+            tournamentId: dbM.tournament_id,
+            phase: dbM.phase || (dbM.group_name ? `Grupo ${dbM.group_name}` : "KNOCKOUT"),
+            group_name: dbM.group_name || null,
+            status,
+            teamA: tA,
+            teamB: tB,
+            team_a_id: rawA,
+            team_b_id: rawB,
+            team1_id: rawA,
+            team2_id: rawB,
+            scoreA: sA,
+            scoreB: sB,
+            score_a: sA,
+            score_b: sB,
+            setsA: stA,
+            setsB: stB,
+            sets_a: stA,
+            sets_b: stB,
+            setsVencidosTimeA: stA,
+            setsVencidosTimeB: stB,
+            penaltiesA: isSched ? 0 : Number(dbM.penalties_a ?? 0),
+            penaltiesB: isSched ? 0 : Number(dbM.penalties_b ?? 0),
+            penalties_a: isSched ? 0 : Number(dbM.penalties_a ?? 0),
+            penalties_b: isSched ? 0 : Number(dbM.penalties_b ?? 0),
+            tableNumber: tableNum,
+            round: dbM.round,
+            match_order: dbM.match_order ?? dbM.details?.match_order,
+            next_match_id: dbM.next_match_id,
+            winnerId: isSched ? undefined : (dbM.winner_id || undefined),
+            winner_id: dbM.winner_id || null,
+            details: dbM.details || undefined,
+            detailed_score: dbM.detailed_score || null,
+            detailedScore: dbM.detailed_score || { rounds: [], sets: [] },
+            sets_history:
+              dbM.sets_history ||
+              dbM.set_history ||
+              dbM.detailed_score?.sets ||
+              dbM.details?.sets ||
+              [],
+            historicoSets:
+              dbM.sets_history ||
+              dbM.set_history ||
+              dbM.detailed_score?.sets ||
+              dbM.details?.sets ||
+              [],
+          };
+        });
+
+        setDirectMatches(mapped);
+      } catch (err) {
+        console.warn("[RefereePanel] Aviso ao buscar confrontos do torneio ativo:", err);
+      }
+    };
+
+    fetchActiveTournamentMatches();
+
+    const channel = supabase
+      .channel(`referee-matches-${activeTournamentId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "matches",
+          filter: `tournament_id=eq.${activeTournamentId}`,
+        },
+        () => {
+          fetchActiveTournamentMatches();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [activeTournamentId]);
 
   const meta = SPORT_META[currentSportType] || SPORT_META.DOMINO;
 
@@ -153,12 +310,59 @@ export default function RefereePanel({
     return true;
   };
 
+  // Garante filtro estrito pelo activeTournamentId e prioriza mata-mata / jogos prontos no topo
+  const tournamentMatches = useMemo(() => {
+    const propMatchesForTour = activeTournamentId
+      ? matches.filter((m) => m.tournamentId === activeTournamentId)
+      : matches;
+
+    if (propMatchesForTour.length > 0 && directMatches.length > 0) {
+      // Mescla estado em tempo real do contexto com qualquer partida recém-gerada em directMatches
+      const byId = new Map<string, Match>();
+      directMatches.forEach((dm) => byId.set(String(dm.uuid || dm.id), dm));
+      propMatchesForTour.forEach((pm) => byId.set(String((pm as any).uuid || pm.id), pm));
+      return Array.from(byId.values());
+    }
+
+    if (propMatchesForTour.length > 0) return propMatchesForTour;
+    if (directMatches.length > 0) return directMatches;
+    return activeTournamentId ? [] : matches;
+  }, [matches, directMatches, activeTournamentId]);
+
+  const isKnockoutPhaseMatch = (m: Match): boolean => {
+    if ((m as any).group_name) return false;
+    const ph = String(m.phase || "").toUpperCase().trim();
+    return (
+      ph !== "GROUP_STAGE" &&
+      ph !== "LEAGUE" &&
+      !ph.startsWith("GROUP") &&
+      !ph.includes("GRUPO")
+    );
+  };
+
+  const sortMatchesForReferee = (list: Match[]): Match[] => {
+    return [...list].sort((a, b) => {
+      // Prioriza confrontos do Mata-Mata (Semifinais, Final, 3º Lugar) sobre Fase de Grupos
+      const aKo = isKnockoutPhaseMatch(a) ? 0 : 1;
+      const bKo = isKnockoutPhaseMatch(b) ? 0 : 1;
+      if (aKo !== bKo) return aKo - bKo;
+
+      const aRound = Number(a.round || 1);
+      const bRound = Number(b.round || 1);
+      if (aRound !== bRound) return aRound - bRound;
+
+      const aOrder = Number(a.match_order ?? (a.details as any)?.match_order ?? a.tableNumber ?? 0);
+      const bOrder = Number(b.match_order ?? (b.details as any)?.match_order ?? b.tableNumber ?? 0);
+      return aOrder - bOrder;
+    });
+  };
+
   const playableMatches = useMemo(() => {
-    const filtered = matches.filter(isPlayableRefereeMatch);
+    const filtered = tournamentMatches.filter(isPlayableRefereeMatch);
     const seen = new Set<string>();
     const unique: Match[] = [];
     for (const m of filtered) {
-      const key = String(m.id || (m as any).uuid || "").trim();
+      const key = String((m as any).uuid || m.id || "").trim();
       if (!key) {
         unique.push(m);
         continue;
@@ -167,8 +371,8 @@ export default function RefereePanel({
       seen.add(key);
       unique.push(m);
     }
-    return unique;
-  }, [matches]);
+    return sortMatchesForReferee(unique);
+  }, [tournamentMatches]);
 
   const activeMatches = useMemo(
     () => playableMatches.filter((m) => m.status === "LIVE" || m.status === "IN_PROGRESS"),
@@ -198,7 +402,9 @@ export default function RefereePanel({
     }
   }, [playableMatches, activeMatches, pendingMatches, completedMatches, selectedMatchId]);
 
-  const selectedMatch = playableMatches.find((m) => m.id === selectedMatchId) || matches.find((m) => m.id === selectedMatchId);
+  const selectedMatch =
+    playableMatches.find((m) => m.id === selectedMatchId) ||
+    tournamentMatches.find((m) => m.id === selectedMatchId);
 
   const activeMatchRules = getMatchRules(
     context?.currentTournament,
@@ -712,7 +918,7 @@ export default function RefereePanel({
                             }`}
                           >
                             <span>
-                              {meta.venue.toUpperCase()} {m.tableNumber}
+                              {meta.venue.toUpperCase()} {m.tableNumber} • {formatPhaseName(m.phase)}
                             </span>
                             <span>AGENDADA</span>
                           </div>
