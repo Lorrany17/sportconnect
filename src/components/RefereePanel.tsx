@@ -107,6 +107,139 @@ export default function RefereePanel({
   const [isResetting, setIsResetting] = useState<boolean>(false);
   const [directMatches, setDirectMatches] = useState<Match[]>([]);
 
+  // Optimistic UI & Debounced Sync State (0ms latency for rapid scoring)
+  const [optimisticMatches, setOptimisticMatches] = useState<Record<string, Match>>({});
+  const optimisticMatchesRef = React.useRef<Record<string, Match>>({});
+  const saveTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const inFlightSavesRef = React.useRef<Record<string, boolean>>({});
+  const queuedMatchSaveRef = React.useRef<Record<string, Match>>({});
+  const mutationVersionRef = React.useRef<Record<string, number>>({});
+  const lastMutationTimeRef = React.useRef<Record<string, number>>({});
+  const [scoreSyncStatus, setScoreSyncStatus] = useState<"IDLE" | "SAVING" | "SYNCED" | "ERROR">("IDLE");
+  const [lastFailedMatch, setLastFailedMatch] = useState<Match | null>(null);
+
+  const persistSingleMatchToSupabase = React.useCallback(async (matchToSave: Match) => {
+    const key = matchToSave.id;
+    const dbId = (matchToSave as any).uuid || (matchToSave as any).db_id || matchToSave.id;
+    if (!dbId) return;
+
+    if (inFlightSavesRef.current[key]) {
+      queuedMatchSaveRef.current[key] = matchToSave;
+      return;
+    }
+
+    inFlightSavesRef.current[key] = true;
+    const versionAtStart = mutationVersionRef.current[key] || 0;
+    setScoreSyncStatus("SAVING");
+
+    try {
+      const cleanSets = matchToSave.historicoSets || matchToSave.sets_history || [];
+      const existingDetails =
+        matchToSave.details && typeof matchToSave.details === "object"
+          ? matchToSave.details
+          : {};
+      const mergedDetails = {
+        ...existingDetails,
+        sets: cleanSets,
+        historicoSets: cleanSets,
+        rounds: matchToSave.detailedScore?.rounds || [],
+      };
+      const mergedDetailedScore = {
+        sets: cleanSets,
+        historicoSets: cleanSets,
+        rounds: matchToSave.detailedScore?.rounds || [],
+      };
+
+      const payload: Record<string, any> = {
+        score_a: matchToSave.scoreA ?? 0,
+        score_b: matchToSave.scoreB ?? 0,
+        sets_a: matchToSave.setsA ?? matchToSave.setsVencidosTimeA ?? 0,
+        sets_b: matchToSave.setsB ?? matchToSave.setsVencidosTimeB ?? 0,
+        status: matchToSave.status,
+        penalties_a: matchToSave.penaltiesA ?? 0,
+        penalties_b: matchToSave.penaltiesB ?? 0,
+        details: mergedDetails,
+        detailed_score: mergedDetailedScore,
+      };
+
+      let { error } = await supabase.from("matches").update(payload).eq("id", dbId);
+      if (error) {
+        const retryRes = await supabase
+          .from("matches")
+          .update({
+            score_a: payload.score_a,
+            score_b: payload.score_b,
+            sets_a: payload.sets_a,
+            sets_b: payload.sets_b,
+            status: payload.status,
+          })
+          .eq("id", dbId);
+        error = retryRes.error;
+      }
+
+      if (error) {
+        throw error;
+      }
+
+      setLastFailedMatch(null);
+      if ((mutationVersionRef.current[key] || 0) === versionAtStart && !queuedMatchSaveRef.current[key]) {
+        setScoreSyncStatus("SYNCED");
+      }
+    } catch (err) {
+      console.error("[RefereePanel] Erro ao sincronizar placar da partida:", err);
+      setLastFailedMatch(matchToSave);
+      setScoreSyncStatus("ERROR");
+    } finally {
+      inFlightSavesRef.current[key] = false;
+      const nextQueued = queuedMatchSaveRef.current[key];
+      if (nextQueued) {
+        delete queuedMatchSaveRef.current[key];
+        await persistSingleMatchToSupabase(nextQueued);
+      }
+    }
+  }, []);
+
+  const scheduleOptimisticMatchSave = React.useCallback(
+    (updatedMatch: Match, immediate = false) => {
+      const key = updatedMatch.id;
+      mutationVersionRef.current[key] = (mutationVersionRef.current[key] || 0) + 1;
+      lastMutationTimeRef.current[key] = Date.now();
+      optimisticMatchesRef.current[key] = updatedMatch;
+      setOptimisticMatches((prev) => ({ ...prev, [key]: updatedMatch }));
+      setScoreSyncStatus("SAVING");
+
+      if (saveTimersRef.current[key]) {
+        clearTimeout(saveTimersRef.current[key]);
+        delete saveTimersRef.current[key];
+      }
+
+      if (immediate) {
+        void persistSingleMatchToSupabase(updatedMatch);
+      } else {
+        saveTimersRef.current[key] = setTimeout(() => {
+          delete saveTimersRef.current[key];
+          const latest = optimisticMatchesRef.current[key] || updatedMatch;
+          void persistSingleMatchToSupabase(latest);
+        }, 300);
+      }
+    },
+    [persistSingleMatchToSupabase]
+  );
+
+  const flushPendingMatchSave = React.useCallback(
+    async (matchId: string) => {
+      if (saveTimersRef.current[matchId]) {
+        clearTimeout(saveTimersRef.current[matchId]);
+        delete saveTimersRef.current[matchId];
+      }
+      const latest = optimisticMatchesRef.current[matchId];
+      if (latest) {
+        await persistSingleMatchToSupabase(latest);
+      }
+    },
+    [persistSingleMatchToSupabase]
+  );
+
   // Sincroniza o torneio ativo no contexto e busca confrontos estritamente filtrados por tournament_id
   React.useEffect(() => {
     setSelectedMatchId("");
@@ -243,7 +376,17 @@ export default function RefereePanel({
           table: "matches",
           filter: `tournament_id=eq.${activeTournamentId}`,
         },
-        () => {
+        (payload: any) => {
+          const changedId = payload?.new?.id || payload?.old?.id;
+          // Protege contra sobrescrita de Realtime na partida ativa enquanto houver salvamento local pendente/recente
+          if (
+            changedId &&
+            (saveTimersRef.current[changedId] ||
+              inFlightSavesRef.current[changedId] ||
+              Date.now() - (lastMutationTimeRef.current[changedId] || 0) < 4000)
+          ) {
+            return;
+          }
           fetchActiveTournamentMatches();
         }
       )
@@ -316,18 +459,24 @@ export default function RefereePanel({
       ? matches.filter((m) => m.tournamentId === activeTournamentId)
       : matches;
 
-    if (propMatchesForTour.length > 0 && directMatches.length > 0) {
-      // Mescla estado em tempo real do contexto com qualquer partida recém-gerada em directMatches
-      const byId = new Map<string, Match>();
-      directMatches.forEach((dm) => byId.set(String(dm.uuid || dm.id), dm));
-      propMatchesForTour.forEach((pm) => byId.set(String((pm as any).uuid || pm.id), pm));
-      return Array.from(byId.values());
-    }
+    const byId = new Map<string, Match>();
+    directMatches.forEach((dm) => byId.set(String(dm.uuid || dm.id), dm));
+    propMatchesForTour.forEach((pm) => byId.set(String((pm as any).uuid || pm.id), pm));
 
-    if (propMatchesForTour.length > 0) return propMatchesForTour;
-    if (directMatches.length > 0) return directMatches;
+    // Aplica camada Optimistic UI (0ms) por cima de qualquer estado externo/banco
+    Object.values(optimisticMatches).forEach((om) => {
+      if (!activeTournamentId || !om.tournamentId || om.tournamentId === activeTournamentId) {
+        const key = String((om as any).uuid || om.id);
+        byId.set(key, om);
+        byId.set(om.id, om);
+      }
+    });
+
+    if (byId.size > 0) {
+      return Array.from(new Set(byId.values()));
+    }
     return activeTournamentId ? [] : matches;
-  }, [matches, directMatches, activeTournamentId]);
+  }, [matches, directMatches, optimisticMatches, activeTournamentId]);
 
   const isKnockoutPhaseMatch = (m: Match): boolean => {
     if ((m as any).group_name) return false;
@@ -561,40 +710,135 @@ export default function RefereePanel({
     }
   }
 
-  // Multi-sport Point Handler (Gols, Pênaltis, Sets, Pontos corridos)
+  // Multi-sport Point Handler (0ms Optimistic UI + Debounced Single-Row Persistence)
   const handlePointClick = (slot: "A" | "B", delta: number, isPenalty: boolean = false) => {
     if (!selectedMatch || isMatchFinished) return;
 
-    if (handleScorePoint) {
-      handleScorePoint(selectedMatch.id, slot, delta, isPenalty);
-      return;
-    }
+    const baseMatch = optimisticMatchesRef.current[selectedMatch.id] || selectedMatch;
+    const isTeamA = slot === "A";
+    const curScoreA = baseMatch.scoreA ?? baseMatch.score_a ?? 0;
+    const curScoreB = baseMatch.scoreB ?? baseMatch.score_b ?? 0;
+    const curSetsA = baseMatch.setsA ?? baseMatch.setsVencidosTimeA ?? baseMatch.sets_a ?? 0;
+    const curSetsB = baseMatch.setsB ?? baseMatch.setsVencidosTimeB ?? baseMatch.sets_b ?? 0;
+    const curPenA = baseMatch.penaltiesA ?? (baseMatch as any).penalties_a ?? 0;
+    const curPenB = baseMatch.penaltiesB ?? (baseMatch as any).penalties_b ?? 0;
+    const curSetsList = Array.isArray(baseMatch.historicoSets)
+      ? baseMatch.historicoSets
+      : Array.isArray(baseMatch.sets_history)
+      ? baseMatch.sets_history
+      : [];
+
+    const buildUpdatedMatch = (patch: Partial<Match>, setsArr = curSetsList): Match => {
+      const nextSA = patch.scoreA !== undefined ? patch.scoreA : curScoreA;
+      const nextSB = patch.scoreB !== undefined ? patch.scoreB : curScoreB;
+      const nextStA = patch.setsA !== undefined ? patch.setsA : curSetsA;
+      const nextStB = patch.setsB !== undefined ? patch.setsB : curSetsB;
+      const nextPA = patch.penaltiesA !== undefined ? patch.penaltiesA : curPenA;
+      const nextPB = patch.penaltiesB !== undefined ? patch.penaltiesB : curPenB;
+      const roundsArr = patch.detailedScore?.rounds || baseMatch.detailedScore?.rounds || [];
+
+      return {
+        ...baseMatch,
+        ...patch,
+        scoreA: nextSA,
+        scoreB: nextSB,
+        score_a: nextSA,
+        score_b: nextSB,
+        setsA: nextStA,
+        setsB: nextStB,
+        sets_a: nextStA,
+        sets_b: nextStB,
+        setsVencidosTimeA: nextStA,
+        setsVencidosTimeB: nextStB,
+        penaltiesA: nextPA,
+        penaltiesB: nextPB,
+        penalties_a: nextPA,
+        penalties_b: nextPB,
+        historicoSets: setsArr,
+        sets_history: setsArr,
+        set_history: setsArr,
+        detailedScore: {
+          rounds: roundsArr,
+        },
+        detailed_score: {
+          sets: setsArr,
+          historicoSets: setsArr,
+          rounds: roundsArr,
+        },
+      };
+    };
 
     if (currentSportType === "FUTSAL") {
       if (isPenalty) {
-        const nextPenA = slot === "A" ? Math.max(0, (selectedMatch.penaltiesA || 0) + delta) : selectedMatch.penaltiesA || 0;
-        const nextPenB = slot === "B" ? Math.max(0, (selectedMatch.penaltiesB || 0) + delta) : selectedMatch.penaltiesB || 0;
-        onUpdateScore(selectedMatch.id, selectedMatch.scoreA, selectedMatch.scoreB, {
-          penaltiesA: nextPenA,
-          penaltiesB: nextPenB,
-        });
+        const nextPenA = isTeamA ? Math.max(0, curPenA + delta) : curPenA;
+        const nextPenB = !isTeamA ? Math.max(0, curPenB + delta) : curPenB;
+        const updated = buildUpdatedMatch({ penaltiesA: nextPenA, penaltiesB: nextPenB });
+        scheduleOptimisticMatchSave(updated, false);
       } else {
-        const nextScoreA = slot === "A" ? Math.max(0, selectedMatch.scoreA + delta) : selectedMatch.scoreA;
-        const nextScoreB = slot === "B" ? Math.max(0, selectedMatch.scoreB + delta) : selectedMatch.scoreB;
-        onUpdateScore(selectedMatch.id, nextScoreA, nextScoreB);
+        const nextScoreA = isTeamA ? Math.max(0, curScoreA + delta) : curScoreA;
+        const nextScoreB = !isTeamA ? Math.max(0, curScoreB + delta) : curScoreB;
+        const updated = buildUpdatedMatch({ scoreA: nextScoreA, scoreB: nextScoreB });
+        scheduleOptimisticMatchSave(updated, false);
       }
-    } else if (currentSportType === "PING_PONG" || currentSportType === "VOLEI") {
-      const nextScoreA = slot === "A" ? Math.max(0, selectedMatch.scoreA + delta) : selectedMatch.scoreA;
-      const nextScoreB = slot === "B" ? Math.max(0, selectedMatch.scoreB + delta) : selectedMatch.scoreB;
-      onUpdateScore(selectedMatch.id, nextScoreA, nextScoreB);
-    } else {
-      // Domino
-      const teamId = slot === "A" ? selectedMatch.teamA.id : selectedMatch.teamB.id;
+      return;
+    }
+
+    if (currentSportType === "PING_PONG" || currentSportType === "VOLEI") {
       if (delta < 0) {
-        onSubtractPoint(selectedMatch.id, teamId);
-      } else {
-        handleAddPoints(teamId, delta);
+        const nextScoreA = isTeamA ? Math.max(0, curScoreA - 1) : curScoreA;
+        const nextScoreB = !isTeamA ? Math.max(0, curScoreB - 1) : curScoreB;
+        const updated = buildUpdatedMatch({ scoreA: nextScoreA, scoreB: nextScoreB });
+        scheduleOptimisticMatchSave(updated, false);
+        return;
       }
+
+      const nextScoreA = isTeamA ? curScoreA + delta : curScoreA;
+      const nextScoreB = !isTeamA ? curScoreB + delta : curScoreB;
+
+      const completedSets = curSetsA + curSetsB;
+      const targetPoints =
+        currentSportType === "PING_PONG"
+          ? activeMatchRules.pointsPerSet || 11
+          : completedSets === 4
+          ? activeMatchRules.tieBreakPoints || 15
+          : activeMatchRules.pointsPerSet || 25;
+
+      const hasWonSetA = nextScoreA >= targetPoints && nextScoreA - nextScoreB >= 2;
+      const hasWonSetB = nextScoreB >= targetPoints && nextScoreB - nextScoreA >= 2;
+
+      if (hasWonSetA || hasWonSetB) {
+        const currentSetNum = curSetsList.length + 1;
+        const newHistorico = [
+          ...curSetsList,
+          { setNumber: currentSetNum, scoreA: nextScoreA, scoreB: nextScoreB },
+        ];
+        const nextSetsA = curSetsA + (hasWonSetA ? 1 : 0);
+        const nextSetsB = curSetsB + (hasWonSetB ? 1 : 0);
+        const updated = buildUpdatedMatch(
+          {
+            scoreA: 0,
+            scoreB: 0,
+            setsA: nextSetsA,
+            setsB: nextSetsB,
+          },
+          newHistorico
+        );
+        // Flush imediato ao fechar um set
+        scheduleOptimisticMatchSave(updated, true);
+        return;
+      }
+
+      const updated = buildUpdatedMatch({ scoreA: nextScoreA, scoreB: nextScoreB });
+      scheduleOptimisticMatchSave(updated, false);
+      return;
+    }
+
+    // Domino
+    const teamId = slot === "A" ? baseMatch.teamA.id : baseMatch.teamB.id;
+    if (delta < 0) {
+      onSubtractPoint(baseMatch.id, teamId);
+    } else {
+      handleAddPoints(teamId, delta);
     }
   };
 
@@ -636,6 +880,7 @@ export default function RefereePanel({
     if (!selectedMatch || !isMatchFinished || isFinishing) return;
     setIsFinishing(true);
     try {
+      await flushPendingMatchSave(selectedMatch.id);
       const isSetsSport = currentSportType === "PING_PONG" || currentSportType === "VOLEI" || isBestOf3;
       const team1_id = selectedMatch.teamA.id;
       const team2_id = selectedMatch.teamB.id;
@@ -835,6 +1080,9 @@ export default function RefereePanel({
                         <button
                           key={`active-${m.id}`}
                           onClick={() => {
+                            if (selectedMatchId && selectedMatchId !== m.id) {
+                              void flushPendingMatchSave(selectedMatchId);
+                            }
                             setSelectedMatchId(m.id);
                             setDoublePoints(false);
                           }}
@@ -901,6 +1149,9 @@ export default function RefereePanel({
                         <button
                           key={`pending-${m.id}`}
                           onClick={() => {
+                            if (selectedMatchId && selectedMatchId !== m.id) {
+                              void flushPendingMatchSave(selectedMatchId);
+                            }
                             setSelectedMatchId(m.id);
                             setDoublePoints(false);
                           }}
@@ -1131,6 +1382,45 @@ export default function RefereePanel({
                       </span>
                     )}
                   </div>
+                  {scoreSyncStatus !== "IDLE" && (
+                    <div
+                      className={`print:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-all ${
+                        scoreSyncStatus === "SAVING"
+                          ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                          : scoreSyncStatus === "SYNCED"
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                          : "bg-red-500/15 border-red-500/40 text-red-400"
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          scoreSyncStatus === "SAVING"
+                            ? "bg-amber-400 animate-pulse"
+                            : scoreSyncStatus === "SYNCED"
+                            ? "bg-emerald-400"
+                            : "bg-red-400"
+                        }`}
+                      />
+                      {scoreSyncStatus === "SAVING" && <span>Salvando...</span>}
+                      {scoreSyncStatus === "SYNCED" && <span>Sincronizado</span>}
+                      {scoreSyncStatus === "ERROR" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const target =
+                              lastFailedMatch ||
+                              (selectedMatch ? optimisticMatchesRef.current[selectedMatch.id] || selectedMatch : null);
+                            if (target) {
+                              void persistSingleMatchToSupabase(target);
+                            }
+                          }}
+                          className="underline hover:text-white cursor-pointer"
+                        >
+                          Erro ao salvar • Tentar novamente
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {getStatusBadge(selectedMatch.status)}
                   {selectedMatch && (selectedMatch.status === "LIVE" || selectedMatch.status === "COMPLETED") && !isReadOnly && (
                     <button
@@ -1177,7 +1467,14 @@ export default function RefereePanel({
                       </p>
                       {isMatchReady && !isReadOnly ? (
                         <button
-                          onClick={() => onStartMatch(selectedMatch.id)}
+                          onClick={() => {
+                            const startedMatch: Match = {
+                              ...selectedMatch,
+                              status: "LIVE",
+                            };
+                            scheduleOptimisticMatchSave(startedMatch, true);
+                            onStartMatch(selectedMatch.id);
+                          }}
                           className="mt-6 flex items-center gap-2.5 bg-brand-electric hover:bg-brand-electric-hover text-white px-8 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all transform hover:scale-[1.03] active:scale-95 shadow-lg shadow-brand-electric/20 cursor-pointer"
                         >
                           <Play className="h-4 w-4 fill-white" />

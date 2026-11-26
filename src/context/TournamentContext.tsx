@@ -584,6 +584,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
   const [syncStatus, setSyncStatus] = useState<"IDLE" | "OFFLINE" | "SYNCING" | "SYNCED">("IDLE");
+  const lastLocalScoreMutationRef = React.useRef<number>(0);
+  const singleMatchSaveTimerRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -851,6 +853,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           filter: `tournament_id=eq.${currentTournamentId}`
         },
         () => {
+          // Ignora eco de Realtime durante marcação rápida de pontos locais para não sobrescrever o placar
+          if (Date.now() - lastLocalScoreMutationRef.current < 3500) {
+            return;
+          }
           loadTeamsAndMatches(currentTournamentId);
         }
       )
@@ -880,7 +886,111 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     };
   }, [currentTournamentId]);
 
-  // Sync state helpers
+  // Atualiza no Supabase APENAS a linha da partida alterada (com debounce de 300ms) sem recarregar o torneio inteiro
+  const saveSingleMatchScore = (updatedMatch: Match, immediate = false) => {
+    lastLocalScoreMutationRef.current = Date.now();
+    const dbId = (updatedMatch as any).uuid || (updatedMatch as any).db_id || getUuidForMatchId(updatedMatch.id);
+    if (!dbId) return;
+
+    if (singleMatchSaveTimerRef.current[dbId]) {
+      clearTimeout(singleMatchSaveTimerRef.current[dbId]);
+      delete singleMatchSaveTimerRef.current[dbId];
+    }
+
+    const executeUpdate = async () => {
+      try {
+        const cleanSets = updatedMatch.historicoSets || updatedMatch.sets_history || [];
+        const existingDetails =
+          updatedMatch.details && typeof updatedMatch.details === "object"
+            ? updatedMatch.details
+            : {};
+        const mergedDetails = {
+          ...existingDetails,
+          sets: cleanSets,
+          historicoSets: cleanSets,
+          rounds: updatedMatch.detailedScore?.rounds || [],
+        };
+        const mergedDetailedScore = {
+          sets: cleanSets,
+          historicoSets: cleanSets,
+          rounds: updatedMatch.detailedScore?.rounds || [],
+        };
+
+        const updatePayload: Record<string, any> = {
+          score_a: updatedMatch.scoreA ?? 0,
+          score_b: updatedMatch.scoreB ?? 0,
+          sets_a: updatedMatch.setsA ?? updatedMatch.setsVencidosTimeA ?? 0,
+          sets_b: updatedMatch.setsB ?? updatedMatch.setsVencidosTimeB ?? 0,
+          status: updatedMatch.status,
+          penalties_a: updatedMatch.penaltiesA ?? 0,
+          penalties_b: updatedMatch.penaltiesB ?? 0,
+          details: mergedDetails,
+          detailed_score: mergedDetailedScore,
+        };
+
+        const { error } = await supabase
+          .from("matches")
+          .update(updatePayload)
+          .eq("id", dbId);
+
+        if (error) {
+          await supabase
+            .from("matches")
+            .update({
+              score_a: updatePayload.score_a,
+              score_b: updatePayload.score_b,
+              sets_a: updatePayload.sets_a,
+              sets_b: updatePayload.sets_b,
+              status: updatePayload.status,
+            })
+            .eq("id", dbId);
+        }
+      } catch (err) {
+        console.warn("Aviso ao atualizar placar individual da partida:", err);
+      }
+    };
+
+    if (immediate) {
+      void executeUpdate();
+    } else {
+      singleMatchSaveTimerRef.current[dbId] = setTimeout(() => {
+        delete singleMatchSaveTimerRef.current[dbId];
+        void executeUpdate();
+      }, 300);
+    }
+  };
+
+  const syncMatchFields = (m: Match): Match => {
+    const sA = m.scoreA ?? m.score_a ?? 0;
+    const sB = m.scoreB ?? m.score_b ?? 0;
+    const stA = m.setsA ?? m.setsVencidosTimeA ?? m.sets_a ?? 0;
+    const stB = m.setsB ?? m.setsVencidosTimeB ?? m.sets_b ?? 0;
+    const pA = m.penaltiesA ?? (m as any).penalties_a ?? 0;
+    const pB = m.penaltiesB ?? (m as any).penalties_b ?? 0;
+    const cleanSets = m.historicoSets || m.sets_history || [];
+    return {
+      ...m,
+      scoreA: sA,
+      scoreB: sB,
+      score_a: sA,
+      score_b: sB,
+      setsA: stA,
+      setsB: stB,
+      sets_a: stA,
+      sets_b: stB,
+      setsVencidosTimeA: stA,
+      setsVencidosTimeB: stB,
+      penaltiesA: pA,
+      penaltiesB: pB,
+      penalties_a: pA,
+      penalties_b: pB,
+      detailed_score: {
+        sets: cleanSets,
+        historicoSets: cleanSets,
+        rounds: m.detailedScore?.rounds || [],
+      },
+    };
+  };
   const saveTeams = (newTeams: Team[]) => {
     setTeams(newTeams);
     localStorage.setItem("sc_teams", JSON.stringify(newTeams));
@@ -1395,7 +1505,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
                 "ROUND_WIN",
                 matchId
               );
-              return {
+              return syncMatchFields({
                 ...m,
                 scoreA: 0,
                 scoreB: 0,
@@ -1407,12 +1517,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
                 sets_history: newHistorico,
                 set_history: newHistorico,
                 detailedScore: {
-                  sets: newHistorico,
                   rounds: m.detailedScore?.rounds || [],
                 },
-              };
+              });
             }
-            return { ...m, scoreA: teamAScore, scoreB: teamBScore };
+            return syncMatchFields({ ...m, scoreA: teamAScore, scoreB: teamBScore });
           }
 
           case "VOLEI": {
@@ -1433,7 +1542,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
                 "ROUND_WIN",
                 matchId
               );
-              return {
+              return syncMatchFields({
                 ...m,
                 scoreA: 0,
                 scoreB: 0,
@@ -1445,12 +1554,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
                 sets_history: newHistorico,
                 set_history: newHistorico,
                 detailedScore: {
-                  sets: newHistorico,
                   rounds: m.detailedScore?.rounds || [],
                 },
-              };
+              });
             }
-            return { ...m, scoreA: teamAScore, scoreB: teamBScore };
+            return syncMatchFields({ ...m, scoreA: teamAScore, scoreB: teamBScore });
           }
 
           case "DOMINO":
@@ -1462,13 +1570,17 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
                 matchId
               );
             }
-            return { ...m, scoreA: teamAScore, scoreB: teamBScore };
+            return syncMatchFields({ ...m, scoreA: teamAScore, scoreB: teamBScore });
           }
         }
       }
       return m;
     });
-    saveMatches(updatedMatches);
+    setMatches(updatedMatches);
+    const targetUpdated = updatedMatches.find((m) => m.id === matchId);
+    if (targetUpdated) {
+      saveSingleMatchScore(targetUpdated);
+    }
   };
 
   // Pontuação multiesportes granular (Gols, Pênaltis, Sets, Pontos corridos)
@@ -1652,11 +1764,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             matchId
           );
 
-          return {
+          return syncMatchFields({
             ...m,
             scoreA: nextScoreA,
             scoreB: nextScoreB,
-          };
+          });
         }
 
         case "DOMINO":
@@ -1666,7 +1778,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       }
     });
 
-    saveMatches(updatedMatches);
+    const syncedList = updatedMatches.map((m) => (m.id === matchId ? syncMatchFields(m) : m));
+    setMatches(syncedList);
+    const targetUpdated = syncedList.find((m) => m.id === matchId);
+    if (targetUpdated) {
+      saveSingleMatchScore(targetUpdated);
+    }
   };
 
   const handleSubtractPoint = (matchId: string, teamId: string) => {
