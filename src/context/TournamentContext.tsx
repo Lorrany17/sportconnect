@@ -1005,13 +1005,18 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
     try {
       const dbMatches = newMatches.map((match) => {
-        const dbId = getUuidForMatchId(match.id);
+        const dbId = (match as any).uuid || (match as any).db_id || getUuidForMatchId(match.id);
         const teamAId = match.teamA.id.startsWith("placeholder-") || match.teamA.id === "bye" ? null : match.teamA.id;
         const teamBId = match.teamB.id.startsWith("placeholder-") || match.teamB.id === "bye" ? null : match.teamB.id;
         const cleanSets = match.historicoSets || match.sets_history || [];
+        const existingDetails =
+          match.details && typeof match.details === "object" ? match.details : {};
         return {
           id: dbId,
           phase: match.phase,
+          round: match.round ?? undefined,
+          next_match_id: match.next_match_id ?? undefined,
+          group_name: (match as any).group_name ?? undefined,
           team_a_id: teamAId,
           team_b_id: teamBId,
           score_a: match.scoreA,
@@ -1022,6 +1027,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           winner_id: match.winnerId || null,
           tournament_id: currentTournamentId,
           details: {
+            ...existingDetails,
             sets: cleanSets,
             historicoSets: cleanSets,
             rounds: match.detailedScore?.rounds || [],
@@ -1821,18 +1827,22 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           matchId
         );
 
-        return {
+        return syncMatchFields({
           ...m,
           scoreA: newScoreA,
           scoreB: newScoreB,
           detailedScore: {
             rounds,
           },
-        };
+        });
       }
       return m;
     });
-    saveMatches(updatedMatches);
+    setMatches(updatedMatches);
+    const targetUpdated = updatedMatches.find((m) => m.id === matchId);
+    if (targetUpdated) {
+      saveSingleMatchScore(targetUpdated);
+    }
   };
 
   // Add detailed Round Record
@@ -1845,12 +1855,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             "INFO",
             matchId
           );
-          return {
+          return syncMatchFields({
             ...m,
             detailedScore: {
               rounds: [...m.detailedScore.rounds, round],
             },
-          };
+          });
         }
 
         const isTeamA = round.winnerTeamId === m.teamA.id;
@@ -1881,7 +1891,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           matchId
         );
 
-        return {
+        return syncMatchFields({
           ...m,
           scoreA: newScoreA,
           scoreB: newScoreB,
@@ -1890,11 +1900,15 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           detailedScore: {
             rounds: [...m.detailedScore.rounds, round],
           },
-        };
+        });
       }
       return m;
     });
-    saveMatches(updatedMatches);
+    setMatches(updatedMatches);
+    const targetUpdated = updatedMatches.find((m) => m.id === matchId);
+    if (targetUpdated) {
+      saveSingleMatchScore(targetUpdated);
+    }
   };
 
   // Start a Match
@@ -1910,11 +1924,15 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const updated = matches.map((m) => {
       if (m.id === matchId) {
         addEvent(`Mesa ${m.tableNumber}: Confronto iniciado! ${m.teamA.name} vs ${m.teamB.name}`, "INFO", matchId);
-        return { ...m, status: "LIVE" as const };
+        return syncMatchFields({ ...m, status: "LIVE" as const });
       }
       return m;
     });
-    saveMatches(updated);
+    setMatches(updated);
+    const targetUpdated = updated.find((m) => m.id === matchId);
+    if (targetUpdated) {
+      saveSingleMatchScore(targetUpdated, true);
+    }
   };
 
   // Complete Match and Propagate Winner
@@ -2039,30 +2057,42 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       addEvent(`🏆 PARABÉNS! "${winnerTeam.name}" é a grande CAMPEÃ do torneio de ${sportLabel} SportConnect! 🏆`, "MATCH_COMPLETED");
     }
 
-    saveMatches(updatedMatches);
+    // Atualiza APENAS o estado local do React (NUNCA chama saveMatches em lote para não sobrescrever metadados nem zerar sets!)
+    setMatches(updatedMatches);
 
-    // Dispara a Server Action de forma aguardada para persistência estrita na tabela matches
+    // Dispara a Server Action de forma aguardada para persistência cirúrgica na tabela matches
     const dbMatchUuid =
       (targetMatch as any).uuid ||
       (targetMatch as any).db_id ||
       getUuidForMatchId(matchId);
 
-    try {
-      await completeMatchAction({
-        matchId: dbMatchUuid,
-        scoreA: tScoreA,
-        scoreB: tScoreB,
-        setsA: tSetsA,
-        setsB: tSetsB,
-        winnerId: finalWinnerId,
-        sportType: currentSportType,
-        setHistory: targetMatch.historicoSets || [],
-        detailedScore: targetMatch.detailedScore || { rounds: [] },
-        penaltiesA: targetMatch.penaltiesA || 0,
-        penaltiesB: targetMatch.penaltiesB || 0,
-      });
-    } catch (err) {
-      console.warn("Aviso ao rodar completeMatchAction:", err);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    const finalRecordedScoreA = isSetsSport ? tSetsA : tScoreA;
+    const finalRecordedScoreB = isSetsSport ? tSetsB : tScoreB;
+
+    const res = await completeMatchAction({
+      matchId: dbMatchUuid,
+      scoreA: finalRecordedScoreA,
+      scoreB: finalRecordedScoreB,
+      setsA: tSetsA,
+      setsB: tSetsB,
+      winnerId: finalWinnerId,
+      sportType: currentSportType,
+      setHistory: targetMatch.historicoSets || [],
+      detailedScore: targetMatch.detailedScore || { rounds: [] },
+      penaltiesA: targetMatch.penaltiesA || 0,
+      penaltiesB: targetMatch.penaltiesB || 0,
+      userAuthToken: token,
+    });
+
+    if (!res.success) {
+      throw new Error(res.error || "Falha ao oficializar resultado da partida no banco de dados.");
+    }
+
+    if (currentTournamentId) {
+      await loadTeamsAndMatches(currentTournamentId);
     }
   };
 

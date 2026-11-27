@@ -25,7 +25,7 @@ import {
 import { useTournament } from "@/context/TournamentContext";
 import { supabase } from "@/lib/supabase";
 import { formatPhaseName, getMatchRules } from "@/utils/formatMap";
-import { resetMatchAction } from "@/app/actions/bracket";
+import { completeMatchAction, resetMatchAction } from "@/app/actions/bracket";
 
 export interface RefereePanelProps {
   tournamentId?: string;
@@ -880,24 +880,135 @@ export default function RefereePanel({
     if (!selectedMatch || !isMatchFinished || isFinishing) return;
     setIsFinishing(true);
     try {
-      await flushPendingMatchSave(selectedMatch.id);
+      const authMatch = optimisticMatchesRef.current[selectedMatch.id] || selectedMatch;
       const isSetsSport = currentSportType === "PING_PONG" || currentSportType === "VOLEI" || isBestOf3;
-      const team1_id = selectedMatch.teamA.id;
-      const team2_id = selectedMatch.teamB.id;
+      const team1_id = authMatch.teamA.id;
+      const team2_id = authMatch.teamB.id;
+
+      let finalSetsA = Number(authMatch.setsA ?? authMatch.setsVencidosTimeA ?? authMatch.sets_a ?? setsA ?? 0);
+      let finalSetsB = Number(authMatch.setsB ?? authMatch.setsVencidosTimeB ?? authMatch.sets_b ?? setsB ?? 0);
+      const historySets =
+        Array.isArray(authMatch.historicoSets) && authMatch.historicoSets.length > 0
+          ? authMatch.historicoSets
+          : selectedMatchSets || [];
+
+      if (isSetsSport && finalSetsA === 0 && finalSetsB === 0 && historySets.length > 0) {
+        for (const s of historySets) {
+          const sA = Number(s?.scoreA ?? s?.score_a ?? 0);
+          const sB = Number(s?.scoreB ?? s?.score_b ?? 0);
+          if (sA > sB) finalSetsA++;
+          else if (sB > sA) finalSetsB++;
+        }
+      }
+
+      const finalScoreA = isSetsSport ? finalSetsA : Number(authMatch.scoreA ?? authMatch.score_a ?? scoreA ?? 0);
+      const finalScoreB = isSetsSport ? finalSetsB : Number(authMatch.scoreB ?? authMatch.score_b ?? scoreB ?? 0);
+
       const calculatedWinnerId = isSetsSport
-        ? (setsA > setsB ? team1_id : team2_id)
-        : (scoreA > scoreB ? team1_id : team2_id);
+        ? finalSetsA > finalSetsB
+          ? team1_id
+          : team2_id
+        : finalScoreA > finalScoreB
+        ? team1_id
+        : team2_id;
       const winnerId = calculatedWinnerId || matchWinnerId;
 
-      await onFinishMatch(selectedMatch.id, winnerId);
+      if (!winnerId) {
+        throw new Error("Não foi possível identificar o vencedor da partida.");
+      }
 
-      // Sincronização do Frontend (Client-Side):
-      // Força o router a revalidar os Server Components e atualizar o chaveamento imediatamente
+      // Cancela qualquer timer pendente para esta partida antes de oficializar
+      if (saveTimersRef.current[selectedMatch.id]) {
+        clearTimeout(saveTimersRef.current[selectedMatch.id]);
+        delete saveTimersRef.current[selectedMatch.id];
+      }
+
+      const dbMatchUuid =
+        (authMatch as any).uuid ||
+        (authMatch as any).db_id ||
+        authMatch.id;
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      // 1. Executa a Server Action cirúrgica (atualiza apenas a partida atual + avança vencedor/perdedor)
+      const res = await completeMatchAction({
+        matchId: dbMatchUuid,
+        scoreA: finalScoreA,
+        scoreB: finalScoreB,
+        setsA: finalSetsA,
+        setsB: finalSetsB,
+        winnerId,
+        sportType: currentSportType,
+        setHistory: historySets,
+        detailedScore: authMatch.detailedScore || { rounds: [] },
+        penaltiesA: authMatch.penaltiesA ?? 0,
+        penaltiesB: authMatch.penaltiesB ?? 0,
+        userAuthToken: token,
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || "Erro ao oficializar resultado da partida no servidor.");
+      }
+
+      // 2. Atualiza o estado local imediatamente para COMPLETED com o placar final de sets
+      const completedMatchLocal: Match = {
+        ...authMatch,
+        status: "COMPLETED",
+        winnerId,
+        winner_id: winnerId,
+        scoreA: finalScoreA,
+        scoreB: finalScoreB,
+        score_a: finalScoreA,
+        score_b: finalScoreB,
+        setsA: finalSetsA,
+        setsB: finalSetsB,
+        sets_a: finalSetsA,
+        sets_b: finalSetsB,
+        setsVencidosTimeA: finalSetsA,
+        setsVencidosTimeB: finalSetsB,
+        finalScoreA,
+        finalScoreB,
+        finalSetsA,
+        finalSetsB,
+        historicoSets: historySets,
+        sets_history: historySets,
+        set_history: historySets,
+      };
+
+      optimisticMatchesRef.current[selectedMatch.id] = completedMatchLocal;
+      setOptimisticMatches((prev) => ({
+        ...prev,
+        [selectedMatch.id]: completedMatchLocal,
+      }));
+      setDirectMatches((prev) =>
+        prev.map((m) => (m.id === selectedMatch.id || m.uuid === dbMatchUuid ? completedMatchLocal : m))
+      );
+      setScoreSyncStatus("SYNCED");
+
+      // Recarrega confrontos atualizados (Final e 3º Lugar preenchidos) do torneio ativo
+      if (activeTournamentId) {
+        const { data: refreshedMatches } = await supabase
+          .from("matches")
+          .select("*, detailed_score, details")
+          .eq("tournament_id", activeTournamentId);
+        if (refreshedMatches) {
+          // Limpa cache otimista da partida finalizada após confirmar leitura fresca do banco
+          delete optimisticMatchesRef.current[selectedMatch.id];
+          setOptimisticMatches((prev) => {
+            const copy = { ...prev };
+            delete copy[selectedMatch.id];
+            return copy;
+          });
+        }
+      }
+
       router.refresh();
     } catch (err: any) {
       console.error("[RefereePanel] Erro ao encerrar partida:", err);
+      setScoreSyncStatus("ERROR");
       if (typeof window !== "undefined") {
-        window.alert(err.message || "Erro ao encerrar partida e oficializar resultado.");
+        window.alert(err?.message || "Erro ao encerrar partida e oficializar resultado.");
       }
     } finally {
       setIsFinishing(false);

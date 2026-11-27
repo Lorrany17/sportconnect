@@ -76,9 +76,18 @@ export default function GroupStages({
   const { computedGroups, knockoutMatches, groupMatchesTotal, groupMatchesCompleted } =
     useMemo(() => {
       const isKnockoutMatch = (m: Match) => {
+        if ((m as any).group_name) return false;
         const ph = String(m.phase || "").toUpperCase().trim();
+        if (ph === "GROUP_STAGE" || ph.startsWith("GROUP") || ph.includes("GRUPO") || ph === "LEAGUE") {
+          return false;
+        }
         return (
           ph === "KNOCKOUT" ||
+          ph === "THIRD_PLACE" ||
+          ph.includes("THIRD") ||
+          ph.includes("TERCEIRO") ||
+          ph.includes("3º") ||
+          Boolean((m.details as any)?.is_third_place) ||
           Boolean(m.next_match_id) ||
           ph.includes("QUARTA") ||
           ph.includes("SEMI") ||

@@ -16,7 +16,7 @@ import { Tournament, Team, Match } from "@/types";
 import { calculateGroupStandings, extractMatchGroupName, normalizeGroupLetter } from "@/utils/groupStandings";
 import { getLiveMatchScore } from "@/utils/liveMatchScore";
 import { generateKnockoutStage } from "@/app/actions/bracket";
-import { organizeBracketRounds, getThirdPlaceMatch } from "@/utils/bracketTree";
+import { organizeBracketRounds, getThirdPlaceMatch, isThirdPlaceMatch } from "@/utils/bracketTree";
 import { useAuth } from "@/context/AuthProvider";
 import { useTournamentPermissions } from "@/hooks/useTournamentPermissions";
 import { supabase } from "@/lib/supabase";
@@ -536,27 +536,52 @@ export function KnockoutTree({
     const liveScore = getLiveMatchScore(match, tournament?.sport_type);
     const isSetsSport = liveScore.isSetsSport;
 
-    // Prioridade estrita para as colunas raízes sincronizadas do Supabase
-    const sets1 = match.sets_a !== undefined && match.sets_a !== null
-      ? Number(match.sets_a)
-      : (match.setsA !== undefined && match.setsA !== null
+    // Prioridade estrita para sets vencidos em esportes de sets (sets_a -> setsA -> liveScore.setsA -> score_a)
+    const rawDbSets1 =
+      match.sets_a !== undefined && match.sets_a !== null
+        ? Number(match.sets_a)
+        : match.setsA !== undefined && match.setsA !== null
         ? Number(match.setsA)
-        : liveScore.setsA);
-    const sets2 = match.sets_b !== undefined && match.sets_b !== null
-      ? Number(match.sets_b)
-      : (match.setsB !== undefined && match.setsB !== null
+        : 0;
+    const rawDbSets2 =
+      match.sets_b !== undefined && match.sets_b !== null
+        ? Number(match.sets_b)
+        : match.setsB !== undefined && match.setsB !== null
         ? Number(match.setsB)
-        : liveScore.setsB);
-    const score1 = match.score_a !== undefined && match.score_a !== null
-      ? Number(match.score_a)
-      : (match.scoreA !== undefined && match.scoreA !== null
+        : 0;
+    const score1 =
+      match.score_a !== undefined && match.score_a !== null
+        ? Number(match.score_a)
+        : match.scoreA !== undefined && match.scoreA !== null
         ? Number(match.scoreA)
-        : (isLive ? liveScore.activePointsA : liveScore.rawScoreA));
-    const score2 = match.score_b !== undefined && match.score_b !== null
-      ? Number(match.score_b)
-      : (match.scoreB !== undefined && match.scoreB !== null
+        : isLive
+        ? liveScore.activePointsA
+        : liveScore.rawScoreA;
+    const score2 =
+      match.score_b !== undefined && match.score_b !== null
+        ? Number(match.score_b)
+        : match.scoreB !== undefined && match.scoreB !== null
         ? Number(match.scoreB)
-        : (isLive ? liveScore.activePointsB : liveScore.rawScoreB));
+        : isLive
+        ? liveScore.activePointsB
+        : liveScore.rawScoreB;
+
+    const sets1 =
+      rawDbSets1 > 0 || rawDbSets2 > 0
+        ? rawDbSets1
+        : liveScore.setsA > 0 || liveScore.setsB > 0
+        ? liveScore.setsA
+        : isSetsSport && isCompleted
+        ? score1
+        : rawDbSets1;
+    const sets2 =
+      rawDbSets1 > 0 || rawDbSets2 > 0
+        ? rawDbSets2
+        : liveScore.setsA > 0 || liveScore.setsB > 0
+        ? liveScore.setsB
+        : isSetsSport && isCompleted
+        ? score2
+        : rawDbSets2;
 
     const isWinner1 =
       isCompleted &&
@@ -1027,7 +1052,8 @@ export function KnockoutTree({
         <div className="flex items-center gap-2">
           <Network className="h-4 w-4 text-[#00a2ff] print:text-black" />
           <span className="font-bold text-zinc-300 print:text-black">
-            Árvore Eliminatória ({roundGroups.length} Fases • {matches.length} Partidas)
+            Árvore Eliminatória ({roundGroups.length} Fases •{" "}
+            {roundGroups.reduce((acc, g) => acc + g.matches.length, 0) + (thirdPlaceMatch ? 1 : 0)} Partidas)
           </span>
         </div>
         <span className="text-[11px] text-zinc-500 hidden sm:inline print:hidden">
@@ -1189,9 +1215,19 @@ export function GroupStages({
 
   const { computedGroups, knockoutMatches, groupMatchesTotal, groupMatchesCompleted } = useMemo(() => {
     const isKnockoutMatch = (m: Match) => {
+      if ((m as any).group_name) return false;
       const ph = String(m.phase || "").toUpperCase().trim();
+      if (ph === "GROUP_STAGE" || ph.startsWith("GROUP") || ph.includes("GRUPO") || ph === "LEAGUE") {
+        return false;
+      }
       return (
+        isThirdPlaceMatch(m) ||
         ph === "KNOCKOUT" ||
+        ph === "THIRD_PLACE" ||
+        ph.includes("THIRD") ||
+        ph.includes("TERCEIRO") ||
+        ph.includes("3º") ||
+        Boolean((m.details as any)?.is_third_place) ||
         Boolean(m.next_match_id) ||
         ph.includes("QUARTA") ||
         ph.includes("SEMI") ||

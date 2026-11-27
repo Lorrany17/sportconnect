@@ -156,7 +156,20 @@ export function calculateGroupStandings(
     if (!isFinished) return false;
 
     const ph = String(m.phase || "").toUpperCase().trim();
-    if (ph === "KNOCKOUT" || Boolean(m.next_match_id)) return false;
+    if (
+      ph === "KNOCKOUT" ||
+      ph === "THIRD_PLACE" ||
+      ph.includes("SEMI") ||
+      ph.includes("FINAL") ||
+      ph.includes("THIRD") ||
+      ph.includes("TERCEIRO") ||
+      ph.includes("QUARTA") ||
+      ph.includes("OITAVA") ||
+      Boolean(m.details?.is_third_place) ||
+      Boolean(m.next_match_id)
+    ) {
+      return false;
+    }
 
     if (targetGroup) {
       const mGroup = extractMatchGroupName(m, teamGroupLookup);

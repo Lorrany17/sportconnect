@@ -2038,37 +2038,66 @@ export async function completeMatchAction(
       sportType === "VOLEI" ||
       setsA > 0 ||
       setsB > 0 ||
+      (Array.isArray(params.setHistory) && params.setHistory.length > 0) ||
       (match.phase && match.phase.toLowerCase().includes("semi") && sportType === "DOMINO");
+
+    // Se setsA e setsB vieram zerados mas há histórico de sets, calcula os sets vencidos a partir do histórico
+    let effectiveSetsA = Number(setsA || 0);
+    let effectiveSetsB = Number(setsB || 0);
+    if (
+      isSetsSport &&
+      effectiveSetsA === 0 &&
+      effectiveSetsB === 0 &&
+      Array.isArray(params.setHistory) &&
+      params.setHistory.length > 0
+    ) {
+      for (const s of params.setHistory) {
+        const sA = Number((s as any)?.scoreA ?? (s as any)?.score_a ?? 0);
+        const sB = Number((s as any)?.scoreB ?? (s as any)?.score_b ?? 0);
+        if (sA > sB) effectiveSetsA++;
+        else if (sB > sA) effectiveSetsB++;
+      }
+    }
 
     let calculatedWinnerId: string | null = null;
 
-    if (isSetsSport && (setsA > 0 || setsB > 0 || setsA !== setsB)) {
-      calculatedWinnerId = setsA > setsB ? team1_id : setsB > setsA ? team2_id : null;
+    if (isSetsSport && (effectiveSetsA > 0 || effectiveSetsB > 0 || effectiveSetsA !== effectiveSetsB)) {
+      calculatedWinnerId =
+        effectiveSetsA > effectiveSetsB
+          ? team1_id
+          : effectiveSetsB > effectiveSetsA
+          ? team2_id
+          : null;
     } else {
       calculatedWinnerId = scoreA > scoreB ? team1_id : scoreB > scoreA ? team2_id : null;
     }
 
     const finalWinnerId = calculatedWinnerId || params.winnerId || null;
     const isKnockoutMatch =
-      Boolean(match.next_match_id) ||
-      String(match.phase || "").toUpperCase() === "KNOCKOUT";
+      !match.group_name &&
+      String(match.phase || "").toUpperCase() !== "GROUP_STAGE" &&
+      !String(match.phase || "").toUpperCase().startsWith("GROUP");
 
     if (!finalWinnerId && isKnockoutMatch) {
       return {
         success: false,
-        error: "Não foi possível definir o vencedor do confronto eliminatório (placar empatado ou times indefinidos).",
+        error: "Não foi possível definir o vencedor do confronto eliminatório (placar de sets empatado ou times indefinidos).",
       };
     }
 
     const existingDetails =
       typeof match.details === "object" && match.details !== null ? match.details : {};
 
+    // Para esportes de sets (ex: PING_PONG), grava o placar de sets vencidos como score_a/score_b final (nunca 0x0 do próximo set)
+    const finalRecordedScoreA = isSetsSport ? effectiveSetsA : scoreA;
+    const finalRecordedScoreB = isSetsSport ? effectiveSetsB : scoreB;
+
     const currentUpdate: any = {
       status: "COMPLETED",
-      score_a: isSetsSport && scoreA === 0 && scoreB === 0 && (setsA > 0 || setsB > 0) ? setsA : scoreA,
-      score_b: isSetsSport && scoreA === 0 && scoreB === 0 && (setsA > 0 || setsB > 0) ? setsB : scoreB,
-      sets_a: setsA,
-      sets_b: setsB,
+      score_a: finalRecordedScoreA,
+      score_b: finalRecordedScoreB,
+      sets_a: effectiveSetsA,
+      sets_b: effectiveSetsB,
       winner_id: finalWinnerId,
       set_history: params.setHistory || [],
       sets_history: params.setHistory || [],
@@ -2076,6 +2105,7 @@ export async function completeMatchAction(
       details: {
         ...existingDetails,
         sets: params.setHistory || [],
+        historicoSets: params.setHistory || [],
         rounds: params.detailedScore?.rounds || [],
       },
       detailed_score: {
@@ -2148,6 +2178,57 @@ export async function completeMatchAction(
     const phaseStr = String(match.phase || "").toLowerCase().trim();
     const roundLabel = String(detailsObj?.round_label || match.details?.round_label || "").toLowerCase().trim();
     const matchTitle = String(detailsObj?.match_title || match.details?.match_title || "").toLowerCase().trim();
+
+    // Regra estrita: Fase de Grupos, Disputa de 3º Lugar e Grande Final NUNCA avançam para próxima partida
+    const isGroupStageMatch =
+      Boolean(match.group_name) ||
+      phaseStr === "group_stage" ||
+      phaseStr.startsWith("group") ||
+      phaseStr.includes("grupo") ||
+      roundLabel.includes("grupo");
+
+    const isThirdPlaceMatch =
+      Boolean(detailsObj?.is_third_place) ||
+      phaseStr === "third_place" ||
+      phaseStr === "terceiro_lugar" ||
+      phaseStr.includes("third") ||
+      phaseStr.includes("terceiro") ||
+      roundLabel.includes("3º") ||
+      roundLabel.includes("terceiro") ||
+      matchTitle.startsWith("disputa de 3") ||
+      matchTitle.includes("3º lugar");
+
+    const isGrandFinalMatch =
+      !isThirdPlaceMatch &&
+      !phaseStr.includes("semi") &&
+      !phaseStr.includes("quarta") &&
+      !phaseStr.includes("oitava") &&
+      (phaseStr === "final" ||
+        phaseStr === "grande_final" ||
+        roundLabel === "grande final" ||
+        roundLabel === "final" ||
+        matchTitle.startsWith("grande final"));
+
+    if (isGroupStageMatch || isThirdPlaceMatch || isGrandFinalMatch) {
+      if (match.tournament_id) {
+        const tId = match.tournament_id;
+        try {
+          revalidatePath(`/dashboard/${tId}/bracket`, "page");
+          revalidatePath(`/dashboard/${tId}`, "page");
+          revalidatePath(`/torneio/${tId}`, "page");
+          revalidatePath(`/torneio/${tId}/chaveamento`, "page");
+        } catch {
+          // ignore
+        }
+      }
+      return {
+        success: true,
+        message: "Resultado oficializado com sucesso!",
+        winnerId: finalWinnerId || undefined,
+        nextMatchId: null,
+        advancedToSlot: null,
+      };
+    }
 
     // 1. Busca todas as partidas do torneio para localizar a Grande Final, o 3º Lugar e identificar a posição da Semifinal
     let tourneyMatches: any[] = [];
@@ -2235,30 +2316,137 @@ export async function completeMatchAction(
       });
     }
 
-    // D) Fallback para a partida com maior rodada eliminatória (Grande Final é o topo da árvore)
-    if (!finalMatch && tourneyMatches.length > 0) {
-      const knockoutMatches = tourneyMatches.filter((m: any) => {
-        const ph = String(m.phase || "").toUpperCase();
-        return ph !== "GROUP_STAGE" && !ph.includes("GRUPO") && !ph.includes("LEAGUE");
+    // D) Auto-reparo e detecção para torneios com 4 jogos eliminatórios (2 Semifinais + 1 Final + 1 3º Lugar)
+    // caso todos tenham sido gravados com phase='KNOCKOUT' e sem round/next_match_id
+    const allKnockoutMatches = tourneyMatches.filter((m: any) => {
+      if (m.group_name) return false;
+      const ph = String(m.phase || "").toUpperCase().trim();
+      return ph !== "GROUP_STAGE" && !ph.startsWith("GROUP") && !ph.includes("GRUPO") && ph !== "LEAGUE";
+    });
+
+    let autoDetectedThirdPlace: any = null;
+    if (allKnockoutMatches.length === 4) {
+      const hasTwoRealTeams = (m: any) => {
+        const a = m.team_a_id || m.team1_id;
+        const b = m.team_b_id || m.team2_id;
+        return Boolean(a && a !== "bye" && b && b !== "bye");
+      };
+      const matchesWithTwoTeams = allKnockoutMatches.filter(hasTwoRealTeams);
+      const matchesWithoutTwoTeams = allKnockoutMatches.filter((m: any) => !hasTwoRealTeams(m));
+
+      if (matchesWithTwoTeams.length === 2 && matchesWithoutTwoTeams.length === 2) {
+        if (!finalMatch) {
+          finalMatch = matchesWithoutTwoTeams[0];
+        }
+        autoDetectedThirdPlace =
+          matchesWithoutTwoTeams.find((m: any) => m.id !== finalMatch?.id) ||
+          matchesWithoutTwoTeams[1];
+
+        // Auto-repara metadados estruturais no banco para separar Rodada 1 (Semifinais), Rodada 2 (Final) e 3º Lugar
+        for (let sIdx = 0; sIdx < matchesWithTwoTeams.length; sIdx++) {
+          const sm = matchesWithTwoTeams[sIdx];
+          const smDetails = typeof sm.details === "object" && sm.details ? sm.details : {};
+          await supabase
+            .from("matches")
+            .update({
+              phase: "semi_finals",
+              round: 1,
+              next_match_id: finalMatch.id,
+              details: {
+                ...smDetails,
+                round_label: "Semifinal",
+                match_order: sIdx + 1,
+              },
+            })
+            .eq("id", sm.id);
+          sm.phase = "semi_finals";
+          sm.round = 1;
+          sm.next_match_id = finalMatch.id;
+          sm.details = { ...smDetails, round_label: "Semifinal", match_order: sIdx + 1 };
+        }
+
+        if (finalMatch) {
+          const fmDetails = typeof finalMatch.details === "object" && finalMatch.details ? finalMatch.details : {};
+          await supabase
+            .from("matches")
+            .update({
+              phase: "final",
+              round: 2,
+              next_match_id: null,
+              details: {
+                ...fmDetails,
+                round_label: "Grande Final",
+                match_title: "Grande Final",
+                match_order: 3,
+              },
+            })
+            .eq("id", finalMatch.id);
+          finalMatch.phase = "final";
+          finalMatch.round = 2;
+        }
+
+        if (autoDetectedThirdPlace) {
+          const tmDetails =
+            typeof autoDetectedThirdPlace.details === "object" && autoDetectedThirdPlace.details
+              ? autoDetectedThirdPlace.details
+              : {};
+          await supabase
+            .from("matches")
+            .update({
+              phase: "third_place",
+              round: 2,
+              next_match_id: null,
+              details: {
+                ...tmDetails,
+                round_label: "Disputa de 3º Lugar",
+                match_title: "Disputa de 3º Lugar",
+                is_third_place: true,
+                match_order: 4,
+              },
+            })
+            .eq("id", autoDetectedThirdPlace.id);
+          autoDetectedThirdPlace.phase = "third_place";
+          autoDetectedThirdPlace.round = 2;
+          autoDetectedThirdPlace.details = {
+            ...tmDetails,
+            round_label: "Disputa de 3º Lugar",
+            match_title: "Disputa de 3º Lugar",
+            is_third_place: true,
+            match_order: 4,
+          };
+        }
+      }
+    }
+
+    if (!finalMatch && allKnockoutMatches.length > 0) {
+      const nonThird = allKnockoutMatches.filter((m: any) => {
+        const ph = String(m.phase || "").toLowerCase();
+        return ph !== "third_place" && !ph.includes("terceiro") && !m.details?.is_third_place;
       });
-      if (knockoutMatches.length > 0) {
-        const maxRound = Math.max(...knockoutMatches.map((m: any) => Number(m.round || m.round_number || 1)));
-        finalMatch = knockoutMatches.find((m: any) => Number(m.round || m.round_number || 1) === maxRound);
+      if (nonThird.length > 0) {
+        const maxRound = Math.max(...nonThird.map((m: any) => Number(m.round || m.round_number || 1)));
+        finalMatch = nonThird.find((m: any) => Number(m.round || m.round_number || 1) === maxRound);
       }
     }
 
     const isSemifinal =
-      phaseStr.includes("semi") ||
-      roundLabel.includes("semi") ||
-      matchTitle.includes("semi") ||
-      (finalMatch && match.id !== finalMatch.id && (match.next_match_id === finalMatch.id || match.round === 1));
+      !isGroupStageMatch &&
+      !isThirdPlaceMatch &&
+      !isGrandFinalMatch &&
+      (phaseStr.includes("semi") ||
+        roundLabel.includes("semi") ||
+        (finalMatch &&
+          match.id !== finalMatch.id &&
+          (!autoDetectedThirdPlace || match.id !== autoDetectedThirdPlace.id) &&
+          (match.next_match_id === finalMatch.id || Number(match.round || 1) === 1)));
 
     if (isSemifinal && match.tournament_id) {
       // 1. Identificação Estrita da Origem (Semifinal 1 vs Semifinal 2)
       // Filtra as semifinais do torneio ordenando estritamente por ordem, criação e id
-      const allSemis = (tourneyMatches || [])
+      const allSemis = (allKnockoutMatches || [])
         .filter((m: any) => {
           if (finalMatch && m.id === finalMatch.id) return false;
+          if (autoDetectedThirdPlace && m.id === autoDetectedThirdPlace.id) return false;
           const ph = String(m.phase || "").toLowerCase().trim();
           let d: any = m.details;
           if (typeof d === "string") {
@@ -2266,11 +2454,21 @@ export async function completeMatchAction(
           }
           const rl = String(d?.round_label || "").toLowerCase().trim();
           const mt = String(d?.match_title || "").toLowerCase().trim();
+          if (
+            ph === "third_place" ||
+            ph.includes("terceiro") ||
+            Boolean(d?.is_third_place) ||
+            rl.includes("3º") ||
+            rl.includes("terceiro")
+          ) {
+            return false;
+          }
           return (
             ph.includes("semi") ||
             rl.includes("semi") ||
             mt.includes("semi") ||
-            (finalMatch && m.next_match_id === finalMatch.id)
+            (finalMatch && m.next_match_id === finalMatch.id) ||
+            allKnockoutMatches.length <= 4
           );
         })
         .sort((a: any, b: any) => {
@@ -2326,11 +2524,9 @@ export async function completeMatchAction(
         else if (semiIndex === 1) detectedSemi = 2;
       }
 
-      // Validação estrita de segurança: se a origem não puder ser identificada, aborta com erro
+      // Fallback seguro caso a ordem da semifinal não tenha sido explicitada: preenche o slot disponível da Final
       if (!detectedSemi) {
-        throw new Error(
-          `[finishMatch] Não foi possível determinar com precisão se a partida ${match.id} é a Semifinal 1 ou Semifinal 2. Abortando atualização para não corromper os slots da Grande Final.`
-        );
+        detectedSemi = finalMatch && finalMatch.team_a_id && !finalMatch.team_b_id ? 2 : 1;
       }
 
       const isSemi1 = detectedSemi === 1;
@@ -2405,29 +2601,33 @@ export async function completeMatchAction(
         .maybeSingle();
 
       const hasThirdPlace = Boolean(
+        autoDetectedThirdPlace ||
         tourneyRow?.has_third_place_match ||
         tourneyRow?.match_rules?.has_third_place_match
       );
 
       if (hasThirdPlace && finalLoserId) {
-        let thirdMatch: any = (tourneyMatches || []).find((m: any) => {
-          const ph = String(m.phase || "").toLowerCase().trim();
-          let d: any = m.details;
-          if (typeof d === "string") {
-            try { d = JSON.parse(d); } catch (_) { d = {}; }
-          }
-          const rl = String(d?.round_label || "").toLowerCase().trim();
-          const mt = String(d?.match_title || "").toLowerCase().trim();
-          const full = `${ph} ${rl} ${mt}`;
-          return (
-            ph === "third_place" ||
-            ph === "terceiro_lugar" ||
-            full.includes("third") ||
-            full.includes("terceiro") ||
-            full.includes("3º") ||
-            full.includes("3o")
-          );
-        });
+        let thirdMatch: any =
+          autoDetectedThirdPlace ||
+          (tourneyMatches || []).find((m: any) => {
+            const ph = String(m.phase || "").toLowerCase().trim();
+            let d: any = m.details;
+            if (typeof d === "string") {
+              try { d = JSON.parse(d); } catch (_) { d = {}; }
+            }
+            const rl = String(d?.round_label || "").toLowerCase().trim();
+            const mt = String(d?.match_title || "").toLowerCase().trim();
+            const full = `${ph} ${rl} ${mt}`;
+            return (
+              Boolean(d?.is_third_place) ||
+              ph === "third_place" ||
+              ph === "terceiro_lugar" ||
+              full.includes("third") ||
+              full.includes("terceiro") ||
+              full.includes("3º") ||
+              full.includes("3o")
+            );
+          });
 
         if (!thirdMatch) {
           const { data: thirdCandidates } = await supabase
